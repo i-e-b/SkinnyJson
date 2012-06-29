@@ -30,32 +30,56 @@ namespace SevenDigital.Jester.EventStore.Serialisation
 
     public class Json
     {
+		/// <summary> Turn an object into a JSON string </summary>
 		public static string Freeze(object obj)
 		{
-			return Instance.ToJson(obj);
+            return Instance.ToJson(obj, DefaultParameters);
 		}
-
-		public static T Defrost<T>(string json)
+		
+		/// <summary> Turn a JSON string into an object </summary>
+		public static object Defrost(string json)
 		{
-			return (T)Instance.ToObject(json);
+			return Instance.ToObject(json, null);
 		}
+		
+		/// <summary> Create a copy of an object through serialisation </summary>
+        public static T Clone<T>(T obj)
+        {
+            return (T)Defrost(Freeze(obj));
+        }
+
+		/// <summary>Read a JSON object into an anonymous .Net object</summary>
+        public static object Parse(string json)
+        {
+            return new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode();
+        }
+
+		/// <summary>Pretty print a JSON string</summary>
+        public static string Beautify(string input)
+        {
+            return Formatter.PrettyPrint(input);
+        }
+
+		/// <summary>Fill the members of an .Net object from a JSON object string</summary>
+		/// <param name="input"></param>
+		/// <param name="json"></param>
+		/// <returns></returns>
+        public object FillObject(object input, string json)
+        {
+            var ht = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode() as Dictionary<string, object>;
+            return ht == null ? null : ParseDictionary(ht, null, input.GetType(), input);
+        }
+
 
     	internal readonly static Json Instance = new Json();
-
         private Json(){}
         /// <summary>
         /// You can set these paramters globally for all calls
         /// </summary>
-        public JsonParameters Parameters = new JsonParameters();
+        public static JsonParameters DefaultParameters = new JsonParameters();
         private JsonParameters _params;
 
-        public string ToJson(object obj)
-        {
-            _params = Parameters;
-            return ToJson(obj, Parameters);
-        }
-
-        public string ToJson(object obj, JsonParameters param)
+        internal string ToJson(object obj, JsonParameters param)
         {
             _params = param;
             // FEATURE : enable extensions when you can deserialize anon types
@@ -63,46 +87,10 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             return new JSONSerializer(param).ConvertToJSON(obj);
         }
 
-        public object Parse(string json)
+        internal object ToObject(string json, Type type)
         {
-            return new JsonParser(json, Parameters.IgnoreCaseOnDeserialize).Decode();
-        }
-
-        public T ToObject<T>(string json)
-        {
-            return (T)ToObject(json, typeof(T));
-        }
-
-        public object ToObject(string json)
-        {
-            return ToObject(json, null);
-        }
-
-        public object ToObject(string json, Type type)
-        {
-            var ht = new JsonParser(json, Parameters.IgnoreCaseOnDeserialize).Decode() as Dictionary<string, object>;
+            var ht = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode() as Dictionary<string, object>;
             return ht == null ? null : ParseDictionary(ht, null, type, null);
-        }
-
-        public string Beautify(string input)
-        {
-            return Formatter.PrettyPrint(input);
-        }
-
-        public object FillObject(object input, string json)
-        {
-            var ht = new JsonParser(json, Parameters.IgnoreCaseOnDeserialize).Decode() as Dictionary<string, object>;
-            return ht == null ? null : ParseDictionary(ht, null, input.GetType(), input);
-        }
-
-        public object DeepCopy(object obj)
-        {
-            return ToObject(ToJson(obj));
-        }
-
-        public T DeepCopy<T>(T obj)
-        {
-            return ToObject<T>(ToJson(obj));
         }
 
     	readonly SafeDictionary<Type, string> tyname = new SafeDictionary<Type, string>();
@@ -518,22 +506,10 @@ namespace SevenDigital.Jester.EventStore.Serialisation
 
     	private DateTime CreateDateTime(string value)
         {
-            var utc = false;
-            //                   0123456789012345678
-            // datetime format = yyyy-MM-dd HH:mm:ss
-            var year = (int)CreateLong(value.Substring(0, 4));
-            var month = (int)CreateLong(value.Substring(5, 2));
-            var day = (int)CreateLong(value.Substring(8, 2));
-            var hour = (int)CreateLong(value.Substring(11, 2));
-            var min = (int)CreateLong(value.Substring(14, 2));
-            var sec = (int)CreateLong(value.Substring(17, 2));
+			if (value.EndsWith("Z")) return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ssZ", null).ToLocalTime();
+			return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ss", null);
+		}
 
-            if (value.EndsWith("Z")) utc = true;
-
-            if (_params.UseUtcDateTime == false && utc == false)
-                return new DateTime(year, month, day, hour, min, sec);
-    		return new DateTime(year, month, day, hour, min, sec, DateTimeKind.Utc).ToLocalTime();
-        }
         private object CreateArray(IEnumerable data, Type bt, Dictionary<string, object> globalTypes)
         {
             var col = new ArrayList();

@@ -118,28 +118,13 @@ namespace SevenDigital.Jester.EventStore.Serialisation
 
         private void WriteDateTime(DateTime dateTime)
         {
-            // datetime format standard : yyyy-MM-dd HH:mm:ss
-            var dt = dateTime;
-            if (_params.UseUtcDateTime)
-                dt = dateTime.ToUniversalTime();
-
             output.Append("\"");
-            output.Append(dt.Year.ToString("0000", NumberFormatInfo.InvariantInfo));
-            output.Append("-");
-            output.Append(dt.Month.ToString("00", NumberFormatInfo.InvariantInfo));
-            output.Append("-");
-            output.Append(dt.Day.ToString("00", NumberFormatInfo.InvariantInfo));
-            output.Append(" ");
-            output.Append(dt.Hour.ToString("00", NumberFormatInfo.InvariantInfo));
-            output.Append(":");
-            output.Append(dt.Minute.ToString("00", NumberFormatInfo.InvariantInfo));
-            output.Append(":");
-            output.Append(dt.Second.ToString("00", NumberFormatInfo.InvariantInfo));
+        	output.Append(
+				_params.UseUtcDateTime
+					? dateTime.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ssZ")
+					: dateTime.ToString("yyyy-MM-dd HH:mm:ss"));
+        	output.Append("\"");
 
-            if (_params.UseUtcDateTime)
-                output.Append("Z");
-
-            output.Append("\"");
         }
         private DatasetSchema GetSchema(DataTable ds)
         {
@@ -153,8 +138,6 @@ namespace SevenDigital.Jester.EventStore.Serialisation
                 m.Info.Add(c.ColumnName);
                 m.Info.Add(c.DataType.ToString());
             }
-            // FEATURE : serialize relations and constraints here
-
             return m;
         }
 
@@ -173,7 +156,6 @@ namespace SevenDigital.Jester.EventStore.Serialisation
                     m.Info.Add(c.DataType.ToString());
                 }
             }
-            // FEATURE : serialize relations and constraints here
 
             return m;
         }
@@ -202,7 +184,6 @@ namespace SevenDigital.Jester.EventStore.Serialisation
                 tablesep = true;
                 WriteDataTableData(table);
             }
-            // end dataset
             output.Append('}');
         }
 
@@ -242,8 +223,6 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             }
 
             WriteDataTableData(dt);
-
-            // end datatable
             output.Append('}');
         }
 
