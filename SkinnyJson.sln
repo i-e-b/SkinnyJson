@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinnyJson", "src\SkinnyJson\SkinnyJson.csproj", "{EC0CAFCB-260D-462E-B834-2ECDE016BA7D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinnyJson.Unit.Tests", "SkinnyJson.Unit.Tests\SkinnyJson.Unit.Tests.csproj", "{88827C30-74DC-4F8C-A0C5-C28017C4C6D1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EC0CAFCB-260D-462E-B834-2ECDE016BA7D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC0CAFCB-260D-462E-B834-2ECDE016BA7D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC0CAFCB-260D-462E-B834-2ECDE016BA7D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC0CAFCB-260D-462E-B834-2ECDE016BA7D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{88827C30-74DC-4F8C-A0C5-C28017C4C6D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{88827C30-74DC-4F8C-A0C5-C28017C4C6D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{88827C30-74DC-4F8C-A0C5-C28017C4C6D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{88827C30-74DC-4F8C-A0C5-C28017C4C6D1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

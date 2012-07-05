@@ -6,27 +6,27 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace SevenDigital.Jester.EventStore.Serialisation
+namespace SkinnyJson
 {
-    internal class JSONSerializer
+    internal class JsonSerializer
     {
         private readonly StringBuilder output = new StringBuilder();
     	const int MaxDepth = 10;
     	int currentDepth;
         private readonly Dictionary<string, int> globalTypes = new Dictionary<string, int>();
-        private readonly JsonParameters _params;
+        private readonly JsonParameters jsonParameters;
 
-        internal JSONSerializer(JsonParameters param)
+        internal JsonSerializer(JsonParameters param)
         {
-            _params = param;
+            jsonParameters = param;
         }
 
-        internal string ConvertToJSON(object obj)
+        internal string ConvertToJson(object obj)
         {
             WriteValue(obj);
 
             string str;
-            if (_params.UsingGlobalTypes)
+            if (jsonParameters.UsingGlobalTypes)
             {
                 var sb = new StringBuilder();
                 sb.Append("\"$types\":{");
@@ -105,7 +105,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
 
         private void WriteGuid(Guid g)
         {
-            if (_params.UseFastGuid == false)
+            if (jsonParameters.UseFastGuid == false)
                 WriteStringFast(g.ToString());
             else
                 WriteBytes(g.ToByteArray());
@@ -120,13 +120,13 @@ namespace SevenDigital.Jester.EventStore.Serialisation
         {
             output.Append("\"");
         	output.Append(
-				_params.UseUtcDateTime
+				jsonParameters.UseUtcDateTime
 					? dateTime.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ssZ")
 					: dateTime.ToString("yyyy-MM-dd HH:mm:ss"));
         	output.Append("\"");
 
         }
-        private DatasetSchema GetSchema(DataTable ds)
+        private static DatasetSchema GetSchema(DataTable ds)
         {
             if (ds == null) return null;
 
@@ -141,7 +141,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             return m;
         }
 
-        private DatasetSchema GetSchema(DataSet ds)
+        private static DatasetSchema GetSchema(DataSet ds)
         {
             if (ds == null) return null;
 
@@ -160,7 +160,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             return m;
         }
 
-        private string GetXmlSchema(DataTable dt)
+        private static string GetXmlSchema(DataTable dt)
         {
             using (var writer = new StringWriter())
             {
@@ -172,9 +172,9 @@ namespace SevenDigital.Jester.EventStore.Serialisation
         private void WriteDataset(DataSet ds)
         {
             output.Append('{');
-            if ( _params.UseExtensions)
+            if ( jsonParameters.UseExtensions)
             {
-                WritePair("$schema", _params.UseOptimizedDatasetSchema ? (object)GetSchema(ds) : ds.GetXmlSchema());
+                WritePair("$schema", jsonParameters.UseOptimizedDatasetSchema ? (object)GetSchema(ds) : ds.GetXmlSchema());
                 output.Append(',');
             }
             bool tablesep = false;
@@ -216,9 +216,9 @@ namespace SevenDigital.Jester.EventStore.Serialisation
         void WriteDataTable(DataTable dt)
         {
             output.Append('{');
-            if (_params.UseExtensions)
+            if (jsonParameters.UseExtensions)
             {
-                WritePair("$schema", _params.UseOptimizedDatasetSchema ? (object)GetSchema(dt) : GetXmlSchema(dt));
+                WritePair("$schema", jsonParameters.UseOptimizedDatasetSchema ? (object)GetSchema(dt) : GetXmlSchema(dt));
                 output.Append(',');
             }
 
@@ -229,7 +229,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
         bool typesWritten;
         private void WriteObject(object obj)
         {
-            if (_params.UsingGlobalTypes == false)
+            if (jsonParameters.UsingGlobalTypes == false)
                 output.Append('{');
             else
             {
@@ -244,9 +244,9 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             var map = new Dictionary<string, string>();
             var t = obj.GetType();
             var append = false;
-            if (_params.UseExtensions)
+            if (jsonParameters.UseExtensions)
             {
-                if (_params.UsingGlobalTypes == false)
+                if (jsonParameters.UsingGlobalTypes == false)
                     WritePairFast("$type", Json.Instance.GetTypeAssemblyName(t));
                 else
                 {
@@ -268,12 +268,12 @@ namespace SevenDigital.Jester.EventStore.Serialisation
                 if (append)
                     output.Append(',');
                 object o = p.Getter(obj);
-                if ((o == null || o is DBNull) && _params.SerializeNullValues == false)
+                if ((o == null || o is DBNull) && jsonParameters.SerializeNullValues == false)
                     append = false;
                 else
                 {
                     WritePair(p.Name, o);
-                    if (o != null && _params.UseExtensions)
+                    if (o != null && jsonParameters.UseExtensions)
                     {
                         Type tt = o.GetType();
                         if (tt == typeof(Object))
@@ -282,7 +282,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
                     append = true;
                 }
             }
-            if (map.Count > 0 && _params.UseExtensions)
+            if (map.Count > 0 && jsonParameters.UseExtensions)
             {
                 output.Append(",\"$map\":");
                 WriteStringDictionary(map);
@@ -295,7 +295,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
 
         private void WritePairFast(string name, string value)
         {
-            if ((value == null) && _params.SerializeNullValues == false)
+            if ((value == null) && jsonParameters.SerializeNullValues == false)
                 return;
             WriteStringFast(name);
 
@@ -306,7 +306,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
 
         private void WritePair(string name, object value)
         {
-            if ((value == null || value is DBNull) && _params.SerializeNullValues == false)
+            if ((value == null || value is DBNull) && jsonParameters.SerializeNullValues == false)
                 return;
             WriteStringFast(name);
 

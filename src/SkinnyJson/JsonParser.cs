@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SevenDigital.Jester.EventStore.Serialisation
+namespace SkinnyJson
 {
     /// <summary>
     /// This class encodes and decodes JSON strings.
@@ -243,7 +243,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             throw new Exception("Unexpectedly reached end of string");
         }
 
-        private uint ParseSingleChar(char c1, uint multipliyer)
+        private static uint ParseSingleChar(char c1, uint multipliyer)
         {
             uint p1 = 0;
             if (c1 >= '0' && c1 <= '9')

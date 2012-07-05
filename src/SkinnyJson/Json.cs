@@ -8,7 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 
-namespace SevenDigital.Jester.EventStore.Serialisation
+namespace SkinnyJson
 {
     public delegate string Serialize(object data);
     public delegate object Deserialize(string data);
@@ -77,14 +77,14 @@ namespace SevenDigital.Jester.EventStore.Serialisation
         /// You can set these paramters globally for all calls
         /// </summary>
         public static JsonParameters DefaultParameters = new JsonParameters();
-        private JsonParameters _params;
+        private JsonParameters jsonParameters;
 
         internal string ToJson(object obj, JsonParameters param)
         {
-            _params = param;
+            jsonParameters = param;
             // FEATURE : enable extensions when you can deserialize anon types
-            if (_params.EnableAnonymousTypes) { _params.UseExtensions = false; _params.UsingGlobalTypes = false; }
-            return new JSONSerializer(param).ConvertToJSON(obj);
+            if (jsonParameters.EnableAnonymousTypes) { jsonParameters.UseExtensions = false; jsonParameters.UsingGlobalTypes = false; }
+            return new JsonSerializer(param).ConvertToJson(obj);
         }
 
         internal object ToObject(string json, Type type)
@@ -204,7 +204,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
         	return sd;
         }
 
-        private MyPropInfo CreateMyProp(Type t)
+        private static MyPropInfo CreateMyProp(Type t)
         {
         	var d = new MyPropInfo {filled = true, CanWrite = true, pt = t, isDictionary = t.Name.Contains("Dictionary")};
         	if (d.isDictionary)
@@ -240,7 +240,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
         {
             var setMethod = propertyInfo.GetSetMethod(true);
             if (setMethod == null) return null;
-        	if (propertyInfo.DeclaringType == null) return null;
+        	//if (propertyInfo.DeclaringType == null) return null;
 
             var arguments = new Type[2];
             arguments[0] = arguments[1] = typeof(object);
@@ -291,11 +291,11 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             return (GenericSetter)dynamicSet.CreateDelegate(typeof(GenericSetter));
         }
 
-        private GenericGetter CreateGetMethod(PropertyInfo propertyInfo)
+        private static GenericGetter CreateGetMethod(PropertyInfo propertyInfo)
         {
             var getMethod = propertyInfo.GetGetMethod();
             if (getMethod == null) return null;
-			if (propertyInfo.DeclaringType == null) return null;
+			//if (propertyInfo.DeclaringType == null) return null;
 
             var arguments = new Type[1];
             arguments[0] = typeof(object);
@@ -321,22 +321,13 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             if (getterscache.TryGetValue(type, out val)) return val;
 
             var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            var getters = new List<Getters>();
-            foreach (PropertyInfo p in props)
-            {
-                if (!p.CanWrite && _params.ShowReadOnlyProperties == false && _params.EnableAnonymousTypes == false) continue;
+            var getters = (from p in props where p.CanWrite || jsonParameters.ShowReadOnlyProperties || jsonParameters.EnableAnonymousTypes
+						   let att = p.GetCustomAttributes(typeof (System.Xml.Serialization.XmlIgnoreAttribute), false)
+						   where att.Length <= 0 let g = CreateGetMethod(p) where g != null 
+						   
+						   select new Getters {Name = p.Name, Getter = g, PropertyType = p.PropertyType}).ToList();
 
-                var att = p.GetCustomAttributes(typeof(System.Xml.Serialization.XmlIgnoreAttribute), false);
-                if (att.Length > 0)
-                    continue;
-
-                var g = CreateGetMethod(p);
-            	if (g == null) continue;
-            	var gg = new Getters {Name = p.Name, Getter = g, PropertyType = p.PropertyType};
-            	getters.Add(gg);
-            }
-
-            FieldInfo[] fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
+        	FieldInfo[] fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
             foreach (var f in fi)
             {
                 var att = f.GetCustomAttributes(typeof(System.Xml.Serialization.XmlIgnoreAttribute), false);
@@ -353,7 +344,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             return getters;
         }
 
-        private object ChangeType(object value, Type conversionType)
+        private static object ChangeType(object value, Type conversionType)
         {
             if (conversionType == typeof(int)) return (int)CreateLong((string)value);
         	if (conversionType == typeof(long)) return CreateLong((string)value);
@@ -397,7 +388,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             foreach (string n in d.Keys)
             {
                 var name = n;
-                if (_params.IgnoreCaseOnDeserialize) name = name.ToLower();
+                if (jsonParameters.IgnoreCaseOnDeserialize) name = name.ToLower();
                 if (name == "$map")
                 {
                     ProcessMap(o, props, (Dictionary<string, object>)d[name]);
@@ -459,7 +450,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             return o;
         }
 
-        private void ProcessMap(object obj, SafeDictionary<string, MyPropInfo> props, Dictionary<string, object> dic)
+        private static void ProcessMap(object obj, SafeDictionary<string, MyPropInfo> props, Dictionary<string, object> dic)
         {
             foreach (var kv in dic)
             {
@@ -470,7 +461,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             }
         }
 
-        private static long CreateLong(string s)
+        private static long CreateLong(IEnumerable<char> s)
         {
             long num = 0;
             var neg = false;
@@ -504,7 +495,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
         	return s.Length > 30 ? new Guid(s) : new Guid(Convert.FromBase64String(s));
         }
 
-    	private DateTime CreateDateTime(string value)
+    	private static DateTime CreateDateTime(string value)
         {
 			if (value.EndsWith("Z")) return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ssZ", null).ToLocalTime();
 			return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ss", null);
@@ -657,7 +648,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
             {
                 if (c.DataType == typeof(Guid) || c.DataType == typeof(Guid?))
                     guidcols.Add(c.Ordinal);
-                if (_params.UseUtcDateTime && (c.DataType == typeof(DateTime) || c.DataType == typeof(DateTime?)))
+                if (jsonParameters.UseUtcDateTime && (c.DataType == typeof(DateTime) || c.DataType == typeof(DateTime?)))
                     datecol.Add(c.Ordinal);
             }
 
@@ -671,7 +662,7 @@ namespace SevenDigital.Jester.EventStore.Serialisation
                     if (s != null && s.Length < 36)
                         v[i] = new Guid(Convert.FromBase64String(s));
                 }
-                if (_params.UseUtcDateTime)
+                if (jsonParameters.UseUtcDateTime)
                 {
                     foreach (int i in datecol)
                     {

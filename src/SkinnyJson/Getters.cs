@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace SevenDigital.Jester.EventStore.Serialisation
+namespace SkinnyJson
 {
     internal class Getters
     {

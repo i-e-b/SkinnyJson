@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace SevenDigital.Jester.EventStore.Serialisation
+namespace SkinnyJson
 {
     internal static class Formatter
     {
