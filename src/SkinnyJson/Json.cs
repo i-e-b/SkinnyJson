@@ -37,15 +37,15 @@ namespace SkinnyJson
 		}
 		
 		/// <summary> Turn a JSON string into an object </summary>
-		public static object Defrost(string json)
+		public static T Defrost<T>(string json)
 		{
-			return Instance.ToObject(json, null);
+			return (T)Instance.ToObject(json, typeof(T));
 		}
 		
 		/// <summary> Create a copy of an object through serialisation </summary>
         public static T Clone<T>(T obj)
         {
-            return (T)Defrost(Freeze(obj));
+            return Defrost<T>(Freeze(obj));
         }
 
 		/// <summary>Read a JSON object into an anonymous .Net object</summary>
