@@ -145,17 +145,7 @@ namespace SkinnyJson
         }
 
     	static object CreateProxyFor(Type interfaceType) {
-			var pb = WrapperGenerator.GetProxyBuilder(interfaceType);
-
-    		var methodInfos = interfaceType.GetMethods();
-    		foreach (MethodInfo method in methodInfos) {
-				if (method.Name.StartsWith("set_")) continue;
-				WrapperGenerator.BindAutoProperty(pb, method.Name.Replace("get_",""), method.ReturnType);
-			}
-			pb.AddInterfaceImplementation(interfaceType);
-			var typ = pb.CreateType();
-			var inst = Activator.CreateInstance(typ);
-			return inst;
+			return DynamicProxy.GetInstanceFor(interfaceType);
     	}
 
     	private struct MyPropInfo

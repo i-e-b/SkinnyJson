@@ -37,6 +37,19 @@ namespace SkinnyJson.Unit.Tests {
 		}
 
 		[Test]
+		public void Can_proxy_a_basic_interface () {
+			IHaveMethods px = DynamicProxy.GetInstanceFor<IHaveMethods>();
+
+			Assert.That(px.AMethod(), Is.Null);
+		}
+		[Test]
+		public void Can_proxy_an_interface_with_properties () {
+			IHaveProperties px = DynamicProxy.GetInstanceFor<IHaveProperties>();
+
+			Assert.That(px.AProperty, Is.Null);
+		}
+
+		[Test]
 		public void Should_be_able_to_defrost_to_an_interface_when_original_is_not_available () {
 			var original = SimpleObject.Make();
 			var frozen = Json.Freeze(original).Replace("SkinnyJson.Unit.Tests", "A.Different.Assembly");
@@ -45,5 +58,13 @@ namespace SkinnyJson.Unit.Tests {
 
 			Assert.That(defrosted.B, Is.EqualTo(original.B));
 		}
+	}
+
+	public interface IHaveProperties {
+		string AProperty { get; set; }
+	}
+
+	public interface IHaveMethods {
+		object AMethod ();
 	}
 }
