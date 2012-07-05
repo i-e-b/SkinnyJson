@@ -40,6 +40,7 @@
   <ItemGroup>
     <Compile Include="Formatter.cs" />
     <Compile Include="Getters.cs" />
+    <Compile Include="InterfaceWrapping.cs" />
     <Compile Include="Json.cs" />
     <Compile Include="JsonParser.cs" />
     <Compile Include="JsonSerializer.cs" />

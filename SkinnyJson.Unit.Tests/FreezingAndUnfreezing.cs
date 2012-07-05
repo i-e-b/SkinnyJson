@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System; // ReSharper disable InconsistentNaming
 using NUnit.Framework;
 
 namespace SkinnyJson.Unit.Tests {
@@ -6,12 +6,43 @@ namespace SkinnyJson.Unit.Tests {
 	public class FreezingAndUnfreezing {
 		[Test]
 		public void Should_be_able_to_freeze_and_unfreeze_objects () {
-			var original = new SimpleObject();
+			var original = SimpleObject.Make();
 			var frozen = Json.Freeze(original);
 			Console.WriteLine(frozen);
 			var defrosted = Json.Defrost<SimpleObject>(frozen);
 
 			Assert.That(defrosted.A, Is.EqualTo(original.A));
+			Assert.That(defrosted.B, Is.EqualTo(original.B));
+		}
+
+		[Test]
+		public void Should_be_able_to_freeze_an_interface () {
+			ISimpleObject original = SimpleObject.Make();
+			var frozen = Json.Freeze(original);
+			Console.WriteLine(frozen);
+			var defrosted = Json.Defrost<SimpleObject>(frozen);
+
+			Assert.That(defrosted.A, Is.EqualTo("this is a"));
+			Assert.That(defrosted.B, Is.EqualTo(original.B));
+		}
+
+		[Test]
+		public void Should_be_able_to_defrost_to_an_interface () {
+			var original = SimpleObject.Make();
+			var frozen = Json.Freeze(original);
+			Console.WriteLine(frozen);
+			var defrosted = Json.Defrost<ISimpleObject>(frozen);
+
+			Assert.That(defrosted.B, Is.EqualTo(original.B));
+		}
+
+		[Test]
+		public void Should_be_able_to_defrost_to_an_interface_when_original_is_not_available () {
+			var original = SimpleObject.Make();
+			var frozen = Json.Freeze(original).Replace("SkinnyJson.Unit.Tests", "A.Different.Assembly");
+			Console.WriteLine(frozen);
+			var defrosted = Json.Defrost<ISimpleObject>(frozen);
+
 			Assert.That(defrosted.B, Is.EqualTo(original.B));
 		}
 	}

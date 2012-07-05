@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ISimpleObject.cs" />
     <Compile Include="SimpleObject.cs" />
     <Compile Include="FreezingAndUnfreezing.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

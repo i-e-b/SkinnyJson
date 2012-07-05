@@ -23,7 +23,7 @@ namespace SkinnyJson
         public bool ShowReadOnlyProperties = false;
         public bool UsingGlobalTypes = true;
         public bool IgnoreCaseOnDeserialize = false;
-        public bool EnableAnonymousTypes = false;
+        public bool EnableAnonymousTypes = true;
         public bool UseExtensions = true;
 // ReSharper restore RedundantDefaultFieldInitializer
     }
@@ -64,10 +64,10 @@ namespace SkinnyJson
 		/// <param name="input"></param>
 		/// <param name="json"></param>
 		/// <returns></returns>
-        public object FillObject(object input, string json)
+        public static object FillObject(object input, string json)
         {
             var ht = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode() as Dictionary<string, object>;
-            return ht == null ? null : ParseDictionary(ht, null, input.GetType(), input);
+            return ht == null ? null : Instance.ParseDictionary(ht, null, input.GetType(), input);
         }
 
 
@@ -104,24 +104,24 @@ namespace SkinnyJson
         }
 
     	readonly SafeDictionary<string, Type> typecache = new SafeDictionary<string, Type>();
-        private Type GetTypeFromCache(string typename)
-        {
-            Type val;
-            if (typecache.TryGetValue(typename, out val)) return val;
+        private Type GetTypeFromCache(string typename) {
+			Type val;
+			if (typecache.TryGetValue(typename, out val)) return val;
 			var assemblyName = typename.Split(',')[1];
 			var fullName = typename.Split(',')[0];
 			var available = Assembly.Load(assemblyName).GetTypes();
-// ReSharper disable PossibleNullReferenceException
-			var t = available.Single(type=> type.FullName.ToLower() == fullName.ToLower());
-// ReSharper restore PossibleNullReferenceException
-        	typecache.Add(typename, t);
-        	return t;
-        }
+			// ReSharper disable PossibleNullReferenceException
+			var t = available.Single(type => type.FullName.ToLower() == fullName.ToLower());
+			// ReSharper restore PossibleNullReferenceException
+			typecache.Add(typename, t);
+			return t;
+		}
 
     	readonly SafeDictionary<Type, CreateObject> constrcache = new SafeDictionary<Type, CreateObject>();
         private delegate object CreateObject();
 		private object FastCreateInstance(Type objtype)
         {
+			if (objtype.IsInterface) return CreateProxyFor(objtype);
             try
             {
                 CreateObject c;
@@ -144,7 +144,21 @@ namespace SkinnyJson
             }
         }
 
-        private struct MyPropInfo
+    	static object CreateProxyFor(Type interfaceType) {
+			var pb = WrapperGenerator.GetProxyBuilder(interfaceType);
+
+    		var methodInfos = interfaceType.GetMethods();
+    		foreach (MethodInfo method in methodInfos) {
+				if (method.Name.StartsWith("set_")) continue;
+				WrapperGenerator.BindAutoProperty(pb, method.Name.Replace("get_",""), method.ReturnType);
+			}
+			pb.AddInterfaceImplementation(interfaceType);
+			var typ = pb.CreateType();
+			var inst = Activator.CreateInstance(typ);
+			return inst;
+    	}
+
+    	private struct MyPropInfo
         {
 // ReSharper disable InconsistentNaming
             public bool filled;
@@ -359,28 +373,13 @@ namespace SkinnyJson
         {
             object tn;
 
-            if (d.TryGetValue("$types", out tn))
-            {
-                usingglobals = true;
-                globaltypes = ((Dictionary<string, object>) tn).ToDictionary<KeyValuePair<string, object>, string, object>(kv => (string) kv.Value, kv => kv.Key);
-            }
-
             var found = d.TryGetValue("$type", out tn);
             if (found == false && type == typeof(Object))
             {
                 return CreateDataset(d, globaltypes);
-            }
-            if (found)
-            {
-                if (usingglobals)
-                {
-                    object tname;
-                    if (globaltypes.TryGetValue((string)tn, out tname)) tn = tname;
-                }
-                type = GetTypeFromCache((string)tn);
-            }
-
-            if (type == null) throw new Exception("Cannot determine type");
+            }
+            type = FindTypeFromDescription(d, found, type, ref globaltypes);
+        	if (type == null) throw new Exception("Cannot determine type");
 
             var typename = type.FullName;
             var o = input ?? FastCreateInstance(type);
@@ -450,7 +449,26 @@ namespace SkinnyJson
             return o;
         }
 
-        private static void ProcessMap(object obj, SafeDictionary<string, MyPropInfo> props, Dictionary<string, object> dic)
+    	Type FindTypeFromDescription(Dictionary<string, object> d, bool found, Type type, ref Dictionary<string, object> globaltypes) {
+    		object tn;
+    		if (d.TryGetValue("$types", out tn))
+    		{
+    			usingglobals = true;
+    			globaltypes = ((Dictionary<string, object>) tn).ToDictionary<KeyValuePair<string, object>, string, object>(kv => (string) kv.Value, kv => kv.Key);
+    		}
+    		if (found)
+    		{
+    			if (usingglobals)
+    			{
+    				object tname;
+    				if (globaltypes.TryGetValue((string)tn, out tname)) tn = tname;
+    			}
+    			type = GetTypeFromCache((string)tn);
+    		}
+    		return type;
+    	}
+
+    	private static void ProcessMap(object obj, SafeDictionary<string, MyPropInfo> props, Dictionary<string, object> dic)
         {
             foreach (var kv in dic)
             {
