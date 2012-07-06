@@ -154,99 +154,7 @@ namespace SkinnyJson
             }
         }
 
-        bool usingglobals;
-        private object ParseDictionary(Dictionary<string, object> d, Dictionary<string, object> globaltypes, Type type, object input)
-        {
-            object tn;
-
-            if (d.TryGetValue("$types", out tn))
-            {
-                usingglobals = true;
-                globaltypes = ((Dictionary<string, object>) tn).ToDictionary<KeyValuePair<string, object>, string, object>(kv => (string) kv.Value, kv => kv.Key);
-            }
-
-            var found = d.TryGetValue("$type", out tn);
-            if (found == false && type == typeof(Object))
-            {
-                return CreateDataset(d, globaltypes);
-            }
-            if (found)
-            {
-                if (usingglobals)
-                {
-                    object tname;
-                    if (globaltypes.TryGetValue((string)tn, out tname)) tn = tname;
-                }
-                if (type == null || !type.IsInterface) type = GetTypeFromCache((string)tn);
-            }
-
-            var typename = type.FullName;
-            var o = input ?? FastCreateInstance(type);
-        	var props = GetProperties(type, typename);
-            foreach (string n in d.Keys)
-            {
-                var name = n;
-                if (jsonParameters.IgnoreCaseOnDeserialize) name = name.ToLower();
-                if (name == "$map")
-                {
-                    ProcessMap(o, props, (Dictionary<string, object>)d[name]);
-                    continue;
-                }
-                MyPropInfo pi;
-                if (props.TryGetValue(name, out pi) == false)
-                    continue;
-            	if (!pi.filled) continue;
-            	var v = d[name];
-
-            	if (v == null) continue;
-            	object oset;
-
-            	if (pi.isInt) oset = (int)CreateLong((string)v);
-            	else if (pi.isLong) oset = CreateLong((string)v);
-            	else if (pi.isString) oset = v;
-            	else if (pi.isBool) oset = (bool)v;
-            	else if (pi.isGenericType && pi.isValueType == false && pi.isDictionary == false)
-            		oset = CreateGenericList((ArrayList)v, pi.pt, pi.bt, globaltypes);
-            	else if (pi.isByteArray)
-            		oset = Convert.FromBase64String((string)v);
-
-            	else if (pi.isArray && pi.isValueType == false)
-            		oset = CreateArray((ArrayList)v, pi.bt, globaltypes);
-            	else if (pi.isGuid)
-            		oset = CreateGuid((string)v);
-            	else if (pi.isDataSet)
-            		oset = CreateDataset((Dictionary<string, object>)v, globaltypes);
-
-            	else if (pi.isDataTable)
-            		oset = CreateDataTable((Dictionary<string, object>)v, globaltypes);
-
-            	else if (pi.isStringDictionary)
-            		oset = CreateStringKeyDictionary((Dictionary<string, object>)v, pi.pt, pi.GenericTypes, globaltypes);
-
-            	else if (pi.isDictionary || pi.isHashtable)
-            		oset = CreateDictionary((ArrayList)v, pi.pt, pi.GenericTypes, globaltypes);
-
-            	else if (pi.isEnum)
-            		oset = CreateEnum(pi.pt, (string)v);
-
-            	else if (pi.isDateTime)
-            		oset = CreateDateTime((string)v);
-
-            	else if (pi.isClass && v is Dictionary<string, object>)
-            		oset = ParseDictionary((Dictionary<string, object>)v, globaltypes, pi.pt, null);
-
-            	else if (pi.isValueType)
-            		oset = ChangeType(v, pi.changeType);
-            	else if (v is ArrayList)
-            		oset = CreateArray((ArrayList)v, typeof(object), globaltypes);
-            	else
-            		oset = v;
-
-            	if (pi.CanWrite)
-            		pi.setter(o, oset);
-            }
-            return o;
-        }
+        bool usingGlobals;
 
     	private struct MyPropInfo
         {
@@ -279,11 +187,115 @@ namespace SkinnyJson
             public bool CanWrite;
         }
 
-    	readonly SafeDictionary<string, SafeDictionary<string, MyPropInfo>> propertycache = new SafeDictionary<string, SafeDictionary<string, MyPropInfo>>();
-        private SafeDictionary<string, MyPropInfo> GetProperties(Type type, string typename)
+        readonly SafeDictionary<Type, List<Getters>> getterCache = new SafeDictionary<Type, List<Getters>>();
+    	readonly SafeDictionary<string, SafeDictionary<string, MyPropInfo>> propertyCache = new SafeDictionary<string, SafeDictionary<string, MyPropInfo>>();
+        
+        internal delegate object GenericGetter(object obj);
+        private delegate void GenericSetter(object target, object value);
+
+
+        private object ParseDictionary(Dictionary<string, object> jsonValues, Dictionary<string, object> globaltypes, Type type, object input)
+        {
+            object tn;
+
+            if (jsonValues.TryGetValue("$types", out tn))
+            {
+                usingGlobals = true;
+                globaltypes = ((Dictionary<string, object>) tn).ToDictionary<KeyValuePair<string, object>, string, object>(kv => (string) kv.Value, kv => kv.Key);
+            }
+
+            var found = jsonValues.TryGetValue("$type", out tn);
+            if (found == false && type == typeof(Object))
+            {
+                return CreateDataset(jsonValues, globaltypes);
+            }
+            if (found)
+            {
+                if (usingGlobals)
+                {
+                    object tname;
+                    if (globaltypes.TryGetValue((string)tn, out tname)) tn = tname;
+                }
+                if (type == null || !type.IsInterface) type = GetTypeFromCache((string)tn);
+            }
+
+            var typename = type.FullName;
+            var targetObject = input ?? FastCreateInstance(type);
+        	var props = GetProperties(type, typename);
+            foreach (string key in jsonValues.Keys)
+            {
+                MapJsonValueToObject(key, targetObject, jsonValues, globaltypes, props);
+            }
+            return targetObject;
+        }
+
+    	void MapJsonValueToObject(string objectKey, object targetObject, IDictionary<string, object> jsonValues, Dictionary<string, object> globaltypes, SafeDictionary<string, MyPropInfo> props)
+    	{
+    		var name = objectKey;
+    		if (jsonParameters.IgnoreCaseOnDeserialize) name = name.ToLower();
+    		if (name == "$map")
+    		{
+    			ProcessMap(targetObject, props, (Dictionary<string, object>) jsonValues[name]);
+    			return;
+    		}
+    		MyPropInfo pi;
+    		if (props.TryGetValue(name, out pi) == false)
+    			return;
+    		if (!pi.filled) return;
+    		var v = jsonValues[name];
+
+    		if (v == null) return;
+    		object oset;
+
+    		if (pi.isInt) oset = (int) CreateLong((string) v);
+    		else if (pi.isLong) oset = CreateLong((string) v);
+    		else if (pi.isString) oset = v;
+    		else if (pi.isBool) oset = (bool) v;
+    		else if (pi.isGenericType && pi.isValueType == false && pi.isDictionary == false)
+    			oset = CreateGenericList((ArrayList) v, pi.pt, pi.bt, globaltypes);
+    		else if (pi.isByteArray)
+    			oset = Convert.FromBase64String((string) v);
+
+    		else if (pi.isArray && pi.isValueType == false)
+    			oset = CreateArray((ArrayList) v, pi.bt, globaltypes);
+    		else if (pi.isGuid)
+    			oset = CreateGuid((string) v);
+    		else if (pi.isDataSet)
+    			oset = CreateDataset((Dictionary<string, object>) v, globaltypes);
+
+    		else if (pi.isDataTable)
+    			oset = CreateDataTable((Dictionary<string, object>) v, globaltypes);
+
+    		else if (pi.isStringDictionary)
+    			oset = CreateStringKeyDictionary((Dictionary<string, object>) v, pi.pt, pi.GenericTypes, globaltypes);
+
+    		else if (pi.isDictionary || pi.isHashtable)
+    			oset = CreateDictionary((ArrayList) v, pi.pt, pi.GenericTypes, globaltypes);
+
+    		else if (pi.isEnum)
+    			oset = CreateEnum(pi.pt, (string) v);
+
+    		else if (pi.isDateTime)
+    			oset = CreateDateTime((string) v);
+
+    		else if (pi.isClass && v is Dictionary<string, object>)
+    			oset = ParseDictionary((Dictionary<string, object>) v, globaltypes, pi.pt, null);
+
+    		else if (pi.isValueType)
+    			oset = ChangeType(v, pi.changeType);
+    		else if (v is ArrayList)
+    			oset = CreateArray((ArrayList) v, typeof (object), globaltypes);
+    		else
+    			oset = v;
+
+    		if (pi.CanWrite)
+    			pi.setter(targetObject, oset);
+    	}
+
+    	SafeDictionary<string, MyPropInfo> GetProperties(Type type, string typename)
         {
             SafeDictionary<string, MyPropInfo> sd;
-            if (propertycache.TryGetValue(typename, out sd)) return sd;
+            if (propertyCache.TryGetValue(typename, out sd)) return sd;
         	sd = new SafeDictionary<string, MyPropInfo>();
 
 			var pr = new List<PropertyInfo>();
@@ -320,11 +332,40 @@ namespace SkinnyJson
         		sd.Add(f.Name, d);
         	}
 
-        	propertycache.Add(typename, sd);
+        	propertyCache.Add(typename, sd);
         	return sd;
         }
 
-        private static MyPropInfo CreateMyProp(Type t)
+        internal List<Getters> GetGetters(Type type)
+        {
+            List<Getters> val;
+            if (getterCache.TryGetValue(type, out val)) return val;
+
+            var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var getters = (from p in props where p.CanWrite || jsonParameters.ShowReadOnlyProperties || jsonParameters.EnableAnonymousTypes
+						   let att = p.GetCustomAttributes(typeof (System.Xml.Serialization.XmlIgnoreAttribute), false)
+						   where att.Length <= 0 let g = CreateGetMethod(p) where g != null 
+						   
+						   select new Getters {Name = p.Name, Getter = g, PropertyType = p.PropertyType}).ToList();
+
+        	FieldInfo[] fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
+            foreach (var f in fi)
+            {
+                var att = f.GetCustomAttributes(typeof(System.Xml.Serialization.XmlIgnoreAttribute), false);
+                if (att.Length > 0)
+                    continue;
+
+                var g = CreateGetField(type, f);
+            	if (g == null) continue;
+            	var gg = new Getters {Name = f.Name, Getter = g, PropertyType = f.FieldType};
+            	getters.Add(gg);
+            }
+
+            getterCache.Add(type, getters);
+            return getters;
+        }
+
+        static MyPropInfo CreateMyProp(Type t)
         {
         	var d = new MyPropInfo {filled = true, CanWrite = true, pt = t, isDictionary = t.Name.Contains("Dictionary")};
         	if (d.isDictionary)
@@ -354,9 +395,7 @@ namespace SkinnyJson
             return d;
         }
 
-        private delegate void GenericSetter(object target, object value);
-
-        private static GenericSetter CreateSetMethod(PropertyInfo propertyInfo)
+        static GenericSetter CreateSetMethod(PropertyInfo propertyInfo)
         {
             var setMethod = propertyInfo.GetSetMethod(true);
             if (setMethod == null) return null;
@@ -379,9 +418,7 @@ namespace SkinnyJson
             return (GenericSetter)setter.CreateDelegate(typeof(GenericSetter));
         }
 
-        internal delegate object GenericGetter(object obj);
-
-        private static GenericGetter CreateGetField(Type type, FieldInfo fieldInfo)
+        static GenericGetter CreateGetField(Type type, FieldInfo fieldInfo)
         {
             var dynamicGet = new DynamicMethod("_", typeof(object), new[] { typeof(object) }, type, true);
             var il = dynamicGet.GetILGenerator();
@@ -394,7 +431,7 @@ namespace SkinnyJson
             return (GenericGetter)dynamicGet.CreateDelegate(typeof(GenericGetter));
         }
 
-        private static GenericSetter CreateSetField(Type type, FieldInfo fieldInfo)
+        static GenericSetter CreateSetField(Type type, FieldInfo fieldInfo)
         {
             var arguments = new Type[2];
             arguments[0] = arguments[1] = typeof(object);
@@ -411,7 +448,7 @@ namespace SkinnyJson
             return (GenericSetter)dynamicSet.CreateDelegate(typeof(GenericSetter));
         }
 
-        private static GenericGetter CreateGetMethod(PropertyInfo propertyInfo)
+        static GenericGetter CreateGetMethod(PropertyInfo propertyInfo)
         {
             var getMethod = propertyInfo.GetGetMethod();
             if (getMethod == null) return null;
@@ -434,37 +471,7 @@ namespace SkinnyJson
             return (GenericGetter)getter.CreateDelegate(typeof(GenericGetter));
         }
 
-        readonly SafeDictionary<Type, List<Getters>> getterscache = new SafeDictionary<Type, List<Getters>>();
-        internal List<Getters> GetGetters(Type type)
-        {
-            List<Getters> val;
-            if (getterscache.TryGetValue(type, out val)) return val;
-
-            var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            var getters = (from p in props where p.CanWrite || jsonParameters.ShowReadOnlyProperties || jsonParameters.EnableAnonymousTypes
-						   let att = p.GetCustomAttributes(typeof (System.Xml.Serialization.XmlIgnoreAttribute), false)
-						   where att.Length <= 0 let g = CreateGetMethod(p) where g != null 
-						   
-						   select new Getters {Name = p.Name, Getter = g, PropertyType = p.PropertyType}).ToList();
-
-        	FieldInfo[] fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
-            foreach (var f in fi)
-            {
-                var att = f.GetCustomAttributes(typeof(System.Xml.Serialization.XmlIgnoreAttribute), false);
-                if (att.Length > 0)
-                    continue;
-
-                var g = CreateGetField(type, f);
-            	if (g == null) continue;
-            	var gg = new Getters {Name = f.Name, Getter = g, PropertyType = f.FieldType};
-            	getters.Add(gg);
-            }
-
-            getterscache.Add(type, getters);
-            return getters;
-        }
-
-        private static object ChangeType(object value, Type conversionType)
+        static object ChangeType(object value, Type conversionType)
         {
             if (conversionType == typeof(int)) return (int)CreateLong((string)value);
         	if (conversionType == typeof(long)) return CreateLong((string)value);
@@ -474,7 +481,7 @@ namespace SkinnyJson
         	return Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
         }
 
-    	private static void ProcessMap(object obj, SafeDictionary<string, MyPropInfo> props, Dictionary<string, object> dic)
+    	static void ProcessMap(object obj, SafeDictionary<string, MyPropInfo> props, Dictionary<string, object> dic)
         {
             foreach (var kv in dic)
             {
@@ -485,7 +492,7 @@ namespace SkinnyJson
             }
         }
 
-        private static long CreateLong(IEnumerable<char> s)
+        static long CreateLong(IEnumerable<char> s)
         {
             long num = 0;
             var neg = false;
@@ -509,23 +516,23 @@ namespace SkinnyJson
             return neg ? -num : num;
         }
 
-        private static object CreateEnum(Type pt, string v)
+        static object CreateEnum(Type pt, string v)
         {
             return Enum.Parse(pt, v);
         }
 
-        private static Guid CreateGuid(string s)
+        static Guid CreateGuid(string s)
         {
         	return s.Length > 30 ? new Guid(s) : new Guid(Convert.FromBase64String(s));
         }
 
-    	private static DateTime CreateDateTime(string value)
+    	static DateTime CreateDateTime(string value)
         {
 			if (value.EndsWith("Z")) return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ssZ", null).ToLocalTime();
 			return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ss", null);
 		}
 
-        private object CreateArray(IEnumerable data, Type bt, Dictionary<string, object> globalTypes)
+        object CreateArray(IEnumerable data, Type bt, Dictionary<string, object> globalTypes)
         {
             var col = new ArrayList();
             foreach (var ob in data)
@@ -538,8 +545,7 @@ namespace SkinnyJson
             return col.ToArray(bt);
         }
 
-
-        private object CreateGenericList(IEnumerable data, Type pt, Type bt, Dictionary<string, object> globalTypes)
+        object CreateGenericList(IEnumerable data, Type pt, Type bt, Dictionary<string, object> globalTypes)
         {
             var col = (IList)FastCreateInstance(pt);
             foreach (var ob in data)
@@ -554,7 +560,7 @@ namespace SkinnyJson
             return col;
         }
 
-        private object CreateStringKeyDictionary(Dictionary<string, object> reader, Type pt, IList<Type> types, Dictionary<string, object> globalTypes)
+        object CreateStringKeyDictionary(Dictionary<string, object> reader, Type pt, IList<Type> types, Dictionary<string, object> globalTypes)
         {
             var col = (IDictionary)FastCreateInstance(pt);
         	Type t2 = null;
@@ -574,7 +580,7 @@ namespace SkinnyJson
             return col;
         }
 
-        private object CreateDictionary(IEnumerable reader, Type pt, IList<Type> types, Dictionary<string, object> globalTypes)
+        object CreateDictionary(IEnumerable reader, Type pt, IList<Type> types, Dictionary<string, object> globalTypes)
         {
             var col = (IDictionary)FastCreateInstance(pt);
             Type t1 = null;
@@ -606,14 +612,15 @@ namespace SkinnyJson
             return col;
         }
 
-        private static Type GetChangeType(Type conversionType)
+        static Type GetChangeType(Type conversionType)
         {
             if (conversionType.IsGenericType && conversionType.GetGenericTypeDefinition() == typeof(Nullable<>))
                 return conversionType.GetGenericArguments()[0];
 
             return conversionType;
         }
-        private DataSet CreateDataset(Dictionary<string, object> reader, Dictionary<string, object> globalTypes)
+
+        DataSet CreateDataset(IDictionary<string, object> reader, Dictionary<string, object> globalTypes)
         {
         	var ds = new DataSet {EnforceConstraints = false};
         	ds.BeginInit();
@@ -637,7 +644,7 @@ namespace SkinnyJson
             return ds;
         }
 
-        private void ReadSchema(IDictionary<string, object> reader, DataSet ds, Dictionary<string, object> globalTypes)
+        void ReadSchema(IDictionary<string, object> reader, DataSet ds, Dictionary<string, object> globalTypes)
         {
             var schema = reader["$schema"];
 
@@ -661,7 +668,7 @@ namespace SkinnyJson
             }
         }
 
-        private void ReadDataTable(IEnumerable rows, DataTable dt)
+        void ReadDataTable(IEnumerable rows, DataTable dt)
         {
             dt.BeginInit();
             dt.BeginLoadData();
@@ -702,7 +709,7 @@ namespace SkinnyJson
             dt.EndInit();
         }
 
-        DataTable CreateDataTable(Dictionary<string, object> reader, Dictionary<string, object> globalTypes)
+        DataTable CreateDataTable(IDictionary<string, object> reader, Dictionary<string, object> globalTypes)
         {
             var dt = new DataTable();
 

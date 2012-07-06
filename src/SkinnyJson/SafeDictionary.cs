@@ -14,8 +14,7 @@ namespace SkinnyJson {
 		}
 
 		public bool TryGetValue (TKey key, out TValue value) {
-			lock (padlock)
-				return dictionary.TryGetValue(key, out value);
+			lock (padlock) return dictionary.TryGetValue(key, out value);
 		}
 
 		public TValue this[TKey key] {

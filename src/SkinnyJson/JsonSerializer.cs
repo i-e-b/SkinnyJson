@@ -262,12 +262,11 @@ namespace SkinnyJson
                 append = true;
             }
 
-            List<Getters> g = Json.Instance.GetGetters(t);
+            var g = Json.Instance.GetGetters(t);
             foreach (var p in g)
             {
-                if (append)
-                    output.Append(',');
-                object o = p.Getter(obj);
+                if (append) output.Append(',');
+                var o = p.Getter(obj);
                 if ((o == null || o is DBNull) && jsonParameters.SerializeNullValues == false)
                     append = false;
                 else
