@@ -36,7 +36,13 @@ namespace SkinnyJson
             return Instance.ToJson(obj, DefaultParameters);
 		}
 		
-		/// <summary> Turn a JSON string into an object </summary>
+		/// <summary> Turn a JSON string into a specific object </summary>
+		public static object Defrost(string json)
+		{
+			return Instance.ToObject(json, null);
+		}
+
+		/// <summary> Turn a JSON string into a specific object </summary>
 		public static T Defrost<T>(string json)
 		{
 			return (T)Instance.ToObject(json, typeof(T));
@@ -98,7 +104,8 @@ namespace SkinnyJson
         {
             string val;
             if (tyname.TryGetValue(t, out val)) return val;
-        	string s = t.AssemblyQualifiedName;
+			var typeToUse = t.GetInterfaces().FirstOrDefault() ?? t; 
+        	string s = typeToUse.AssemblyQualifiedName;
         	tyname.Add(t, s);
         	return s;
         }
@@ -381,7 +388,7 @@ namespace SkinnyJson
                     object tname;
                     if (globaltypes.TryGetValue((string)tn, out tname)) tn = tname;
                 }
-                if (!type.IsInterface) type = GetTypeFromCache((string)tn);
+                if (type == null || !type.IsInterface) type = GetTypeFromCache((string)tn);
             }
 
             var typename = type.FullName;

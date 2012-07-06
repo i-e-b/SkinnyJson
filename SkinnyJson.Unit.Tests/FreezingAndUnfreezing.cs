@@ -17,18 +17,27 @@ namespace SkinnyJson.Unit.Tests {
 
 		[Test]
 		public void Should_be_able_to_freeze_an_interface () {
-			ISimpleObject original = SimpleObject.Make();
+			ISimpleObject original = SimpleObjectUnderInterface.Make();
 			var frozen = Json.Freeze(original);
 			Console.WriteLine(frozen);
-			var defrosted = Json.Defrost<SimpleObject>(frozen);
+			var defrosted = Json.Defrost<ISimpleObject>(frozen);
 
-			Assert.That(defrosted.A, Is.EqualTo("this is a"));
+			//Assert.That(defrosted.A, Is.EqualTo("this is a"));
 			Assert.That(defrosted.B, Is.EqualTo(original.B));
 		}
 
 		[Test]
+		public void Should_be_able_to_assert_type_on_boxed_defrost () {
+			var frozen = Json.Freeze(SimpleObjectUnderInterface.Make());
+			Console.WriteLine(frozen);
+			object defrosted = Json.Defrost(frozen);
+
+			Assert.That(defrosted is ISimpleObject, Is.True);
+		}
+
+		[Test]
 		public void Should_be_able_to_defrost_to_an_interface () {
-			var original = SimpleObject.Make();
+			var original = SimpleObjectUnderInterface.Make();
 			var frozen = Json.Freeze(original);
 			Console.WriteLine(frozen);
 			var defrosted = Json.Defrost<ISimpleObject>(frozen);
@@ -70,7 +79,7 @@ namespace SkinnyJson.Unit.Tests {
 
 		[Test]
 		public void Should_be_able_to_defrost_to_an_interface_when_original_is_not_available () {
-			var original = SimpleObject.Make();
+			var original = SimpleObjectUnderInterface.Make();
 			var frozen = Json.Freeze(original).Replace("SkinnyJson.Unit.Tests", "A.Different.Assembly");
 			Console.WriteLine(frozen);
 			var defrosted = Json.Defrost<ISimpleObject>(frozen);
@@ -80,7 +89,7 @@ namespace SkinnyJson.Unit.Tests {
 
 		[Test]
 		public void Should_be_freeze_to_an_interface_where_available () {
-			var original = SimpleObject.Make();
+			var original = SimpleObjectUnderInterface.Make();
 			var frozen = Json.Freeze(original);
 
 			Assert.That(frozen, Contains.Substring("SkinnyJson.Unit.Tests.ISimpleObject"));

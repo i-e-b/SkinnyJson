@@ -1,6 +1,6 @@
 ﻿// ReSharper disable InconsistentNaming
 namespace SkinnyJson.Unit.Tests {
-	public class SimpleObject : ISimpleObject {
+	public class SimpleObject {
 		public static SimpleObject Make () {
 			var x = new SimpleObject {A = "this is a", B = "this is B"};
 			return x;
