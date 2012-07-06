@@ -21,7 +21,6 @@ namespace SkinnyJson {
 				CallingConventions.Standard,
 				new Type[] { });
 			var ilGenerator = ctorBuilder.GetILGenerator();
-			ilGenerator.EmitWriteLine("Creating Proxy instance");
 			ilGenerator.Emit(OpCodes.Ret);
 			foreach (var methodInfo in methodInfos) {
 				if (methodInfo.Name.StartsWith("set_")) continue; // we always add a set for a get.

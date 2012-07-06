@@ -23,7 +23,7 @@ namespace SkinnyJson
         public bool ShowReadOnlyProperties = false;
         public bool UsingGlobalTypes = true;
         public bool IgnoreCaseOnDeserialize = false;
-        public bool EnableAnonymousTypes = true;
+        public bool EnableAnonymousTypes = false;
         public bool UseExtensions = true;
 // ReSharper restore RedundantDefaultFieldInitializer
     }
@@ -244,7 +244,7 @@ namespace SkinnyJson
         {
             var setMethod = propertyInfo.GetSetMethod(true);
             if (setMethod == null) return null;
-        	//if (propertyInfo.DeclaringType == null) return null;
+        	if (propertyInfo.DeclaringType == null) return null;
 
             var arguments = new Type[2];
             arguments[0] = arguments[1] = typeof(object);
@@ -299,7 +299,7 @@ namespace SkinnyJson
         {
             var getMethod = propertyInfo.GetGetMethod();
             if (getMethod == null) return null;
-			//if (propertyInfo.DeclaringType == null) return null;
+			if (propertyInfo.DeclaringType == null) return null;
 
             var arguments = new Type[1];
             arguments[0] = typeof(object);
@@ -363,13 +363,26 @@ namespace SkinnyJson
         {
             object tn;
 
+            if (d.TryGetValue("$types", out tn))
+            {
+                usingglobals = true;
+                globaltypes = ((Dictionary<string, object>) tn).ToDictionary<KeyValuePair<string, object>, string, object>(kv => (string) kv.Value, kv => kv.Key);
+            }
+
             var found = d.TryGetValue("$type", out tn);
             if (found == false && type == typeof(Object))
             {
                 return CreateDataset(d, globaltypes);
-            }
-            type = FindTypeFromDescription(d, found, type, ref globaltypes);
-        	if (type == null) throw new Exception("Cannot determine type");
+            }
+            if (found)
+            {
+                if (usingglobals)
+                {
+                    object tname;
+                    if (globaltypes.TryGetValue((string)tn, out tname)) tn = tname;
+                }
+                if (!type.IsInterface) type = GetTypeFromCache((string)tn);
+            }
 
             var typename = type.FullName;
             var o = input ?? FastCreateInstance(type);
@@ -438,25 +451,6 @@ namespace SkinnyJson
             }
             return o;
         }
-
-    	Type FindTypeFromDescription(Dictionary<string, object> d, bool found, Type type, ref Dictionary<string, object> globaltypes) {
-    		object tn;
-    		if (d.TryGetValue("$types", out tn))
-    		{
-    			usingglobals = true;
-    			globaltypes = ((Dictionary<string, object>) tn).ToDictionary<KeyValuePair<string, object>, string, object>(kv => (string) kv.Value, kv => kv.Key);
-    		}
-    		if (found)
-    		{
-    			if (usingglobals)
-    			{
-    				object tname;
-    				if (globaltypes.TryGetValue((string)tn, out tname)) tn = tname;
-    			}
-    			type = GetTypeFromCache((string)tn);
-    		}
-    		return type;
-    	}
 
     	private static void ProcessMap(object obj, SafeDictionary<string, MyPropInfo> props, Dictionary<string, object> dic)
         {

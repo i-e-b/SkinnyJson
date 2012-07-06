@@ -38,15 +38,34 @@ namespace SkinnyJson.Unit.Tests {
 
 		[Test]
 		public void Can_proxy_a_basic_interface () {
-			IHaveMethods px = DynamicProxy.GetInstanceFor<IHaveMethods>();
+			var px = DynamicProxy.GetInstanceFor<IHaveMethods>();
 
 			Assert.That(px.AMethod(), Is.Null);
 		}
+
 		[Test]
 		public void Can_proxy_an_interface_with_properties () {
-			IHaveProperties px = DynamicProxy.GetInstanceFor<IHaveProperties>();
+			var px = DynamicProxy.GetInstanceFor<IHaveProperties>();
 
 			Assert.That(px.AProperty, Is.Null);
+		}
+
+		[Test]
+		public void Can_persist_to_proxy_properties () {
+			var px = DynamicProxy.GetInstanceFor<IHaveProperties>();
+			px.AProperty = "hello";
+
+			Assert.That(px.AProperty, Is.EqualTo("hello"));
+		}
+
+		[Test]
+		public void Can_proxy_an_interface_with_interface_properties () {
+			var px = DynamicProxy.GetInstanceFor<IHaveComplexProperties>();
+
+			px.BProperty = DynamicProxy.GetInstanceFor<IHaveProperties>();
+			px.BProperty.AProperty = "hello";
+
+			Assert.That(px.BProperty.AProperty, Is.EqualTo("hello"));
 		}
 
 		[Test]
@@ -58,6 +77,19 @@ namespace SkinnyJson.Unit.Tests {
 
 			Assert.That(defrosted.B, Is.EqualTo(original.B));
 		}
+
+		[Test]
+		public void Should_be_freeze_to_an_interface_where_available () {
+			var original = SimpleObject.Make();
+			var frozen = Json.Freeze(original);
+
+			Assert.That(frozen, Contains.Substring("SkinnyJson.Unit.Tests.ISimpleObject"));
+		}
+	}
+
+	public interface IHaveComplexProperties {
+		string AProperty { get; set; }
+		IHaveProperties BProperty { get; set; }
 	}
 
 	public interface IHaveProperties {
