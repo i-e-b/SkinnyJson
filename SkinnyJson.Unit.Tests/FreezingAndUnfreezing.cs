@@ -36,7 +36,6 @@ namespace SkinnyJson.Unit.Tests {
 			Assert.That(defrosted is ISimpleObject, Is.True);
 		}
 
-		
 		[Test]
 		public void Should_be_able_to_filter_boxed_objects_on_type () {
 			var frozen = new List<string>{
@@ -110,13 +109,65 @@ namespace SkinnyJson.Unit.Tests {
 		}
 
 		[Test]
-		public void Should_be_freeze_to_an_interface_where_available () {
+		public void Should_be_able_to_freeze_to_an_interface_where_available () {
 			var original = SimpleObjectUnderInterface.Make();
 			var frozen = Json.Freeze(original);
 
 			Assert.That(frozen, Contains.Substring("SkinnyJson.Unit.Tests.ISimpleObject"));
 		}
+
+		[Test]
+		public void Should_be_able_to_handle_chain_of_interfaces () {
+			var original = ChainedInterface.Make();
+			var frozen = Json.Freeze(original);
+			var defrosted = Json.Defrost<ITopLevel>(frozen);
+
+			Assert.That(frozen, Contains.Substring("SkinnyJson.Unit.Tests.ITopLevel"));
+			
+			Assert.That(defrosted.A, Is.EqualTo(original.A));
+			Assert.That(defrosted.B, Is.EqualTo(original.B));
+			Assert.That(defrosted.C, Is.EqualTo(original.C));
+		}
+		
+		[Test]
+		public void Should_be_able_to_handle_chain_of_classes () {
+			var original = ChainedClass.Make();
+			var frozen = Json.Freeze(original);
+			var defrosted = Json.Defrost<ChainedClass>(frozen);
+			
+			Assert.That(defrosted.X, Is.EqualTo(original.X));
+			Assert.That(defrosted.Y, Is.EqualTo(original.Y));
+			Assert.That(defrosted.Z, Is.EqualTo(original.Z));
+			Assert.That(defrosted.IKMP, Is.EqualTo(original.IKMP));
+		}
 	}
+
+	public class ChainedClass: TopClass
+	{
+		public string Z;
+
+		public static ChainedClass Make()
+		{
+			return new ChainedClass{IKMP = "Ronny", X="x", Y="y", Z="z"};
+		}
+	}
+
+	public class TopClass: MiddleClass
+	{
+		public string Y;
+	}
+
+	public class MiddleClass: IKnowMyPlace
+	{
+		public string IKMP { get; set; }
+		public string X;
+	}
+
+	public interface IKnowMyPlace
+	{
+		string IKMP { get; set; }
+	}
+
 
 	public interface IHaveComplexProperties {
 		string AProperty { get; set; }

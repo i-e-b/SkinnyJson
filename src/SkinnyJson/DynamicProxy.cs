@@ -9,12 +9,11 @@ namespace SkinnyJson {
 			return (T)GetInstanceFor(typeof(T));
 		}
 
-		public static object GetInstanceFor (Type typeOfT) {
-			var methodInfos = typeOfT.GetMethods();
+		public static object GetInstanceFor (Type targetType) {
 			var assName = new AssemblyName("testAssembly");
 			var assBuilder = AppDomain.CurrentDomain.DefineDynamicAssembly(assName, AssemblyBuilderAccess.RunAndSave);
 			var moduleBuilder = assBuilder.DefineDynamicModule("testModule", "test.dll");
-			var typeBuilder = moduleBuilder.DefineType(typeOfT.Name + "Proxy", TypeAttributes.Public);
+			var typeBuilder = moduleBuilder.DefineType(targetType.Name + "Proxy", TypeAttributes.Public);
 
 			var ctorBuilder = typeBuilder.DefineConstructor(
 				MethodAttributes.Public,
@@ -22,20 +21,35 @@ namespace SkinnyJson {
 				new Type[] { });
 			var ilGenerator = ctorBuilder.GetILGenerator();
 			ilGenerator.Emit(OpCodes.Ret);
-			foreach (var methodInfo in methodInfos) {
+
+			IncludeType(targetType, typeBuilder);
+
+			foreach (var face in targetType.GetInterfaces())
+				IncludeType(face, typeBuilder);
+
+			Type constructedType = typeBuilder.CreateType();
+			var instance = Activator.CreateInstance(constructedType);
+			return instance;
+		}
+
+		static void IncludeType(Type typeOfT, TypeBuilder typeBuilder)
+		{
+			var methodInfos = typeOfT.GetMethods();
+			foreach (var methodInfo in methodInfos)
+			{
 				if (methodInfo.Name.StartsWith("set_")) continue; // we always add a set for a get.
-				
-				if (methodInfo.Name.StartsWith("get_")) {
+
+				if (methodInfo.Name.StartsWith("get_"))
+				{
 					BindProperty(typeBuilder, methodInfo);
-				} else {
+				}
+				else
+				{
 					BindMethod(typeBuilder, methodInfo);
 				}
 			}
 
 			typeBuilder.AddInterfaceImplementation(typeOfT);
-			Type constructedType = typeBuilder.CreateType();
-			var instance = Activator.CreateInstance(constructedType);
-			return instance;
 		}
 
 		static void BindMethod(TypeBuilder typeBuilder, MethodInfo methodInfo) {

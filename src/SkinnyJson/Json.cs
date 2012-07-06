@@ -104,10 +104,13 @@ namespace SkinnyJson
         {
             string val;
             if (tyname.TryGetValue(t, out val)) return val;
-			var typeToUse = t.GetInterfaces().FirstOrDefault() ?? t; 
-        	string s = typeToUse.AssemblyQualifiedName;
-        	tyname.Add(t, s);
-        	return s;
+
+			if (t.BaseType == typeof(object))
+				tyname.Add(t, (t.GetInterfaces().FirstOrDefault() ?? t).AssemblyQualifiedName);
+			else
+				tyname.Add(t, t.AssemblyQualifiedName);
+        	
+        	return tyname[t];
         }
 
     	readonly SafeDictionary<string, Type> typecache = new SafeDictionary<string, Type>();
@@ -128,7 +131,7 @@ namespace SkinnyJson
         private delegate object CreateObject();
 		private object FastCreateInstance(Type objtype)
         {
-			if (objtype.IsInterface) return CreateProxyFor(objtype);
+			if (objtype.IsInterface) return DynamicProxy.GetInstanceFor(objtype);
             try
             {
                 CreateObject c;
@@ -151,9 +154,99 @@ namespace SkinnyJson
             }
         }
 
-    	static object CreateProxyFor(Type interfaceType) {
-			return DynamicProxy.GetInstanceFor(interfaceType);
-    	}
+        bool usingglobals;
+        private object ParseDictionary(Dictionary<string, object> d, Dictionary<string, object> globaltypes, Type type, object input)
+        {
+            object tn;
+
+            if (d.TryGetValue("$types", out tn))
+            {
+                usingglobals = true;
+                globaltypes = ((Dictionary<string, object>) tn).ToDictionary<KeyValuePair<string, object>, string, object>(kv => (string) kv.Value, kv => kv.Key);
+            }
+
+            var found = d.TryGetValue("$type", out tn);
+            if (found == false && type == typeof(Object))
+            {
+                return CreateDataset(d, globaltypes);
+            }
+            if (found)
+            {
+                if (usingglobals)
+                {
+                    object tname;
+                    if (globaltypes.TryGetValue((string)tn, out tname)) tn = tname;
+                }
+                if (type == null || !type.IsInterface) type = GetTypeFromCache((string)tn);
+            }
+
+            var typename = type.FullName;
+            var o = input ?? FastCreateInstance(type);
+        	var props = GetProperties(type, typename);
+            foreach (string n in d.Keys)
+            {
+                var name = n;
+                if (jsonParameters.IgnoreCaseOnDeserialize) name = name.ToLower();
+                if (name == "$map")
+                {
+                    ProcessMap(o, props, (Dictionary<string, object>)d[name]);
+                    continue;
+                }
+                MyPropInfo pi;
+                if (props.TryGetValue(name, out pi) == false)
+                    continue;
+            	if (!pi.filled) continue;
+            	var v = d[name];
+
+            	if (v == null) continue;
+            	object oset;
+
+            	if (pi.isInt) oset = (int)CreateLong((string)v);
+            	else if (pi.isLong) oset = CreateLong((string)v);
+            	else if (pi.isString) oset = v;
+            	else if (pi.isBool) oset = (bool)v;
+            	else if (pi.isGenericType && pi.isValueType == false && pi.isDictionary == false)
+            		oset = CreateGenericList((ArrayList)v, pi.pt, pi.bt, globaltypes);
+            	else if (pi.isByteArray)
+            		oset = Convert.FromBase64String((string)v);
+
+            	else if (pi.isArray && pi.isValueType == false)
+            		oset = CreateArray((ArrayList)v, pi.bt, globaltypes);
+            	else if (pi.isGuid)
+            		oset = CreateGuid((string)v);
+            	else if (pi.isDataSet)
+            		oset = CreateDataset((Dictionary<string, object>)v, globaltypes);
+
+            	else if (pi.isDataTable)
+            		oset = CreateDataTable((Dictionary<string, object>)v, globaltypes);
+
+            	else if (pi.isStringDictionary)
+            		oset = CreateStringKeyDictionary((Dictionary<string, object>)v, pi.pt, pi.GenericTypes, globaltypes);
+
+            	else if (pi.isDictionary || pi.isHashtable)
+            		oset = CreateDictionary((ArrayList)v, pi.pt, pi.GenericTypes, globaltypes);
+
+            	else if (pi.isEnum)
+            		oset = CreateEnum(pi.pt, (string)v);
+
+            	else if (pi.isDateTime)
+            		oset = CreateDateTime((string)v);
+
+            	else if (pi.isClass && v is Dictionary<string, object>)
+            		oset = ParseDictionary((Dictionary<string, object>)v, globaltypes, pi.pt, null);
+
+            	else if (pi.isValueType)
+            		oset = ChangeType(v, pi.changeType);
+            	else if (v is ArrayList)
+            		oset = CreateArray((ArrayList)v, typeof(object), globaltypes);
+            	else
+            		oset = v;
+
+            	if (pi.CanWrite)
+            		pi.setter(o, oset);
+            }
+            return o;
+        }
 
     	private struct MyPropInfo
         {
@@ -187,13 +280,21 @@ namespace SkinnyJson
         }
 
     	readonly SafeDictionary<string, SafeDictionary<string, MyPropInfo>> propertycache = new SafeDictionary<string, SafeDictionary<string, MyPropInfo>>();
-        private SafeDictionary<string, MyPropInfo> Getproperties(Type type, string typename)
+        private SafeDictionary<string, MyPropInfo> GetProperties(Type type, string typename)
         {
             SafeDictionary<string, MyPropInfo> sd;
             if (propertycache.TryGetValue(typename, out sd)) return sd;
         	sd = new SafeDictionary<string, MyPropInfo>();
-        	var pr = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-        	foreach (PropertyInfo p in pr)
+
+			var pr = new List<PropertyInfo>();
+
+        	pr.AddRange(type.GetProperties(BindingFlags.Public | BindingFlags.Instance));
+        	foreach (var iface in type.GetInterfaces())
+        	{
+        		pr.AddRange(iface.GetProperties(BindingFlags.Public | BindingFlags.Instance));
+        	}
+
+        	foreach (var p in pr)
         	{
         		var d = CreateMyProp(p.PropertyType);
         		d.CanWrite = p.CanWrite;
@@ -202,10 +303,18 @@ namespace SkinnyJson
         		d.getter = CreateGetMethod(p);
         		sd.Add(p.Name, d);
         	}
-        	var fi = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
-        	foreach (FieldInfo f in fi)
+
+			
+			var fi = new List<FieldInfo>();
+        	fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Instance));
+        	foreach (var iface in type.GetInterfaces())
         	{
-        		MyPropInfo d = CreateMyProp(f.FieldType);
+        		fi.AddRange(iface.GetFields(BindingFlags.Public | BindingFlags.Instance));
+        	}
+
+        	foreach (var f in fi)
+        	{
+        		var d = CreateMyProp(f.FieldType);
         		d.setter = CreateSetField(type, f);
         		d.getter = CreateGetField(type, f);
         		sd.Add(f.Name, d);
@@ -363,100 +472,6 @@ namespace SkinnyJson
         	if (conversionType == typeof(Guid)) return CreateGuid((string)value);
         	if (conversionType.IsEnum) return CreateEnum(conversionType, (string)value);
         	return Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
-        }
-
-        bool usingglobals;
-        private object ParseDictionary(Dictionary<string, object> d, Dictionary<string, object> globaltypes, Type type, object input)
-        {
-            object tn;
-
-            if (d.TryGetValue("$types", out tn))
-            {
-                usingglobals = true;
-                globaltypes = ((Dictionary<string, object>) tn).ToDictionary<KeyValuePair<string, object>, string, object>(kv => (string) kv.Value, kv => kv.Key);
-            }
-
-            var found = d.TryGetValue("$type", out tn);
-            if (found == false && type == typeof(Object))
-            {
-                return CreateDataset(d, globaltypes);
-            }
-            if (found)
-            {
-                if (usingglobals)
-                {
-                    object tname;
-                    if (globaltypes.TryGetValue((string)tn, out tname)) tn = tname;
-                }
-                if (type == null || !type.IsInterface) type = GetTypeFromCache((string)tn);
-            }
-
-            var typename = type.FullName;
-            var o = input ?? FastCreateInstance(type);
-        	var props = Getproperties(type, typename);
-            foreach (string n in d.Keys)
-            {
-                var name = n;
-                if (jsonParameters.IgnoreCaseOnDeserialize) name = name.ToLower();
-                if (name == "$map")
-                {
-                    ProcessMap(o, props, (Dictionary<string, object>)d[name]);
-                    continue;
-                }
-                MyPropInfo pi;
-                if (props.TryGetValue(name, out pi) == false)
-                    continue;
-            	if (!pi.filled) continue;
-            	var v = d[name];
-
-            	if (v == null) continue;
-            	object oset;
-
-            	if (pi.isInt) oset = (int)CreateLong((string)v);
-            	else if (pi.isLong) oset = CreateLong((string)v);
-            	else if (pi.isString) oset = v;
-            	else if (pi.isBool) oset = (bool)v;
-            	else if (pi.isGenericType && pi.isValueType == false && pi.isDictionary == false)
-            		oset = CreateGenericList((ArrayList)v, pi.pt, pi.bt, globaltypes);
-            	else if (pi.isByteArray)
-            		oset = Convert.FromBase64String((string)v);
-
-            	else if (pi.isArray && pi.isValueType == false)
-            		oset = CreateArray((ArrayList)v, pi.bt, globaltypes);
-            	else if (pi.isGuid)
-            		oset = CreateGuid((string)v);
-            	else if (pi.isDataSet)
-            		oset = CreateDataset((Dictionary<string, object>)v, globaltypes);
-
-            	else if (pi.isDataTable)
-            		oset = CreateDataTable((Dictionary<string, object>)v, globaltypes);
-
-            	else if (pi.isStringDictionary)
-            		oset = CreateStringKeyDictionary((Dictionary<string, object>)v, pi.pt, pi.GenericTypes, globaltypes);
-
-            	else if (pi.isDictionary || pi.isHashtable)
-            		oset = CreateDictionary((ArrayList)v, pi.pt, pi.GenericTypes, globaltypes);
-
-            	else if (pi.isEnum)
-            		oset = CreateEnum(pi.pt, (string)v);
-
-            	else if (pi.isDateTime)
-            		oset = CreateDateTime((string)v);
-
-            	else if (pi.isClass && v is Dictionary<string, object>)
-            		oset = ParseDictionary((Dictionary<string, object>)v, globaltypes, pi.pt, null);
-
-            	else if (pi.isValueType)
-            		oset = ChangeType(v, pi.changeType);
-            	else if (v is ArrayList)
-            		oset = CreateArray((ArrayList)v, typeof(object), globaltypes);
-            	else
-            		oset = v;
-
-            	if (pi.CanWrite)
-            		pi.setter(o, oset);
-            }
-            return o;
         }
 
     	private static void ProcessMap(object obj, SafeDictionary<string, MyPropInfo> props, Dictionary<string, object> dic)
