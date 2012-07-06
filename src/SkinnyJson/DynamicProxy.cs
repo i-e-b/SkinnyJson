@@ -16,7 +16,6 @@ namespace SkinnyJson {
 			var moduleBuilder = assBuilder.DefineDynamicModule("testModule", "test.dll");
 			var typeBuilder = moduleBuilder.DefineType(typeOfT.Name + "Proxy", TypeAttributes.Public);
 
-			typeBuilder.AddInterfaceImplementation(typeOfT);
 			var ctorBuilder = typeBuilder.DefineConstructor(
 				MethodAttributes.Public,
 				CallingConventions.Standard,
@@ -25,16 +24,16 @@ namespace SkinnyJson {
 			ilGenerator.EmitWriteLine("Creating Proxy instance");
 			ilGenerator.Emit(OpCodes.Ret);
 			foreach (var methodInfo in methodInfos) {
-				if (methodInfo.Name.StartsWith("set_")) {
-					BindSetProperty(typeBuilder, methodInfo);
-				} else if (methodInfo.Name.StartsWith("get_")) {
-					BindGetProperty(typeBuilder, methodInfo);
-					BindMethod(typeBuilder, methodInfo);
+				if (methodInfo.Name.StartsWith("set_")) continue; // we always add a set for a get.
+				
+				if (methodInfo.Name.StartsWith("get_")) {
+					BindProperty(typeBuilder, methodInfo);
 				} else {
 					BindMethod(typeBuilder, methodInfo);
 				}
 			}
 
+			typeBuilder.AddInterfaceImplementation(typeOfT);
 			Type constructedType = typeBuilder.CreateType();
 			var instance = Activator.CreateInstance(constructedType);
 			return instance;
@@ -67,40 +66,38 @@ namespace SkinnyJson {
 			typeBuilder.DefineMethodOverride(methodBuilder, methodInfo);
 		}
 
-		public static void BindGetProperty (TypeBuilder typeBuilder, MethodInfo methodInfo) {
+		public static void BindProperty (TypeBuilder typeBuilder, MethodInfo methodInfo) {
+			// Backing Field
 			string propertyName = methodInfo.Name.Replace("get_","");
 			Type propertyType = methodInfo.ReturnType;
-			FieldBuilder backingField = typeBuilder.DefineField("_"+propertyName, propertyType, FieldAttributes.Public);
-			PropertyBuilder propertyBuilder = typeBuilder.DefineProperty(propertyName, PropertyAttributes.None, propertyType, null);
+			FieldBuilder backingField = typeBuilder.DefineField("_"+propertyName, propertyType, FieldAttributes.Private);
+
 			//Getter
 			MethodBuilder backingGet = typeBuilder.DefineMethod("get_"+propertyName, MethodAttributes.Public |
-				MethodAttributes.SpecialName |
+				MethodAttributes.SpecialName | MethodAttributes.Virtual |
 				MethodAttributes.HideBySig, propertyType, Type.EmptyTypes);
-			ILGenerator firstGetIL = backingGet.GetILGenerator();
+			ILGenerator getIl = backingGet.GetILGenerator();
 
-			firstGetIL.Emit(OpCodes.Ldarg_0);
-			firstGetIL.Emit(OpCodes.Ldfld, backingField);
-			firstGetIL.Emit(OpCodes.Ret);
+			getIl.Emit(OpCodes.Ldarg_0);
+			getIl.Emit(OpCodes.Ldfld, backingField);
+			getIl.Emit(OpCodes.Ret);
 
-			propertyBuilder.SetGetMethod(backingGet);
-		}
-		public static void BindSetProperty (TypeBuilder typeBuilder, MethodInfo methodInfo) {
-			string propertyName = methodInfo.Name.Replace("set_","");
-			Type propertyType = methodInfo.GetParameters()[0].ParameterType;
-			FieldBuilder backingField = typeBuilder.DefineField("_"+propertyName, propertyType, FieldAttributes.Public);
-			PropertyBuilder propertyBuilder = typeBuilder.DefineProperty(propertyName, PropertyAttributes.None, propertyType, null);
 
 			//Setter
 			MethodBuilder backingSet = typeBuilder.DefineMethod("set_"+propertyName, MethodAttributes.Public |
-				MethodAttributes.SpecialName |
+				MethodAttributes.SpecialName | MethodAttributes.Virtual |
 				MethodAttributes.HideBySig, null, new[] { propertyType });
 
-			ILGenerator firstSetIL = backingSet.GetILGenerator();
+			ILGenerator setIl = backingSet.GetILGenerator();
 
-			firstSetIL.Emit(OpCodes.Ldarg_0);
-			firstSetIL.Emit(OpCodes.Ldarg_1);
-			firstSetIL.Emit(OpCodes.Stfld, backingField);
-			firstSetIL.Emit(OpCodes.Ret);
+			setIl.Emit(OpCodes.Ldarg_0);
+			setIl.Emit(OpCodes.Ldarg_1);
+			setIl.Emit(OpCodes.Stfld, backingField);
+			setIl.Emit(OpCodes.Ret);
+
+			// Property
+			PropertyBuilder propertyBuilder = typeBuilder.DefineProperty(propertyName, PropertyAttributes.None, propertyType, null);
+			propertyBuilder.SetGetMethod(backingGet);
 			propertyBuilder.SetSetMethod(backingSet);
 		}
 	}
