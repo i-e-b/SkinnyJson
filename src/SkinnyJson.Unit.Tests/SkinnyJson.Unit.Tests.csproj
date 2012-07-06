@@ -43,7 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ChainedInterface.cs" />
+    <Compile Include="Helpers\ChainedInterface.cs" />
     <Compile Include="Helpers\ObjectWithoutAnInterface.cs" />
     <Compile Include="Helpers\ISimpleObject.cs" />
     <Compile Include="Helpers\SimpleObjectUnderInterface.cs" />
@@ -54,7 +54,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\src\SkinnyJson\SkinnyJson.csproj">
+    <ProjectReference Include="..\SkinnyJson\SkinnyJson.csproj">
       <Project>{EC0CAFCB-260D-462E-B834-2ECDE016BA7D}</Project>
       <Name>SkinnyJson</Name>
     </ProjectReference>

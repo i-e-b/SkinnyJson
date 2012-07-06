@@ -140,6 +140,31 @@ namespace SkinnyJson.Unit.Tests {
 			Assert.That(defrosted.Z, Is.EqualTo(original.Z));
 			Assert.That(defrosted.IKMP, Is.EqualTo(original.IKMP));
 		}
+
+		[Test]
+		public void Should_be_able_to_handler_marker_interfaces()
+		{
+			var original = new UsesMarker{AnId = Guid.NewGuid(), AnotherThing = "hello"};
+			var frozen = Json.Freeze(original);
+			var defrosted_marker = Json.Defrost<IMarkerInterface>(frozen);
+			var defrosted_real = Json.Defrost<UsesMarker>(frozen);
+			var defrosted_anon = Json.Defrost(frozen);
+			
+			Assert.That(defrosted_marker.AnId, Is.EqualTo(original.AnId));
+			Assert.That(defrosted_real.AnotherThing, Is.EqualTo(original.AnotherThing));
+			Assert.That(defrosted_anon, Is.InstanceOf<IMarkerInterface>());
+		}
+	}
+
+	public class UsesMarker : IMarkerInterface
+	{
+		public Guid AnId{get; set;}
+		public string AnotherThing { get; set; }
+	}
+
+	public interface IMarkerInterface
+	{
+		Guid AnId { get; }
 	}
 
 	public class ChainedClass: TopClass
