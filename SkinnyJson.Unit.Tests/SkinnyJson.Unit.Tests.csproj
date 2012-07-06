@@ -43,7 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Helpers\SimpleObject.cs" />
+    <Compile Include="Helpers\ObjectWithoutAnInterface.cs" />
     <Compile Include="Helpers\ISimpleObject.cs" />
     <Compile Include="Helpers\SimpleObjectUnderInterface.cs" />
     <Compile Include="FreezingAndUnfreezing.cs" />

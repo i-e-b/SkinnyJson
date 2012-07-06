@@ -1,4 +1,6 @@
 ﻿using System; // ReSharper disable InconsistentNaming
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 
 namespace SkinnyJson.Unit.Tests {
@@ -6,10 +8,10 @@ namespace SkinnyJson.Unit.Tests {
 	public class FreezingAndUnfreezing {
 		[Test]
 		public void Should_be_able_to_freeze_and_unfreeze_objects () {
-			var original = SimpleObject.Make();
+			var original = ObjectWithoutAnInterface.Make();
 			var frozen = Json.Freeze(original);
 			Console.WriteLine(frozen);
-			var defrosted = Json.Defrost<SimpleObject>(frozen);
+			var defrosted = Json.Defrost<ObjectWithoutAnInterface>(frozen);
 
 			Assert.That(defrosted.A, Is.EqualTo(original.A));
 			Assert.That(defrosted.B, Is.EqualTo(original.B));
@@ -22,7 +24,6 @@ namespace SkinnyJson.Unit.Tests {
 			Console.WriteLine(frozen);
 			var defrosted = Json.Defrost<ISimpleObject>(frozen);
 
-			//Assert.That(defrosted.A, Is.EqualTo("this is a"));
 			Assert.That(defrosted.B, Is.EqualTo(original.B));
 		}
 
@@ -33,6 +34,24 @@ namespace SkinnyJson.Unit.Tests {
 			object defrosted = Json.Defrost(frozen);
 
 			Assert.That(defrosted is ISimpleObject, Is.True);
+		}
+
+		
+		[Test]
+		public void Should_be_able_to_filter_boxed_objects_on_type () {
+			var frozen = new List<string>{
+				Json.Freeze(SimpleObjectUnderInterface.Make()),
+				Json.Freeze(SimpleObjectUnderInterface.Make()),
+				Json.Freeze(ObjectWithoutAnInterface.Make()),
+				Json.Freeze(ObjectWithoutAnInterface.Make()),
+				Json.Freeze(SimpleObjectUnderInterface.Make()),
+			};
+
+			var defrosted = frozen
+				.Select(Json.Defrost)
+				.Where(o => o is ISimpleObject);
+
+			Assert.That(defrosted.Count(), Is.EqualTo(3));
 		}
 
 		[Test]
@@ -80,7 +99,10 @@ namespace SkinnyJson.Unit.Tests {
 		[Test]
 		public void Should_be_able_to_defrost_to_an_interface_when_original_is_not_available () {
 			var original = SimpleObjectUnderInterface.Make();
-			var frozen = Json.Freeze(original).Replace("SkinnyJson.Unit.Tests", "A.Different.Assembly");
+			var frozen = Json.Freeze(original)
+				.Replace("SkinnyJson.Unit.Tests", "A.Different.Assembly")
+				.Replace("Version=1.0.0.0", "Version=2.3.4.5");
+
 			Console.WriteLine(frozen);
 			var defrosted = Json.Defrost<ISimpleObject>(frozen);
 
