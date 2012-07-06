@@ -123,18 +123,18 @@ namespace SkinnyJson.Unit.Tests {
 			var defrosted = Json.Defrost<ITopLevel>(frozen);
 
 			Assert.That(frozen, Contains.Substring("SkinnyJson.Unit.Tests.ITopLevel"));
-			
+
 			Assert.That(defrosted.A, Is.EqualTo(original.A));
 			Assert.That(defrosted.B, Is.EqualTo(original.B));
 			Assert.That(defrosted.C, Is.EqualTo(original.C));
 		}
-		
+
 		[Test]
 		public void Should_be_able_to_handle_chain_of_classes () {
 			var original = ChainedClass.Make();
 			var frozen = Json.Freeze(original);
 			var defrosted = Json.Defrost<ChainedClass>(frozen);
-			
+
 			Assert.That(defrosted.X, Is.EqualTo(original.X));
 			Assert.That(defrosted.Y, Is.EqualTo(original.Y));
 			Assert.That(defrosted.Z, Is.EqualTo(original.Z));
@@ -142,68 +142,25 @@ namespace SkinnyJson.Unit.Tests {
 		}
 
 		[Test]
-		public void Should_be_able_to_handler_marker_interfaces()
-		{
-			var original = new UsesMarker{AnId = Guid.NewGuid(), AnotherThing = "hello"};
+		public void Should_be_able_to_handler_marker_interfaces () {
+			var original = new UsesMarker { AnId = Guid.NewGuid(), AnotherThing = "hello" };
 			var frozen = Json.Freeze(original);
 			var defrosted_marker = Json.Defrost<IMarkerInterface>(frozen);
-			//var defrosted_real = Json.Defrost<UsesMarker>(frozen);
+			Console.WriteLine(frozen);
 			var defrosted_anon = Json.Defrost(frozen);
-			
+
 			Assert.That(defrosted_marker.AnId, Is.EqualTo(original.AnId));
-			//Assert.That(defrosted_real.AnotherThing, Is.EqualTo(original.AnotherThing));
 			Assert.That(defrosted_anon, Is.InstanceOf<IMarkerInterface>());
 		}
-	}
 
-	public class UsesMarker : IMarkerInterface
-	{
-		public Guid AnId{get; set;}
-		public string AnotherThing { get; set; }
-	}
+		[Test]
+		public void Should_be_able_to_handle_extended_marker_interfaces () {
+			var original = new UsesMarker { AnId = Guid.NewGuid(), AnotherThing = "hello" };
+			var frozen = Json.Freeze(original);
+			var defrosted = Json.Defrost<IExtendedMarker>(frozen);
 
-	public interface IMarkerInterface
-	{
-		Guid AnId { get; }
-	}
-
-	public class ChainedClass: TopClass
-	{
-		public string Z;
-
-		public static ChainedClass Make()
-		{
-			return new ChainedClass{IKMP = "Ronny", X="x", Y="y", Z="z"};
+			Assert.That(defrosted.AnId, Is.EqualTo(original.AnId));
+			Assert.That(defrosted.AnotherThing, Is.EqualTo(original.AnotherThing));
 		}
-	}
-
-	public class TopClass: MiddleClass
-	{
-		public string Y;
-	}
-
-	public class MiddleClass: IKnowMyPlace
-	{
-		public string IKMP { get; set; }
-		public string X;
-	}
-
-	public interface IKnowMyPlace
-	{
-		string IKMP { get; set; }
-	}
-
-
-	public interface IHaveComplexProperties {
-		string AProperty { get; set; }
-		IHaveProperties BProperty { get; set; }
-	}
-
-	public interface IHaveProperties {
-		string AProperty { get; set; }
-	}
-
-	public interface IHaveMethods {
-		object AMethod ();
 	}
 }

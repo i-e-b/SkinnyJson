@@ -13,7 +13,7 @@ namespace SkinnyJson
     public delegate string Serialize(object data);
     public delegate object Deserialize(string data);
 
-    public class JsonParameters
+    internal class JsonParameters
     {
 // ReSharper disable RedundantDefaultFieldInitializer
         public bool UseOptimizedDatasetSchema = true;
@@ -82,13 +82,12 @@ namespace SkinnyJson
         /// <summary>
         /// You can set these paramters globally for all calls
         /// </summary>
-        public static JsonParameters DefaultParameters = new JsonParameters();
+        internal static JsonParameters DefaultParameters = new JsonParameters();
         private JsonParameters jsonParameters;
 
         internal string ToJson(object obj, JsonParameters param)
         {
             jsonParameters = param;
-            // FEATURE : enable extensions when you can deserialize anon types
             if (jsonParameters.EnableAnonymousTypes) { jsonParameters.UseExtensions = false; jsonParameters.UsingGlobalTypes = false; }
             return new JsonSerializer(param).ConvertToJson(obj);
         }
@@ -219,13 +218,10 @@ namespace SkinnyJson
                 if (type == null || !type.IsInterface) type = GetTypeFromCache((string)tn);
             }
 
-            var typename = type.FullName;
             var targetObject = input ?? FastCreateInstance(type);
 
 			var props = GetProperties(targetObject.GetType(), targetObject.GetType().Name);
-			//var props = GetProperties(type, typename);
-
-            foreach (string key in jsonValues.Keys)
+            foreach (var key in jsonValues.Keys)
             {
                 MapJsonValueToObject(key, targetObject, jsonValues, globaltypes, props);
             }
@@ -402,7 +398,6 @@ namespace SkinnyJson
         {
             var setMethod = propertyInfo.GetSetMethod(true);
             if (setMethod == null) return null;
-        	if (propertyInfo.DeclaringType == null) return null;
 
             var arguments = new Type[2];
             arguments[0] = arguments[1] = typeof(object);
@@ -455,7 +450,6 @@ namespace SkinnyJson
         {
             var getMethod = propertyInfo.GetGetMethod();
             if (getMethod == null) return null;
-			if (propertyInfo.DeclaringType == null) return null;
 
             var arguments = new Type[1];
             arguments[0] = typeof(object);

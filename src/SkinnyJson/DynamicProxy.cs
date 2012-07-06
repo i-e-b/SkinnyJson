@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 
 namespace SkinnyJson {
-	public static class DynamicProxy{
+	public static class DynamicProxy {
 		public static T GetInstanceFor<T> () {
 			return (T)GetInstanceFor(typeof(T));
 		}
@@ -13,19 +13,19 @@ namespace SkinnyJson {
 		static readonly AssemblyBuilder DynamicAssembly;
 
 		public static object GetInstanceFor (Type targetType) {
-			var constructedType = DynamicAssembly.GetType(targetType.Name+"Proxy") ?? GetConstructedType(targetType);
+			var constructedType = DynamicAssembly.GetType(targetType.Name + "Proxy") ?? GetConstructedType(targetType);
 
 			var instance = Activator.CreateInstance(constructedType);
 			return instance;
 		}
 
-		static DynamicProxy() {
+		static DynamicProxy () {
 			var assemblyName = new AssemblyName("DynImpl");
 			DynamicAssembly = AppDomain.CurrentDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndSave);
 			ModuleBuilder = DynamicAssembly.DefineDynamicModule("DynImplModule");
 		}
 
-		static Type GetConstructedType(Type targetType) {
+		static Type GetConstructedType (Type targetType) {
 			var typeBuilder = ModuleBuilder.DefineType(targetType.Name + "Proxy", TypeAttributes.Public);
 
 			var ctorBuilder = typeBuilder.DefineConstructor(
@@ -43,19 +43,14 @@ namespace SkinnyJson {
 			return typeBuilder.CreateType();
 		}
 
-		static void IncludeType(Type typeOfT, TypeBuilder typeBuilder)
-		{
+		static void IncludeType (Type typeOfT, TypeBuilder typeBuilder) {
 			var methodInfos = typeOfT.GetMethods();
-			foreach (var methodInfo in methodInfos)
-			{
+			foreach (var methodInfo in methodInfos) {
 				if (methodInfo.Name.StartsWith("set_")) continue; // we always add a set for a get.
 
-				if (methodInfo.Name.StartsWith("get_"))
-				{
+				if (methodInfo.Name.StartsWith("get_")) {
 					BindProperty(typeBuilder, methodInfo);
-				}
-				else
-				{
+				} else {
 					BindMethod(typeBuilder, methodInfo);
 				}
 			}
@@ -63,7 +58,7 @@ namespace SkinnyJson {
 			typeBuilder.AddInterfaceImplementation(typeOfT);
 		}
 
-		static void BindMethod(TypeBuilder typeBuilder, MethodInfo methodInfo) {
+		static void BindMethod (TypeBuilder typeBuilder, MethodInfo methodInfo) {
 			var methodBuilder = typeBuilder.DefineMethod(
 				methodInfo.Name,
 				MethodAttributes.Public | MethodAttributes.Virtual,
@@ -76,7 +71,7 @@ namespace SkinnyJson {
 			} else {
 				if (methodInfo.ReturnType.IsValueType || methodInfo.ReturnType.IsEnum) {
 					MethodInfo getMethod = typeof(Activator).GetMethod("CreateInstance",
-					                                                   new[] { typeof(Type) });
+																	   new[] { typeof(Type) });
 					LocalBuilder lb = methodILGen.DeclareLocal(methodInfo.ReturnType);
 					methodILGen.Emit(OpCodes.Ldtoken, lb.LocalType);
 					methodILGen.Emit(OpCodes.Call, typeof(Type).GetMethod("GetTypeFromHandle"));
@@ -92,12 +87,12 @@ namespace SkinnyJson {
 
 		public static void BindProperty (TypeBuilder typeBuilder, MethodInfo methodInfo) {
 			// Backing Field
-			string propertyName = methodInfo.Name.Replace("get_","");
+			string propertyName = methodInfo.Name.Replace("get_", "");
 			Type propertyType = methodInfo.ReturnType;
-			FieldBuilder backingField = typeBuilder.DefineField("_"+propertyName, propertyType, FieldAttributes.Private);
+			FieldBuilder backingField = typeBuilder.DefineField("_" + propertyName, propertyType, FieldAttributes.Private);
 
 			//Getter
-			MethodBuilder backingGet = typeBuilder.DefineMethod("get_"+propertyName, MethodAttributes.Public |
+			MethodBuilder backingGet = typeBuilder.DefineMethod("get_" + propertyName, MethodAttributes.Public |
 				MethodAttributes.SpecialName | MethodAttributes.Virtual |
 				MethodAttributes.HideBySig, propertyType, Type.EmptyTypes);
 			ILGenerator getIl = backingGet.GetILGenerator();
@@ -108,7 +103,7 @@ namespace SkinnyJson {
 
 
 			//Setter
-			MethodBuilder backingSet = typeBuilder.DefineMethod("set_"+propertyName, MethodAttributes.Public |
+			MethodBuilder backingSet = typeBuilder.DefineMethod("set_" + propertyName, MethodAttributes.Public |
 				MethodAttributes.SpecialName | MethodAttributes.Virtual |
 				MethodAttributes.HideBySig, null, new[] { propertyType });
 
