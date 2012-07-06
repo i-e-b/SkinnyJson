@@ -9,11 +9,24 @@ namespace SkinnyJson {
 			return (T)GetInstanceFor(typeof(T));
 		}
 
+		static readonly ModuleBuilder ModuleBuilder;
+		static readonly AssemblyBuilder DynamicAssembly;
+
 		public static object GetInstanceFor (Type targetType) {
-			var assName = new AssemblyName("testAssembly");
-			var assBuilder = AppDomain.CurrentDomain.DefineDynamicAssembly(assName, AssemblyBuilderAccess.RunAndSave);
-			var moduleBuilder = assBuilder.DefineDynamicModule("testModule", "test.dll");
-			var typeBuilder = moduleBuilder.DefineType(targetType.Name + "Proxy", TypeAttributes.Public);
+			var constructedType = DynamicAssembly.GetType(targetType.Name+"Proxy") ?? GetConstructedType(targetType);
+
+			var instance = Activator.CreateInstance(constructedType);
+			return instance;
+		}
+
+		static DynamicProxy() {
+			var assemblyName = new AssemblyName("DynImpl");
+			DynamicAssembly = AppDomain.CurrentDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndSave);
+			ModuleBuilder = DynamicAssembly.DefineDynamicModule("DynImplModule");
+		}
+
+		static Type GetConstructedType(Type targetType) {
+			var typeBuilder = ModuleBuilder.DefineType(targetType.Name + "Proxy", TypeAttributes.Public);
 
 			var ctorBuilder = typeBuilder.DefineConstructor(
 				MethodAttributes.Public,
@@ -27,9 +40,7 @@ namespace SkinnyJson {
 			foreach (var face in targetType.GetInterfaces())
 				IncludeType(face, typeBuilder);
 
-			Type constructedType = typeBuilder.CreateType();
-			var instance = Activator.CreateInstance(constructedType);
-			return instance;
+			return typeBuilder.CreateType();
 		}
 
 		static void IncludeType(Type typeOfT, TypeBuilder typeBuilder)

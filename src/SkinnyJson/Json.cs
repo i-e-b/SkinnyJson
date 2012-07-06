@@ -221,7 +221,10 @@ namespace SkinnyJson
 
             var typename = type.FullName;
             var targetObject = input ?? FastCreateInstance(type);
-        	var props = GetProperties(type, typename);
+
+			var props = GetProperties(targetObject.GetType(), targetObject.GetType().Name);
+			//var props = GetProperties(type, typename);
+
             foreach (string key in jsonValues.Keys)
             {
                 MapJsonValueToObject(key, targetObject, jsonValues, globaltypes, props);
@@ -300,23 +303,6 @@ namespace SkinnyJson
 
 			var pr = new List<PropertyInfo>();
 
-        	pr.AddRange(type.GetProperties(BindingFlags.Public | BindingFlags.Instance));
-        	foreach (var iface in type.GetInterfaces())
-        	{
-        		pr.AddRange(iface.GetProperties(BindingFlags.Public | BindingFlags.Instance));
-        	}
-
-        	foreach (var p in pr)
-        	{
-        		var d = CreateMyProp(p.PropertyType);
-        		d.CanWrite = p.CanWrite;
-        		d.setter = CreateSetMethod(p);
-				if (d.setter == null) throw new Exception("Property "+p.Name+" has no setter");
-        		d.getter = CreateGetMethod(p);
-        		sd.Add(p.Name, d);
-        	}
-
-			
 			var fi = new List<FieldInfo>();
         	fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Instance));
         	foreach (var iface in type.GetInterfaces())
@@ -330,6 +316,23 @@ namespace SkinnyJson
         		d.setter = CreateSetField(type, f);
         		d.getter = CreateGetField(type, f);
         		sd.Add(f.Name, d);
+        	}
+
+        	pr.AddRange(type.GetProperties(BindingFlags.Public | BindingFlags.Instance));
+        	foreach (var prop in type.GetInterfaces()
+				.SelectMany(iface => iface.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+				.Where(prop => !pr.Any(p => p.Name == prop.Name)))) {
+        		pr.Add(prop);
+        	}
+
+        	foreach (var p in pr)
+        	{
+        		var d = CreateMyProp(p.PropertyType);
+        		d.CanWrite = p.CanWrite;
+        		d.setter = CreateSetMethod(p);
+				if (d.setter == null) throw new Exception("Property "+p.Name+" has no setter");
+        		d.getter = CreateGetMethod(p);
+        		sd.Add(p.Name, d);
         	}
 
         	propertyCache.Add(typename, sd);
