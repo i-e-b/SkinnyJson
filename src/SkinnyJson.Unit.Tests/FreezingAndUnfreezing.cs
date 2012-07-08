@@ -112,7 +112,7 @@ namespace SkinnyJson.Unit.Tests {
 		public void Should_be_able_to_defrost_to_type_name_by_namespace_alone () {
 			var original = SimpleObjectUnderInterface.Make();
 			var frozen = Json.Freeze(original)
-				.Replace(", SkinnyJson.Unit.Tests, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null", "");
+				.Replace(", SkinnyJson.Unit.Tests", "");
 
 			Console.WriteLine(frozen);
 			var defrosted = Json.Defrost(frozen);

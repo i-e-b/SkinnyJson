@@ -104,13 +104,22 @@ namespace SkinnyJson
             string val;
             if (tyname.TryGetValue(t, out val)) return val;
 
+        	string name;
 			if (t.BaseType == typeof(object))
-				tyname.Add(t, (t.GetInterfaces().FirstOrDefault() ?? t).AssemblyQualifiedName);
+				name = ShortenName((t.GetInterfaces().FirstOrDefault() ?? t).AssemblyQualifiedName);
 			else
-				tyname.Add(t, t.AssemblyQualifiedName);
-        	
+				name = t.AssemblyQualifiedName;
+
+        	tyname.Add(t, name);
+
         	return tyname[t];
         }
+
+    	static string ShortenName(string assemblyQualifiedName) {
+			var one = assemblyQualifiedName.IndexOf(',');
+			var two = assemblyQualifiedName.IndexOf(',', one+1);
+			return assemblyQualifiedName.Substring(0, two);
+    	}
 
     	readonly SafeDictionary<string, Type> typecache = new SafeDictionary<string, Type>();
         private Type GetTypeFromCache(string typename) {
