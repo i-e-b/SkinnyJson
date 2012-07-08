@@ -109,6 +109,18 @@ namespace SkinnyJson.Unit.Tests {
 		}
 
 		[Test]
+		public void Should_be_able_to_defrost_to_type_name_by_namespace_alone () {
+			var original = SimpleObjectUnderInterface.Make();
+			var frozen = Json.Freeze(original)
+				.Replace(", SkinnyJson.Unit.Tests, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null", "");
+
+			Console.WriteLine(frozen);
+			var defrosted = Json.Defrost(frozen);
+
+			Assert.That(defrosted, Is.InstanceOf<ISimpleObject>());
+		}
+
+		[Test]
 		public void Should_be_able_to_freeze_to_an_interface_where_available () {
 			var original = SimpleObjectUnderInterface.Make();
 			var frozen = Json.Freeze(original);

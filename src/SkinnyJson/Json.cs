@@ -116,13 +116,26 @@ namespace SkinnyJson
         private Type GetTypeFromCache(string typename) {
 			Type val;
 			if (typecache.TryGetValue(typename, out val)) return val;
-			var assemblyName = typename.Split(',')[1];
-			var fullName = typename.Split(',')[0];
-			var available = Assembly.Load(assemblyName).GetTypes();
-			// ReSharper disable PossibleNullReferenceException
-			var t = available.Single(type => type.FullName.ToLower() == fullName.ToLower());
-			// ReSharper restore PossibleNullReferenceException
-			typecache.Add(typename, t);
+
+			var typeParts = typename.Split(',');
+
+			Type t;
+			if (typeParts.Length > 1) {
+				var assemblyName = typename.Split(',')[1];
+				var fullName = typename.Split(',')[0];
+				var available = Assembly.Load(assemblyName).GetTypes();
+				// ReSharper disable PossibleNullReferenceException
+				t = available.SingleOrDefault(type => type.FullName.ToLower() == fullName.ToLower());
+				// ReSharper restore PossibleNullReferenceException
+			} else {
+				// slow but robust way of finding a type fragment.
+				t = AppDomain.CurrentDomain.GetAssemblies()
+					.SelectMany(asm => asm.GetTypes())
+					.SingleOrDefault(type => type.FullName.StartsWith(typeParts[0]));
+			}
+        	if (t != null) {
+				typecache.Add(typename, t);
+			}
 			return t;
 		}
 
