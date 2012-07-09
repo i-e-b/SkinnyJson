@@ -105,10 +105,13 @@ namespace SkinnyJson
             if (tyname.TryGetValue(t, out val)) return val;
 
         	string name;
-			if (t.BaseType == typeof(object))
-				name = ShortenName((t.GetInterfaces().FirstOrDefault() ?? t).AssemblyQualifiedName);
-			else
+			if (t.BaseType == typeof(object)) {
+				// on Windows, this can be just "t.GetInterfaces()" but Mono doesn't return in order.
+				var interfaceType = t.GetInterfaces().FirstOrDefault(i => !t.GetInterfaces().Any(i2 => i2.GetInterfaces().Contains(i)));
+				name = ShortenName((interfaceType ?? t).AssemblyQualifiedName);
+			} else {
 				name = t.AssemblyQualifiedName;
+			}
 
         	tyname.Add(t, name);
 
