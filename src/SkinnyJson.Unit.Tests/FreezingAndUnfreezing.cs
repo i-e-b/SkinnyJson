@@ -174,5 +174,19 @@ namespace SkinnyJson.Unit.Tests {
 			Assert.That(defrosted.AnId, Is.EqualTo(original.AnId));
 			Assert.That(defrosted.AnotherThing, Is.EqualTo(original.AnotherThing));
 		}
+
+		[Test]
+		public void Should_not_strip_interface_levels ()
+		{
+			ITopLevel original = ChainedInterface.Make();
+			var frozen = Json.Freeze(original);
+			var defrosted = Json.Defrost(frozen);
+			var refrozen = Json.Freeze(defrosted);
+			var double_defrosted = Json.Defrost(refrozen);
+			Console.WriteLine(refrozen);
+
+			Assert.That(double_defrosted, Is.InstanceOf<ITopLevel>());
+		}
+
 	}
 }
