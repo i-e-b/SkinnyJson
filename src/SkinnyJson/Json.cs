@@ -42,6 +42,12 @@ namespace SkinnyJson
 			return Instance.ToObject(json, null);
 		}
 
+		/// <summary> Return the type name that SkinnyJson will use for the serialising the object </summary>
+    	public static string WrapperType(object obj)
+    	{
+    		return Instance.GetTypeAssemblyName(obj.GetType());
+    	}
+
 		/// <summary> Turn a JSON string into a specific object </summary>
 		public static T Defrost<T>(string json)
 		{
