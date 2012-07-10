@@ -45,6 +45,7 @@ namespace SkinnyJson
 		/// <summary> Return the type name that SkinnyJson will use for the serialising the object </summary>
     	public static string WrapperType(object obj)
     	{
+			if (obj is Type) return Instance.GetTypeAssemblyName((Type)obj);
     		return Instance.GetTypeAssemblyName(obj.GetType());
     	}
 
@@ -116,7 +117,7 @@ namespace SkinnyJson
 				var interfaceType = t.GetInterfaces().FirstOrDefault(i => !t.GetInterfaces().Any(i2 => i2.GetInterfaces().Contains(i)));
 				name = ShortenName((interfaceType ?? t).AssemblyQualifiedName);
 			} else {
-				name = t.AssemblyQualifiedName;
+				name = ShortenName(t.AssemblyQualifiedName);
 			}
 
         	tyname.Add(t, name);
