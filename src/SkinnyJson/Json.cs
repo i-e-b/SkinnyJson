@@ -101,6 +101,7 @@ namespace SkinnyJson
 
         internal object ToObject(string json, Type type)
         {
+			jsonParameters = jsonParameters ?? DefaultParameters;
             var ht = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode() as Dictionary<string, object>;
             return ht == null ? null : ParseDictionary(ht, null, type, null);
         }
