@@ -13,10 +13,17 @@ namespace SkinnyJson {
 		static readonly AssemblyBuilder DynamicAssembly;
 
 		public static object GetInstanceFor (Type targetType) {
-			var constructedType = DynamicAssembly.GetType(targetType.Name + "Proxy") ?? GetConstructedType(targetType);
+			lock (DynamicAssembly) // can race when type has been declared but not built yet
+			{
+				var constructedType = DynamicAssembly.GetType(ProxyName(targetType)) ?? GetConstructedType(targetType);
+				var instance = Activator.CreateInstance(constructedType);
+				return instance;
+			}
+		}
 
-			var instance = Activator.CreateInstance(constructedType);
-			return instance;
+		static string ProxyName(Type targetType)
+		{
+			return targetType.Name + "Proxy";
 		}
 
 		static DynamicProxy () {
