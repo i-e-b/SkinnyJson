@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Text;
 
 namespace SkinnyJson
@@ -266,7 +267,8 @@ namespace SkinnyJson
             foreach (var p in g)
             {
                 if (append) output.Append(',');
-                var o = p.Getter(obj);
+
+				var o = GetInstanceValue(obj, t, p);
                 if ((o == null || o is DBNull) && jsonParameters.SerializeNullValues == false)
                     append = false;
                 else
@@ -274,7 +276,7 @@ namespace SkinnyJson
                     WritePair(p.Name, o);
                     if (o != null && jsonParameters.UseExtensions)
                     {
-                        Type tt = o.GetType();
+                        var tt = o.GetType();
                         if (tt == typeof(Object))
                             map.Add(p.Name, tt.ToString());
                     }
@@ -292,7 +294,17 @@ namespace SkinnyJson
 
         }
 
-        private void WritePairFast(string name, string value)
+    	static object GetInstanceValue(object obj, Type t, Getters p) {
+    		if (t.IsValueType && p.FieldInfo != null) {
+				return p.FieldInfo.GetValue(obj);
+			}
+    		if (t.IsValueType && p.PropertyType != null) {
+    			return t.GetProperty(p.Name, BindingFlags.Public | BindingFlags.Instance).GetValue(obj, null);
+    		}
+    		return p.Getter(obj);
+    	}
+
+    	private void WritePairFast(string name, string value)
         {
             if ((value == null) && jsonParameters.SerializeNullValues == false)
                 return;

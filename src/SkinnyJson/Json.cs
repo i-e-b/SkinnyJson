@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.Serialization;
 
 namespace SkinnyJson
 {
@@ -164,6 +165,7 @@ namespace SkinnyJson
 		private object FastCreateInstance(Type objtype)
         {
 			if (objtype.IsInterface) return DynamicProxy.GetInstanceFor(objtype);
+			if (objtype.IsValueType) return FormatterServices.GetUninitializedObject(objtype);
             try
             {
                 CreateObject c;
@@ -181,7 +183,7 @@ namespace SkinnyJson
             }
             catch (Exception exc)
             {
-                throw new Exception(string.Format("Failed to fast create instance for type '{0}' from assemebly '{1}'",
+                throw new Exception(string.Format("Failed to fast create instance for type '{0}' from assembly '{1}'",
                     objtype.FullName, objtype.AssemblyQualifiedName), exc);
             }
         }
@@ -320,8 +322,25 @@ namespace SkinnyJson
     		else
     			oset = v;
 
-    		if (pi.CanWrite)
-    			pi.setter(targetObject, oset);
+    		if (pi.CanWrite) WriteValueToTypeInstance(name, targetObject, pi, oset);
+    	}
+
+    	static void WriteValueToTypeInstance(string name, object targetObject, MyPropInfo pi, object oset) {
+			var typ = targetObject.GetType();
+
+    		if (typ.IsValueType) {
+    			var fi = typ.GetField(name);
+				if (fi != null) {
+					fi.SetValue(targetObject, oset);
+					return;
+				}
+				var pr = typ.GetProperty(name, BindingFlags.Instance | BindingFlags.Public);
+				if (pr != null) {
+					pr.SetValue(targetObject, oset, null);
+					return;
+				}
+    		}
+			pi.setter(targetObject, oset);
     	}
 
     	SafeDictionary<string, MyPropInfo> GetProperties(Type type, string typename)
@@ -389,7 +408,7 @@ namespace SkinnyJson
 
                 var g = CreateGetField(type, f);
             	if (g == null) continue;
-            	var gg = new Getters {Name = f.Name, Getter = g, PropertyType = f.FieldType};
+            	var gg = new Getters {Name = f.Name, Getter = g, PropertyType = f.FieldType, FieldInfo = f};
             	getters.Add(gg);
             }
 
@@ -451,7 +470,8 @@ namespace SkinnyJson
 
         static GenericGetter CreateGetField(Type type, FieldInfo fieldInfo)
         {
-            var dynamicGet = new DynamicMethod("_", typeof(object), new[] { typeof(object) }, type, true);
+            var dynamicGet = new DynamicMethod("_"+fieldInfo.Name
+				, typeof(object), new[] { typeof(object) }, type, true);
             var il = dynamicGet.GetILGenerator();
 
             il.Emit(OpCodes.Ldarg_0);

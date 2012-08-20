@@ -52,6 +52,7 @@
     <Compile Include="Helpers\IMarkerInterface.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Helpers\SampleInterfaces.cs" />
+    <Compile Include="Structs.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

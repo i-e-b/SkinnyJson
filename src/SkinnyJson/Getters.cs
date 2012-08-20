@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace SkinnyJson
 {
@@ -8,6 +9,7 @@ namespace SkinnyJson
         public string Name;
         public Json.GenericGetter Getter;
         public Type PropertyType;
+		public FieldInfo FieldInfo;
     }
 
     public class DatasetSchema
