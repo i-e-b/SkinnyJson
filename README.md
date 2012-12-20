@@ -7,7 +7,7 @@ SkinnyJson was designed to handle Event Store messages, and is tuned to deal wit
 
 TODO:
 -----
-* Add ability to [de]serialise structs
+* Abstract ( (Reader/Writer) | (path-value) ) intermediary to be able to serialise to other formats
 * Classes which inherit `List<T>` should use special list deserialiser
 * Where object is like: `ISomeThing[]{Subclass1, Subclass2}`, should
   deserialse types and be able to cast and use `is` on the contents.

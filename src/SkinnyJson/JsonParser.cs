@@ -45,14 +45,16 @@ namespace SkinnyJson
 
         public object Decode()
         {
-            return ParseValue();
+	        var decode = ParseValue();
+
+	        return decode;
         }
 
-        private Dictionary<string, object> ParseObject()
+	    private Dictionary<string, object> ParseObject()
         {
 			var table = new Dictionary<string, object>();
 
-            ConsumeToken(); // {
+	        ConsumeToken(); // {
 
             while (true)
             {

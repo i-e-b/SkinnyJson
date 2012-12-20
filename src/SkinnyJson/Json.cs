@@ -103,11 +103,36 @@ namespace SkinnyJson
         internal object ToObject(string json, Type type)
         {
 			jsonParameters = jsonParameters ?? DefaultParameters;
-            var ht = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode() as Dictionary<string, object>;
-            return ht == null ? null : ParseDictionary(ht, null, type, null);
+			var globalTypes = new Dictionary<string, object>();
+			
+			var decodedObject = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode();
+			if (decodedObject is Dictionary<string, object>)
+	        {
+				return ParseDictionary((Dictionary<string, object>)decodedObject, globalTypes, type, null);
+	        }
+
+	        if (decodedObject is ArrayList)
+	        {
+		        var containedType = type.GetGenericArguments().Single();
+		        var list = (IList) Activator.CreateInstance(GenericListType(containedType));
+		        foreach (var obj in ((ArrayList)decodedObject))
+		        {
+			        list.Add(ParseDictionary((Dictionary<string, object>)obj, globalTypes, containedType, null));
+		        }
+		        return list;
+	        }
+
+	        throw new Exception("Don't understand this JSON");
         }
 
-    	readonly SafeDictionary<Type, string> tyname = new SafeDictionary<Type, string>();
+	    Type GenericListType(Type containedType)
+	    {
+			var d1 = typeof(List<>);
+			Type[] typeArgs = { containedType };
+			return d1.MakeGenericType(typeArgs);
+	    }
+
+	    readonly SafeDictionary<Type, string> tyname = new SafeDictionary<Type, string>();
         internal string GetTypeAssemblyName(Type t)
         {
             string val;
@@ -234,8 +259,15 @@ namespace SkinnyJson
 
             if (jsonValues.TryGetValue("$types", out tn))
             {
-                usingGlobals = true;
-                globaltypes = ((Dictionary<string, object>) tn).ToDictionary<KeyValuePair<string, object>, string, object>(kv => (string) kv.Value, kv => kv.Key);
+				var dic = ((Dictionary<string, object>) tn);
+	            foreach (var kvp in dic)
+	            {
+		            globaltypes.Add((string)kvp.Value, kvp.Key);
+	            }
+				
+				usingGlobals = true;
+
+				//globaltypes = dic.ToDictionary<KeyValuePair<string, object>, string, object>(kv => (string) kv.Value, kv => kv.Key);
             }
 
             var found = jsonValues.TryGetValue("$type", out tn);
