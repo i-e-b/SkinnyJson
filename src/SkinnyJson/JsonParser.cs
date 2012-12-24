@@ -32,10 +32,9 @@ namespace SkinnyJson
 
         readonly char[] json;
         readonly StringBuilder s = new StringBuilder();
+    	readonly bool ignorecase;
         Token lookAheadToken = Token.None;
         int index;
-    	readonly bool ignorecase;
-
 
         internal JsonParser(string json, bool ignorecase)
         {

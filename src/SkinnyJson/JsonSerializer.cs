@@ -51,6 +51,9 @@ namespace SkinnyJson
             return str;
         }
 
+		/// <summary>
+		/// This is the root of the serialiser.
+		/// </summary>
         private void WriteValue(object obj)
         {
             if (obj == null || obj is DBNull)
@@ -65,13 +68,7 @@ namespace SkinnyJson
             else if (obj is bool)
                 output.Append(((bool)obj) ? "true" : "false"); // conform to standard
 
-            else if (
-                obj is int || obj is long || obj is double ||
-                obj is decimal || obj is float ||
-                obj is byte || obj is short ||
-                obj is sbyte || obj is ushort ||
-                obj is uint || obj is ulong
-            )
+            else if ( isNumericPrimitive(obj) )
                 output.Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo));
 
             else if (obj is DateTime)
@@ -99,7 +96,16 @@ namespace SkinnyJson
                 WriteObject(obj);
         }
 
-        private void WriteEnum(Enum e)
+	    static bool isNumericPrimitive(object obj)
+	    {
+		    return obj is int || obj is long || obj is double ||
+		           obj is decimal || obj is float ||
+		           obj is byte || obj is short ||
+		           obj is sbyte || obj is ushort ||
+		           obj is uint || obj is ulong;
+	    }
+
+	    private void WriteEnum(Enum e)
         {
             WriteStringFast(e.ToString());
         }
@@ -230,16 +236,13 @@ namespace SkinnyJson
         bool typesWritten;
         private void WriteObject(object obj)
         {
-            if (jsonParameters.UsingGlobalTypes == false)
-                output.Append('{');
-            else
-            {
-            	output.Append(typesWritten == false ? "{$types$" : "{");
-            }
-            typesWritten = true;
-            currentDepth++;
+            if (jsonParameters.UsingGlobalTypes == false) output.Append('{');
+			else output.Append(typesWritten == false ? "{$types$" : "{");
+
+			typesWritten = true;
+			currentDepth++;
             if (currentDepth > MaxDepth)
-                throw new Exception("Serializer encountered maximum depth of " + MaxDepth);
+                throw new Exception("Serialiser encountered maximum depth of " + MaxDepth);
 
 
             var map = new Dictionary<string, string>();
@@ -263,22 +266,22 @@ namespace SkinnyJson
                 append = true;
             }
 
-            var g = Json.Instance.GetGetters(t);
-            foreach (var p in g)
+            var readableProperties = Json.Instance.GetGetters(t);
+            foreach (var property in readableProperties)
             {
                 if (append) output.Append(',');
 
-				var o = GetInstanceValue(obj, t, p);
+				var o = GetInstanceValue(obj, t, property);
                 if ((o == null || o is DBNull) && jsonParameters.SerializeNullValues == false)
                     append = false;
                 else
                 {
-                    WritePair(p.Name, o);
+                    WritePair(property.Name, o);
                     if (o != null && jsonParameters.UseExtensions)
                     {
                         var tt = o.GetType();
                         if (tt == typeof(Object))
-                            map.Add(p.Name, tt.ToString());
+                            map.Add(property.Name, tt.ToString());
                     }
                     append = true;
                 }
