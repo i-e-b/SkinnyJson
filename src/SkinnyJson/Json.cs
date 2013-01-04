@@ -75,15 +75,11 @@ namespace SkinnyJson
         }
 
 		/// <summary>Fill the members of an .Net object from a JSON object string</summary>
-		/// <param name="input"></param>
-		/// <param name="json"></param>
-		/// <returns></returns>
         public static object FillObject(object input, string json)
         {
             var ht = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode() as Dictionary<string, object>;
             return ht == null ? null : Instance.ParseDictionary(ht, null, input.GetType(), input);
         }
-
 
     	internal readonly static Json Instance = new Json();
         private Json(){}

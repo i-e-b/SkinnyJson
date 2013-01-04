@@ -17,12 +17,12 @@ namespace SkinnyJson
         private readonly Dictionary<string, int> globalTypes = new Dictionary<string, int>();
         private readonly JsonParameters jsonParameters;
 
-        internal JsonSerializer(JsonParameters param)
+        public JsonSerializer(JsonParameters param)
         {
             jsonParameters = param;
         }
 
-        internal string ConvertToJson(object obj)
+        public string ConvertToJson(object obj)
         {
             WriteValue(obj);
 
