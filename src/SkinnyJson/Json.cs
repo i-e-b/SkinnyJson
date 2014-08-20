@@ -34,10 +34,20 @@ namespace SkinnyJson
 		/// <summary> Turn an object into a JSON string </summary>
 		public static string Freeze(object obj)
 		{
+            if (IsAnonymousType(obj)) { // If we are passes an anon type, ignore defaults -- they will do nothing useful.
+                return Instance.ToJson(obj, new JsonParameters { 
+                    EnableAnonymousTypes = true,
+                });
+            }
             return Instance.ToJson(obj, DefaultParameters);
 		}
-		
-		/// <summary> Turn a JSON string into a specific object </summary>
+
+        static bool IsAnonymousType(object obj)
+        {
+            return obj.GetType().Name.StartsWith("<>f");
+        }
+
+        /// <summary> Turn a JSON string into a specific object </summary>
 		public static object Defrost(string json)
 		{
 			return Instance.ToObject(json, null);
@@ -397,7 +407,7 @@ namespace SkinnyJson
         	pr.AddRange(type.GetProperties(BindingFlags.Public | BindingFlags.Instance));
         	foreach (var prop in type.GetInterfaces()
 				.SelectMany(iface => iface.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-				.Where(prop => !pr.Any(p => p.Name == prop.Name)))) {
+				.Where(prop => pr.All(p => p.Name != prop.Name)))) {
         		pr.Add(prop);
         	}
 

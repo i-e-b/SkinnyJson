@@ -68,7 +68,7 @@ namespace SkinnyJson
             else if (obj is bool)
                 output.Append(((bool)obj) ? "true" : "false"); // conform to standard
 
-            else if ( isNumericPrimitive(obj) )
+            else if (isNumericPrimitive(obj))
                 output.Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo));
 
             else if (obj is DateTime)
@@ -88,6 +88,9 @@ namespace SkinnyJson
                 WriteBytes((byte[])obj);
 
             else if (obj is Array || obj is IList || obj is ICollection)
+                WriteArray((IEnumerable)obj);
+
+            else if (obj is IEnumerable)
                 WriteArray((IEnumerable)obj);
 
             else if (obj is Enum)
