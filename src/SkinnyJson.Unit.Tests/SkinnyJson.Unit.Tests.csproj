@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ChangingSettings.cs" />
     <Compile Include="Helpers\ChainedClass.cs" />
     <Compile Include="Helpers\ChainedInterface.cs" />
     <Compile Include="Helpers\ObjectWithoutAnInterface.cs" />

@@ -11,19 +11,78 @@ using System.Runtime.Serialization;
 
 namespace SkinnyJson
 {
-    internal class JsonParameters
+    /// <summary>
+    /// Parameters for serialising and deserialising.
+    /// </summary>
+    public class JsonParameters
     {
 // ReSharper disable RedundantDefaultFieldInitializer
+        /// <summary>
+        /// Use a special format for Sql Datasets. Default true
+        /// </summary>
         public bool UseOptimizedDatasetSchema = true;
+
+        /// <summary>
+        /// Use Base64 encoding for Guids. If false, uses Hex.
+        /// Default true
+        /// </summary>
         public bool UseFastGuid = true;
+
+        /// <summary>
+        /// Insert null values into JSON output. Otherwise remove field.
+        /// Default true
+        /// </summary>
         public bool SerializeNullValues = true;
+
+        /// <summary>
+        /// Force datetimes to UTC. Default true
+        /// </summary>
         public bool UseUtcDateTime = true;
+
+        /// <summary>
+        /// Serialise properties that can't be written on deserialise. Default false
+        /// </summary>
         public bool ShowReadOnlyProperties = false;
+
+        /// <summary>
+        /// Declare types once at the start of a document. Otherwise declare in each object.
+        /// Default true
+        /// </summary>
         public bool UsingGlobalTypes = true;
+
+        /// <summary>
+        /// Allow case insensitive matching on deserialise. Default false
+        /// </summary>
         public bool IgnoreCaseOnDeserialize = false;
+
+        /// <summary>
+        /// Helper for serialising anonymous types. Sets `UseExtensions` and `UsingGlobalTypes` to false.
+        /// Directly serialising an anonymous type will use these settings for that call, without needing a global setting.
+        /// Default false
+        /// </summary>
         public bool EnableAnonymousTypes = false;
+
+        /// <summary>
+        /// Add type and schema information to output JSON, using $type, $types, $schema and $map properties.
+        /// Default true
+        /// </summary>
         public bool UseExtensions = true;
 // ReSharper restore RedundantDefaultFieldInitializer
+
+        internal JsonParameters Clone()
+        {
+            return new JsonParameters { 
+                EnableAnonymousTypes = EnableAnonymousTypes,
+                IgnoreCaseOnDeserialize = IgnoreCaseOnDeserialize,
+                SerializeNullValues = SerializeNullValues,
+                ShowReadOnlyProperties = ShowReadOnlyProperties,
+                UseExtensions = UseExtensions,
+                UseFastGuid = UseFastGuid,
+                UseOptimizedDatasetSchema = UseOptimizedDatasetSchema,
+                UseUtcDateTime = UseUtcDateTime,
+                UsingGlobalTypes = UsingGlobalTypes
+            };
+        }
     }
 
     /// <summary>
@@ -93,17 +152,19 @@ namespace SkinnyJson
 
     	internal readonly static Json Instance = new Json();
         private Json(){}
+
+        // ReSharper disable once FieldCanBeMadeReadOnly.Local
         /// <summary>
         /// You can set these paramters globally for all calls
         /// </summary>
-        internal static JsonParameters DefaultParameters = new JsonParameters();
+        public static JsonParameters DefaultParameters = new JsonParameters();
         private JsonParameters jsonParameters;
 
         internal string ToJson(object obj, JsonParameters param)
         {
-            jsonParameters = param;
+            jsonParameters = param.Clone();
             if (jsonParameters.EnableAnonymousTypes) { jsonParameters.UseExtensions = false; jsonParameters.UsingGlobalTypes = false; }
-            return new JsonSerializer(param).ConvertToJson(obj);
+            return new JsonSerializer(jsonParameters).ConvertToJson(obj);
         }
 
         internal object ToObject(string json, Type type)
