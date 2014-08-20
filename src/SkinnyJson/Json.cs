@@ -11,9 +11,6 @@ using System.Runtime.Serialization;
 
 namespace SkinnyJson
 {
-    public delegate string Serialize(object data);
-    public delegate object Deserialize(string data);
-
     internal class JsonParameters
     {
 // ReSharper disable RedundantDefaultFieldInitializer
@@ -29,6 +26,9 @@ namespace SkinnyJson
 // ReSharper restore RedundantDefaultFieldInitializer
     }
 
+    /// <summary>
+    /// SkinnyJson entry point
+    /// </summary>
     public class Json
     {
 		/// <summary> Turn an object into a JSON string </summary>

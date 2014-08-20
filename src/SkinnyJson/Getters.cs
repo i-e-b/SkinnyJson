@@ -12,7 +12,7 @@ namespace SkinnyJson
 		public FieldInfo FieldInfo;
     }
 
-    public class DatasetSchema
+    internal class DatasetSchema
     {
         public List<string> Info { get; set; }
         public string Name { get; set; }

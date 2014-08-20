@@ -4,7 +4,13 @@ using System.Reflection;
 using System.Reflection.Emit;
 
 namespace SkinnyJson {
+    /// <summary>
+    /// Generates run-time types for Interfaces
+    /// </summary>
 	public static class DynamicProxy {
+        /// <summary>
+        /// Return an instance of the given interface
+        /// </summary>
 		public static T GetInstanceFor<T> () {
 			return (T)GetInstanceFor(typeof(T));
 		}
@@ -12,6 +18,9 @@ namespace SkinnyJson {
 		static readonly ModuleBuilder ModuleBuilder;
 		static readonly AssemblyBuilder DynamicAssembly;
 
+        /// <summary>
+        /// Return an instance of the given interface
+        /// </summary>
 		public static object GetInstanceFor (Type targetType) {
 			lock (DynamicAssembly) // can race when type has been declared but not built yet
 			{
@@ -92,7 +101,7 @@ namespace SkinnyJson {
 			typeBuilder.DefineMethodOverride(methodBuilder, methodInfo);
 		}
 
-		public static void BindProperty (TypeBuilder typeBuilder, MethodInfo methodInfo) {
+		static void BindProperty (TypeBuilder typeBuilder, MethodInfo methodInfo) {
 			// Backing Field
 			string propertyName = methodInfo.Name.Replace("get_", "");
 			Type propertyType = methodInfo.ReturnType;
