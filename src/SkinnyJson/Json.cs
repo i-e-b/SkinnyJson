@@ -46,7 +46,7 @@ namespace SkinnyJson
 
         /// <summary>
         /// Declare types once at the start of a document. Otherwise declare in each object.
-        /// Default true
+        /// Default true, but overridden by `EnableAnonymousTypes`
         /// </summary>
         public bool UsingGlobalTypes = true;
 
@@ -58,13 +58,13 @@ namespace SkinnyJson
         /// <summary>
         /// Helper for serialising anonymous types. Sets `UseExtensions` and `UsingGlobalTypes` to false.
         /// Directly serialising an anonymous type will use these settings for that call, without needing a global setting.
-        /// Default false
+        /// Default true
         /// </summary>
-        public bool EnableAnonymousTypes = false;
+        public bool EnableAnonymousTypes = true;
 
         /// <summary>
         /// Add type and schema information to output JSON, using $type, $types, $schema and $map properties.
-        /// Default true
+        /// Default true, but overridden by `EnableAnonymousTypes`
         /// </summary>
         public bool UseExtensions = true;
 // ReSharper restore RedundantDefaultFieldInitializer
@@ -93,10 +93,14 @@ namespace SkinnyJson
 		/// <summary> Turn an object into a JSON string </summary>
 		public static string Freeze(object obj)
 		{
-            if (IsAnonymousType(obj)) { // If we are passes an anon type, ignore defaults -- they will do nothing useful.
-                return Instance.ToJson(obj, new JsonParameters { 
-                    EnableAnonymousTypes = true,
-                });
+            if (IsAnonymousType(obj))
+            { // If we are passed an anon type, turn off type information -- it will all be junk.
+                var jsonParameters = DefaultParameters.Clone();
+                jsonParameters.UseExtensions = false; 
+                jsonParameters.UsingGlobalTypes = false;
+                jsonParameters.EnableAnonymousTypes = true;
+
+                return Instance.ToJson(obj, jsonParameters);
             }
             return Instance.ToJson(obj, DefaultParameters);
 		}
