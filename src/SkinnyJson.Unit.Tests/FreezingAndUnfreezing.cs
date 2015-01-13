@@ -7,7 +7,8 @@ namespace SkinnyJson.Unit.Tests {
 	[TestFixture]
 	public class FreezingAndUnfreezing {
 		[Test]
-		public void Should_be_able_to_freeze_and_unfreeze_objects () {
+        public void Should_be_able_to_freeze_and_unfreeze_objects()
+        {
 			var original = ObjectWithoutAnInterface.Make();
 			var frozen = Json.Freeze(original);
 			Console.WriteLine(frozen);

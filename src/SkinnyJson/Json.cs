@@ -260,8 +260,9 @@ namespace SkinnyJson
         private delegate object CreateObject();
 		private object FastCreateInstance(Type objtype)
         {
-			if (objtype.IsInterface) return DynamicProxy.GetInstanceFor(objtype);
-			if (objtype.IsValueType) return FormatterServices.GetUninitializedObject(objtype);
+            if (objtype == null) return null;
+            if (objtype.IsInterface) return DynamicProxy.GetInstanceFor(objtype);
+            if (objtype.IsValueType) return FormatterServices.GetUninitializedObject(objtype);
             try
             {
                 CreateObject c;
@@ -357,6 +358,8 @@ namespace SkinnyJson
             }
 
             var targetObject = input ?? FastCreateInstance(type);
+
+            if (targetObject == null) return jsonValues; // can't work out what object to fill, send back the raw values
 
 			var props = GetProperties(targetObject.GetType(), targetObject.GetType().Name);
             foreach (var key in jsonValues.Keys)
@@ -481,7 +484,7 @@ namespace SkinnyJson
         		var d = CreateMyProp(p.PropertyType);
         		d.CanWrite = p.CanWrite;
         		d.setter = CreateSetMethod(p);
-				if (d.setter == null) throw new Exception("Property "+p.Name+" has no setter");
+                if (d.setter == null) continue; // throw new Exception("Property " + p.Name + " has no setter");
         		d.getter = CreateGetMethod(p);
         		sd.Add(p.Name, d);
         	}

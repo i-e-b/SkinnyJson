@@ -44,8 +44,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ChangingSettings.cs" />
+    <Compile Include="ClarityTests.cs" />
     <Compile Include="Helpers\ChainedClass.cs" />
     <Compile Include="Helpers\ChainedInterface.cs" />
+    <Compile Include="Helpers\ComplexTypes.cs" />
     <Compile Include="Helpers\ObjectWithoutAnInterface.cs" />
     <Compile Include="Helpers\ISimpleObject.cs" />
     <Compile Include="Helpers\SimpleObjectUnderInterface.cs" />
