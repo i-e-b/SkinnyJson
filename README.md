@@ -1,6 +1,6 @@
 SkinnyJson
 ==========
-Based on FastJson: http://fastjson.codeplex.com/
+Based on FastJson: https://github.com/mgholam/fastJSON
 
 Nuget:
 
