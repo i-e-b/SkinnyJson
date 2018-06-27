@@ -93,6 +93,9 @@ namespace SkinnyJson
 		/// <summary> Turn an object into a JSON string </summary>
 		public static string Freeze(object obj)
 		{
+            if (obj is DynamicWrapper dyn) {
+                return Freeze(dyn.Parsed);
+            }
             if (IsAnonymousType(obj))
             { // If we are passed an anon type, turn off type information -- it will all be junk.
                 var jsonParameters = DefaultParameters.Clone();
@@ -110,7 +113,7 @@ namespace SkinnyJson
             return obj.GetType().Name.StartsWith("<>f");
         }
 
-        /// <summary> Turn a JSON string into a specific object </summary>
+        /// <summary> Turn a JSON string into a detected object </summary>
 		public static object Defrost(string json)
 		{
 			return Instance.ToObject(json, null);
@@ -128,6 +131,12 @@ namespace SkinnyJson
 		{
 			return (T)Instance.ToObject(json, typeof(T));
 		}
+
+        /// <summary> Turn a JSON string into an object containing properties found </summary>
+        public static dynamic DefrostDynamic(string json)
+        {
+            return new DynamicWrapper(Parse(json));
+        }
 		
 		/// <summary> Create a copy of an object through serialisation </summary>
         public static T Clone<T>(T obj)
@@ -139,6 +148,16 @@ namespace SkinnyJson
         public static object Parse(string json)
         {
             return new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode();
+        }
+        
+        /// <summary>
+        /// Deserialise a string, perform some edits then reform as a new string
+        /// </summary>
+        public static string Edit(string json, Action<dynamic> editAction)
+        {
+            DynamicWrapper dyn = DefrostDynamic(json);
+            editAction(dyn);
+            return Freeze(dyn);
         }
 
 		/// <summary>Pretty print a JSON string</summary>
@@ -154,7 +173,7 @@ namespace SkinnyJson
             return ht == null ? null : Instance.ParseDictionary(ht, null, input.GetType(), input);
         }
 
-    	internal readonly static Json Instance = new Json();
+    	internal static readonly Json Instance = new Json();
         private Json(){}
 
         // ReSharper disable once FieldCanBeMadeReadOnly.Local
@@ -338,8 +357,6 @@ namespace SkinnyJson
 	            }
 				
 				usingGlobals = true;
-
-				//globaltypes = dic.ToDictionary<KeyValuePair<string, object>, string, object>(kv => (string) kv.Value, kv => kv.Key);
             }
 
             var found = jsonValues.TryGetValue("$type", out tn);
@@ -907,5 +924,4 @@ namespace SkinnyJson
             return dt;
         }
     }
-
 }

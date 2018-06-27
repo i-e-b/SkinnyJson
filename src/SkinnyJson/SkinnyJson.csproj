@@ -36,13 +36,16 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ChainStep.cs" />
     <Compile Include="DynamicProxy.cs" />
+    <Compile Include="DynamicWrapper.cs" />
     <Compile Include="Formatter.cs" />
     <Compile Include="Getters.cs" />
     <Compile Include="Json.cs" />

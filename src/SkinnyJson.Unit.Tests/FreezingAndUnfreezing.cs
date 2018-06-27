@@ -4,8 +4,13 @@ using System.Linq;
 using NUnit.Framework;
 
 namespace SkinnyJson.Unit.Tests {
-	[TestFixture]
+    [TestFixture]
 	public class FreezingAndUnfreezing {
+        [TestFixtureSetUp]
+        public void setup() {
+            Json.DefaultParameters.EnableAnonymousTypes = false;
+        }
+
 		[Test]
         public void Should_be_able_to_freeze_and_unfreeze_objects()
         {

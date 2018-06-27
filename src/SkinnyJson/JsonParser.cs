@@ -44,9 +44,7 @@ namespace SkinnyJson
 
         public object Decode()
         {
-	        var decode = ParseValue();
-
-	        return decode;
+            return ParseValue();
         }
 
 	    private Dictionary<string, object> ParseObject()
@@ -266,7 +264,7 @@ namespace SkinnyJson
             return p1 + p2 + p3 + p4;
         }
 
-        private string ParseNumber()
+        private double ParseNumber()
         {
             ConsumeToken();
 
@@ -286,7 +284,7 @@ namespace SkinnyJson
                 break;
             } while (true);
 
-            return new string(json, startIndex, index - startIndex);
+            return double.Parse(new string(json, startIndex, index - startIndex));
         }
 
         private Token LookAhead()
