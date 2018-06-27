@@ -11,9 +11,44 @@ SkinnyJson has a cleaned-up interface, and handles interface based serialisation
 SkinnyJson was designed to handle Event Store messages, and is tuned to
 deal with situations where a common interface declaration is available, but the original serialised objects are not available.
 
-TODO:
------
-* Abstract ( (Reader/Writer) | (path-value) ) intermediary to be able to serialise to other formats
-* Classes which inherit `List<T>` should use special list deserialiser
-* Where object is like: `ISomeThing[]{Subclass1, Subclass2}`, should
-  deserialse types and be able to cast and use `is` on the contents.
+Common use cases:
+----------
+
+Deserialise a known type:
+```csharp
+IMyInterface values = Json.Defrost<IMyInterface>(jsonString);
+```
+Serialise any object to JSON:
+```csharp
+string jsonString = Json.Freeze(myObject);
+```
+
+Pretty print a JSON string:
+```csharp
+var newString = Json.Beautify(oldString);
+```
+
+Create a deep copy of an object:
+```csharp
+var newObject = Json.Clone(oldObject);
+```
+
+Deserialise to a dynamic type for unknown schemas:
+```csharp
+dynamic obj = Json.DefrostDynamic(jsonString);
+Console.WriteLine(obj.MyProperty.MyArray[4].Prop2()); // use `()` to read a value.
+var missing = obj.NotHere.child.grandchild(); // results in null. Dynamic does null propagation.
+
+obj.MyProperty.other = "hello"; // can update properties
+var updatedJson = Json.Freeze(obj); // and serialise the result
+```
+
+Inline editing:
+```csharp
+string newJson = Json.Edit(oldJson, d => {
+    d.myProperty.updated = true;
+    d.info.updates[0].dateTime = DateTime.Now.ToString();
+});
+```
+
+See the test cases for deeper examples
