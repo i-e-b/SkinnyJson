@@ -14,7 +14,12 @@ namespace SkinnyJson
         public static bool IsEscaped(StringBuilder sb, int index)
         {
             bool escaped = false;
-            while (index > 0 && sb[--index] == '\\') escaped = !escaped;
+            while (index > 0 && index < sb.Length) {
+                if (sb[index - 1] == '\\') {
+                    escaped = !escaped;
+                    index--;
+                } else break;
+            }
             return escaped;
         }
 
@@ -22,11 +27,15 @@ namespace SkinnyJson
         {
             var output = new StringBuilder(input.Length * 2);
             char? quote = null;
+            bool inComment = false;
             int depth = 0;
 
             for (int i = 0; i < input.Length; ++i)
             {
                 char ch = input[i];
+
+                if (inComment && ch != '\r' && ch != '\n') continue;
+                inComment = false;
 
                 switch (ch)
                 {
@@ -55,7 +64,7 @@ namespace SkinnyJson
                         output.Append(ch);
                         if (quote.HasValue)
                         {
-                            if (!IsEscaped(output, i))
+                            if (!IsEscaped(output, i) && ch == quote)
                                 quote = null;
                         }
                         else quote = ch;
@@ -71,6 +80,12 @@ namespace SkinnyJson
                     case ':':
                         if (quote.HasValue) output.Append(ch);
                         else output.Append(" : ");
+                        break;
+                    case '/':
+                        if (!quote.HasValue && (i + 1 < input.Length))
+                        {
+                            if (input[i+1] == '/') inComment = true;// line comment
+                        } else output.Append(ch);
                         break;
                     default:
                         if (quote.HasValue || !char.IsWhiteSpace(ch))

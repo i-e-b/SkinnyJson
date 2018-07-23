@@ -5,7 +5,6 @@
     [TestFixture]
     public class ChangingSettings
     {
-
         [Test]
         public void can_change_defaults()
         {
@@ -19,7 +18,5 @@
             Assert.That(on, Is.Not.StringContaining("$type"));
             Assert.That(off, Is.StringContaining("$type"));
         }
-
-         
     }
 }

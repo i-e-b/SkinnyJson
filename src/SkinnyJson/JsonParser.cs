@@ -27,7 +27,8 @@ namespace SkinnyJson
             Number,
             True,
             False,
-            Null
+            Null,
+            Comment
         }
 
         readonly char[] json;
@@ -57,6 +58,9 @@ namespace SkinnyJson
             {
                 switch (LookAhead())
                 {
+                    case Token.Comment:
+                        ConsumeLine();
+                        break;
 
                     case Token.Comma:
                         ConsumeToken();
@@ -99,6 +103,9 @@ namespace SkinnyJson
             {
                 switch (LookAhead())
                 {
+                    case Token.Comment:
+                        ConsumeLine();
+                        break;
 
                     case Token.Comma:
                         ConsumeToken();
@@ -299,6 +306,20 @@ namespace SkinnyJson
             lookAheadToken = Token.None;
         }
 
+        private void ConsumeLine()
+        {
+            char c;
+            // Skip until new line
+            do
+            {
+                c = json[index];
+
+                if (c == '\n' || c == '\r') break;
+
+            } while (++index < json.Length);
+            lookAheadToken = Token.None;
+        }
+
         private Token NextToken()
         {
             var result = lookAheadToken != Token.None ? lookAheadToken : NextTokenCore();
@@ -330,9 +351,6 @@ namespace SkinnyJson
             c = json[index];
 
             index++;
-
-            //if (c >= '0' && c <= '9')
-            //    return Token.Number;
 
             switch (c)
             {
@@ -393,6 +411,15 @@ namespace SkinnyJson
                     {
                         index += 3;
                         return Token.Null;
+                    }
+                    break;
+
+                case '/':
+                    if (json.Length - index >= 1 &&
+                        json[index + 0] == '/')
+                    {
+                        index += 1;
+                        return Token.Comment;
                     }
                     break;
 

@@ -203,13 +203,17 @@ namespace SkinnyJson
 
 	        if (decodedObject is ArrayList)
 	        {
-		        var containedType = type.GetGenericArguments().Single();
-		        var list = (IList) Activator.CreateInstance(GenericListType(containedType));
-		        foreach (var obj in ((ArrayList)decodedObject))
-		        {
-			        list.Add(ParseDictionary((Dictionary<string, object>)obj, globalTypes, containedType, null));
-		        }
-		        return list;
+                if (type.IsArray) {
+                    return (decodedObject as ArrayList).ToArray(type.GetElementType() ?? typeof(object));
+                }
+
+	            var containedType = type.GetGenericArguments().Single();
+	            var list = (IList)Activator.CreateInstance(GenericListType(containedType));
+	            foreach (var obj in ((ArrayList)decodedObject))
+	            {
+	                list.Add(ParseDictionary((Dictionary<string, object>)obj, globalTypes, containedType, null));
+	            }
+	            return list;
 	        }
 
 	        throw new Exception("Don't understand this JSON");
