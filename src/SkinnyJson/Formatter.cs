@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.IO;
+using System.Text;
 
 namespace SkinnyJson
 {
@@ -6,95 +7,110 @@ namespace SkinnyJson
     {
         public static string Indent = "    ";
 
-        public static void AppendIndent(StringBuilder sb, int count)
+        public static void AppendIndent(TextWriter sb, int count)
         {
-            for (; count > 0; --count) sb.Append(Indent);
+            for (; count > 0; --count) sb.Write(Indent);
         }
 
-        public static bool IsEscaped(StringBuilder sb, int index)
+        public static void PrettyStream(Stream input, Encoding inputEncoding, Stream output, Encoding outputEncoding)
         {
-            bool escaped = false;
-            while (index > 0 && index < sb.Length) {
-                if (sb[index - 1] == '\\') {
-                    escaped = !escaped;
-                    index--;
-                } else break;
-            }
-            return escaped;
+            PrettyPrintInternal(new StreamReader(input, inputEncoding), new StreamWriter(output, outputEncoding));
         }
 
+        
         public static string PrettyPrint(string input)
         {
             var output = new StringBuilder(input.Length * 2);
+            PrettyPrintInternal(new StringReader(input), new StringWriter(output));
+            return output.ToString();
+        }
+
+        private static void PrettyPrintInternal(TextReader input, TextWriter output)
+        {
             char? quote = null;
             bool inComment = false;
+            bool isEscaped = false;
             int depth = 0;
 
-            for (int i = 0; i < input.Length; ++i)
+            while (true)
             {
-                char ch = input[i];
+                int v = input.Read();
+                if (v < 0) {
+                    output.Flush();
+                    return;
+                }
+                char ch = (char)v;
 
                 if (inComment && ch != '\r' && ch != '\n') continue;
                 inComment = false;
+
+                if (isEscaped) {
+                    output.Write(ch);
+                    isEscaped = false;
+                    continue;
+                }
 
                 switch (ch)
                 {
                     case '{':
                     case '[':
-                        output.Append(ch);
+                        output.Write(ch);
                         if (!quote.HasValue)
                         {
-                            output.AppendLine();
+                            output.WriteLine();
                             AppendIndent(output, ++depth);
                         }
                         break;
                     case '}':
                     case ']':
                         if (quote.HasValue)
-                            output.Append(ch);
+                            output.Write(ch);
                         else
                         {
-                            output.AppendLine();
+                            output.WriteLine();
                             AppendIndent(output, --depth);
-                            output.Append(ch);
+                            output.Write(ch);
                         }
                         break;
                     case '"':
                     case '\'':
-                        output.Append(ch);
+                        output.Write(ch);
                         if (quote.HasValue)
                         {
-                            if (!IsEscaped(output, i) && ch == quote)
+                            if (ch == quote) {
                                 quote = null;
+                            }
                         }
                         else quote = ch;
                         break;
+                    case '\\':
+                        output.Write(ch);
+                        if (quote.HasValue) isEscaped = true;
+                        break;
                     case ',':
-                        output.Append(ch);
+                        output.Write(ch);
                         if (!quote.HasValue)
                         {
-                            output.AppendLine();
+                            output.WriteLine();
                             AppendIndent(output, depth);
                         }
                         break;
                     case ':':
-                        if (quote.HasValue) output.Append(ch);
-                        else output.Append(" : ");
+                        if (quote.HasValue) output.Write(ch);
+                        else output.Write(" : ");
                         break;
                     case '/':
-                        if (!quote.HasValue && (i + 1 < input.Length))
+                        if (!quote.HasValue)
                         {
-                            if (input[i+1] == '/') inComment = true;// line comment
-                        } else output.Append(ch);
+                            if (input.Peek() == '/') inComment = true; // line comment
+                        } else output.Write(ch);
                         break;
                     default:
                         if (quote.HasValue || !char.IsWhiteSpace(ch))
-                            output.Append(ch);
+                            output.Write(ch);
                         break;
                 }
             }
-
-            return output.ToString();
         }
     }
 }

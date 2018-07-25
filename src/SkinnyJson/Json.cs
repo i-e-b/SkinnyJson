@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
+using System.Text;
 
 namespace SkinnyJson
 {
@@ -122,7 +123,7 @@ namespace SkinnyJson
 		/// <summary> Return the type name that SkinnyJson will use for the serialising the object </summary>
     	public static string WrapperType(object obj)
     	{
-			if (obj is Type) return Instance.GetTypeAssemblyName((Type)obj);
+			if (obj is Type type) return Instance.GetTypeAssemblyName(type);
     		return Instance.GetTypeAssemblyName(obj.GetType());
     	}
 
@@ -160,10 +161,20 @@ namespace SkinnyJson
             return Freeze(dyn);
         }
 
-		/// <summary>Pretty print a JSON string</summary>
+		/// <summary>Pretty print a JSON string. This is done without value parsing.</summary>
         public static string Beautify(string input)
         {
             return Formatter.PrettyPrint(input);
+        }
+        
+        /// <summary>
+        /// Pretty print a JSON data stream to another stream.
+        /// This is done without value parsing or buffering, so very large streams can be processed.
+        /// The input and output encodings can be the same or different.
+        /// </summary>
+        public static void BeautifyStream(Stream input, Encoding inputEncoding, Stream output, Encoding outputEncoding)
+        {
+            Formatter.PrettyStream(input, inputEncoding, output, outputEncoding);
         }
 
 		/// <summary>Fill the members of an .Net object from a JSON object string</summary>
@@ -196,20 +207,20 @@ namespace SkinnyJson
 			var globalTypes = new Dictionary<string, object>();
 			
 			var decodedObject = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode();
-			if (decodedObject is Dictionary<string, object>)
+			if (decodedObject is Dictionary<string, object> objects)
 	        {
-				return ParseDictionary((Dictionary<string, object>)decodedObject, globalTypes, type, null);
+				return ParseDictionary(objects, globalTypes, type, null);
 	        }
 
-	        if (decodedObject is ArrayList)
+	        if (decodedObject is ArrayList arrayList)
 	        {
                 if (type.IsArray) {
-                    return (decodedObject as ArrayList).ToArray(type.GetElementType() ?? typeof(object));
+                    return arrayList.ToArray(type.GetElementType() ?? typeof(object));
                 }
 
 	            var containedType = type.GetGenericArguments().Single();
 	            var list = (IList)Activator.CreateInstance(GenericListType(containedType));
-	            foreach (var obj in ((ArrayList)decodedObject))
+	            foreach (var obj in arrayList)
 	            {
 	                list.Add(ParseDictionary((Dictionary<string, object>)obj, globalTypes, containedType, null));
 	            }
@@ -271,7 +282,7 @@ namespace SkinnyJson
 				// slow but robust way of finding a type fragment.
 				t = AppDomain.CurrentDomain.GetAssemblies()
 					.SelectMany(asm => asm.GetTypes())
-					.SingleOrDefault(type => type.FullName.StartsWith(typeParts[0]));
+					.SingleOrDefault(type => type.FullName?.StartsWith(typeParts[0]) ?? false);
 			}
         	if (t != null) {
 				typecache.Add(typename, t);
@@ -577,6 +588,7 @@ namespace SkinnyJson
         {
             var setMethod = propertyInfo.GetSetMethod(true);
             if (setMethod == null) return null;
+            if (propertyInfo.DeclaringType == null) return null;
 
             var arguments = new Type[2];
             arguments[0] = arguments[1] = typeof(object);
@@ -630,6 +642,7 @@ namespace SkinnyJson
         {
             var getMethod = propertyInfo.GetGetMethod();
             if (getMethod == null) return null;
+            if (propertyInfo.DeclaringType == null) return null;
 
             var arguments = new Type[1];
             arguments[0] = typeof(object);
@@ -747,8 +760,8 @@ namespace SkinnyJson
             {
                 var key = values.Key;
                 object val;
-                if (values.Value is Dictionary<string, object>)
-                    val = ParseDictionary((Dictionary<string, object>)values.Value, globalTypes, t2, null);
+                if (values.Value is Dictionary<string, object> objects)
+                    val = ParseDictionary(objects, globalTypes, t2, null);
                 else
                     val = ChangeType(values.Value, t2);
                 col.Add(key, val);
@@ -825,9 +838,9 @@ namespace SkinnyJson
         {
             var schema = reader["$schema"];
 
-            if (schema is string)
+            if (schema is string s)
             {
-                TextReader tr = new StringReader((string)schema);
+                TextReader tr = new StringReader(s);
                 ds.ReadXmlSchema(tr);
             }
             else
@@ -893,9 +906,9 @@ namespace SkinnyJson
             // read dataset schema here
             var schema = reader["$schema"];
 
-            if (schema is string)
+            if (schema is string s)
             {
-                TextReader tr = new StringReader((string)schema);
+                TextReader tr = new StringReader(s);
                 dt.ReadXmlSchema(tr);
             }
             else
