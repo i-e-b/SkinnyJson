@@ -6,8 +6,8 @@ namespace SkinnyJson.Unit.Tests
     [TestFixture]
     public class DynamicTypeTests {
         [Test]
-        public void Can_defrost_into_a_dynamic_and_read_from_the_result (){
-            
+        public void Can_defrost_into_a_dynamic_and_read_from_the_result()
+        {
             var original = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":\"What?\",\"Item3\":[10,20,30]}}}";
             dynamic subject = Json.DefrostDynamic(original);
 
@@ -25,6 +25,20 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(subject["Hello"].Bob.Item1(), Is.EqualTo(1));
             Assert.That(subject.Hello["Bob"].Item3[1](), Is.EqualTo(2));
             Assert.That(subject.World.Sam["Item2"](), Is.EqualTo("What?"));
+        }
+
+        [Test]
+        public void Can_fork_a_dynamic_path_and_make_multiple_selections ()
+        {
+            var original = "{\"Hello\":{\"World\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]},\"Sam\":{\"Item1\":3,\"Item2\":\"What?\",\"Item3\":[10,20,30]}}}}}";
+            dynamic subject = Json.DefrostDynamic(original);
+
+            var parent = subject.Hello.World;
+            var fork1 = parent.Bob.Item1();
+            var fork2 = parent.Sam.Item1();
+
+            Assert.That(fork1, Is.EqualTo(1));
+            Assert.That(fork2, Is.EqualTo(3));
         }
 
         [Test]
