@@ -273,10 +273,8 @@ namespace SkinnyJson
             foreach (var property in readableProperties)
             {
 
-				var o = GetInstanceValue(obj, t, property);
-                if ((o == null || o is DBNull) && jsonParameters.SerializeNullValues == false)
-                    append = false;
-                else
+                var o = GetInstanceValue(obj, t, property);
+                if ((o != null && !(o is DBNull)) || jsonParameters.SerializeNullValues != false)
                 {
                     if (append) output.Append(',');
                     WritePair(property.Name, o);
@@ -286,6 +284,7 @@ namespace SkinnyJson
                         if (tt == typeof(Object))
                             map.Add(property.Name, tt.ToString());
                     }
+
                     append = true;
                 }
             }
