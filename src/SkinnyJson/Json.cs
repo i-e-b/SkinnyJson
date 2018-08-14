@@ -57,9 +57,9 @@ namespace SkinnyJson
         public bool IgnoreCaseOnDeserialize = false;
 
         /// <summary>
-        /// Helper for serialising anonymous types. Sets `UseExtensions` and `UsingGlobalTypes` to false.
+        /// Default true. If false, source type information will be included in serialised output.<para></para>
+        /// Sets `UseExtensions` and `UsingGlobalTypes` to false.
         /// Directly serialising an anonymous type will use these settings for that call, without needing a global setting.
-        /// Default true
         /// </summary>
         public bool EnableAnonymousTypes = true;
 

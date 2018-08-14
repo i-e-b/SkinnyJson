@@ -272,13 +272,13 @@ namespace SkinnyJson
             var readableProperties = Json.Instance.GetGetters(t);
             foreach (var property in readableProperties)
             {
-                if (append) output.Append(',');
 
 				var o = GetInstanceValue(obj, t, property);
                 if ((o == null || o is DBNull) && jsonParameters.SerializeNullValues == false)
                     append = false;
                 else
                 {
+                    if (append) output.Append(',');
                     WritePair(property.Name, o);
                     if (o != null && jsonParameters.UseExtensions)
                     {
