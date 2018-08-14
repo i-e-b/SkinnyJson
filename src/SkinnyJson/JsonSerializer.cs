@@ -272,21 +272,18 @@ namespace SkinnyJson
             var readableProperties = Json.Instance.GetGetters(t);
             foreach (var property in readableProperties)
             {
-
                 var o = GetInstanceValue(obj, t, property);
-                if ((o != null && !(o is DBNull)) || jsonParameters.SerializeNullValues != false)
-                {
-                    if (append) output.Append(',');
-                    WritePair(property.Name, o);
-                    if (o != null && jsonParameters.UseExtensions)
-                    {
-                        var tt = o.GetType();
-                        if (tt == typeof(Object))
-                            map.Add(property.Name, tt.ToString());
-                    }
+                if ((o == null || o is DBNull) && jsonParameters.SerializeNullValues == false) continue;
 
-                    append = true;
+                if (append) output.Append(',');
+                WritePair(property.Name, o);
+                if (o != null && jsonParameters.UseExtensions)
+                {
+                    var tt = o.GetType();
+                    if (tt == typeof(object)) map.Add(property.Name, tt.ToString());
                 }
+
+                append = true;
             }
             if (map.Count > 0 && jsonParameters.UseExtensions)
             {
@@ -304,7 +301,7 @@ namespace SkinnyJson
 				return p.FieldInfo.GetValue(obj);
 			}
     		if (t.IsValueType && p.PropertyType != null) {
-    			return t.GetProperty(p.Name, BindingFlags.Public | BindingFlags.Instance).GetValue(obj, null);
+    			return t.GetProperty(p.Name, BindingFlags.Public | BindingFlags.Instance)?.GetValue(obj, null);
     		}
     		return p.Getter(obj);
     	}
