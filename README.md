@@ -13,6 +13,8 @@ SkinnyJson has a cleaned-up interface, and handles interface based serialisation
 SkinnyJson was designed to handle Event Store messages, and is tuned to
 deal with situations where a common interface declaration is available, but the original serialised objects are not available.
 
+To adjust settings globally, look in `SkinnyJson.Json.DefaultParameters`
+
 Common use cases:
 ----------
 
@@ -25,7 +27,7 @@ Serialise any object to JSON:
 string jsonString = Json.Freeze(myObject);
 ```
 
-Pretty print a JSON string:
+Pretty print a JSON string: (there is also a streaming version for very large files)
 ```csharp
 var newString = Json.Beautify(oldString);
 ```
