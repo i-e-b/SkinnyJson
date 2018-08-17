@@ -27,11 +27,15 @@ namespace SkinnyJson.Unit.Tests {
             var str = Json.Freeze(original);
             Console.WriteLine(str);
 
-            // TODO: fix tuple deserialising
+            // TODO: fix the problem when running this after the test above. I think I'm breaking the type cache?
             var clone = Json.Clone(original);
 
-            Assert.That(clone["Hello"]["Bob"], Is.EqualTo(original["Hello"]["Bob"]));
-            Assert.That(clone["World"]["Sam"], Is.EqualTo(original["World"]["Sam"]));
+            
+            var str2 = Json.Freeze(clone);
+            Console.WriteLine(str2);
+
+            Assert.That(clone["Hello"]["Bob"].Item2, Is.EqualTo(original["Hello"]["Bob"].Item2));
+            Assert.That(clone["World"]["Sam"].Item3[0], Is.EqualTo(original["World"]["Sam"].Item3[0]));
         }
 
         [Test]

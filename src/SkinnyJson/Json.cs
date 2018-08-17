@@ -293,9 +293,7 @@ namespace SkinnyJson
 				var assemblyName = typename.Split(',')[1];
 				var fullName = typename.Split(',')[0];
 				var available = Assembly.Load(assemblyName).GetTypes();
-				// ReSharper disable PossibleNullReferenceException
-				t = available.SingleOrDefault(type => type.FullName.ToLower() == fullName.ToLower());
-				// ReSharper restore PossibleNullReferenceException
+				t = available.SingleOrDefault(type => type?.FullName?.ToLower() == fullName.ToLower());
 			} else {
 				// slow but robust way of finding a type fragment.
 				t = AppDomain.CurrentDomain.GetAssemblies()
@@ -313,25 +311,20 @@ namespace SkinnyJson
 		private object FastCreateInstance(Type objtype)
         {
             if (objtype == null) return null;
-            if (objtype.IsInterface) {
-                if (objtype.Namespace == "System.Collections.Generic") {
-                    // Make a standard type...
-                    // TODO: improve this!
-                    Type d1 = typeof(Dictionary<,>);
-                    Type[] typeParameters = objtype.GetGenericArguments();
-                    Type constructed = d1.MakeGenericType(typeParameters);
-                    object o = Activator.CreateInstance(constructed);
-                    return o;
-                }
+            if (constrcache.TryGetValue(objtype, out var cc)) return cc();
+
+            if (objtype.IsInterface)
+            {
+                if (TryMakeStandardContainer(objtype, out var inst)) return inst;
                 return DynamicProxy.GetInstanceFor(objtype);
             }
+
             if (objtype.IsValueType) return FormatterServices.GetUninitializedObject(objtype);
-            if (constrcache.TryGetValue(objtype, out var cc)) return cc();
             
             try
             {
             	var constructorInfo = objtype.GetConstructor(Type.EmptyTypes);
-				if (constructorInfo == null) //throw new Exception("No constructor available, can't create type");
+				if (constructorInfo == null)
                 {
                     return SlowCreateInstance(objtype);
                 }
@@ -352,8 +345,26 @@ namespace SkinnyJson
             }
         }
 
+        private static bool TryMakeStandardContainer(Type objtype, out object inst)
+        {
+            inst = null;
+            if (objtype.Name == "IDictionary`2")
+            {
+                var d1 = typeof(Dictionary<,>);
+                var typeParameters = objtype.GetGenericArguments();
+                var constructed = d1.MakeGenericType(typeParameters);
+                inst = Activator.CreateInstance(constructed);
+                return true;
+            }
+
+            return false;
+        }
+
         private object SlowCreateInstance(Type objtype)
         {
+            if (objtype == typeof(string)) {
+                throw new Exception("Invalid parser state");
+            }
             var allCtor = objtype.GetConstructors();
             if (allCtor.Length < 1) {
                 throw new Exception($"Failed to create instance for type '{objtype.FullName}' from assembly '{objtype.AssemblyQualifiedName}'. No constructors found.");
@@ -464,9 +475,12 @@ namespace SkinnyJson
     		if (props.TryGetValue(name, out pi) == false) {
                 if (targetObject is IDictionary) {
                     var ok = props.TryGetValue("Item", out pi);
-                    pi.isDictionary = true;
                     if (!ok) return;
-                } else return;
+                } else if (IsTuple(targetObject)) {
+                    // immutable type, has to be handled specifically.
+                    throw new Exception("need to map dict to tuple");
+                }
+                else return;
             }
     		if (!pi.filled) return;
     		var v = jsonValues[name];
@@ -474,8 +488,8 @@ namespace SkinnyJson
     		if (v == null) return;
     		object oset;
 
-    		if (pi.isInt) oset = (int) CreateLong((string) v);
-    		else if (pi.isLong) oset = CreateLong((string) v);
+    		if (pi.isInt) oset = (int) CreateLong(v);
+    		else if (pi.isLong) oset = CreateLong(v);
     		else if (pi.isString) oset = v;
     		else if (pi.isBool) oset = (bool) v;
     		else if (pi.isGenericType && pi.isValueType == false && pi.isDictionary == false)
@@ -518,7 +532,12 @@ namespace SkinnyJson
     		if (pi.CanWrite) WriteValueToTypeInstance(name, targetObject, pi, oset);
     	}
 
-    	static void WriteValueToTypeInstance(string name, object targetObject, MyPropInfo pi, object oset) {
+        private bool IsTuple(object obj)
+        {
+            return obj.GetType().Name.StartsWith("Tuple`");
+        }
+
+        static void WriteValueToTypeInstance(string name, object targetObject, MyPropInfo pi, object oset) {
             try
             {
                 var typ = targetObject.GetType();
@@ -548,6 +567,7 @@ namespace SkinnyJson
 
         SafeDictionary<string, MyPropInfo> GetProperties(Type type, string typename)
         {
+            bool breakImmutable = typename.StartsWith("Tuple`");
             SafeDictionary<string, MyPropInfo> sd;
             if (propertyCache.TryGetValue(typename, out sd)) return sd;
         	sd = new SafeDictionary<string, MyPropInfo>();
@@ -556,7 +576,13 @@ namespace SkinnyJson
 
 			var fi = new List<FieldInfo>();
         	fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Instance));
-        	foreach (var iface in type.GetInterfaces())
+
+            if (breakImmutable)
+            {
+                fi.AddRange(type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance));
+            }
+
+            foreach (var iface in type.GetInterfaces())
         	{
         		fi.AddRange(iface.GetFields(BindingFlags.Public | BindingFlags.Instance));
         	}
@@ -566,8 +592,12 @@ namespace SkinnyJson
         		var d = CreateMyProp(f.FieldType);
         		d.setter = CreateSetField(type, f);
         		d.getter = CreateGetField(type, f);
-        		sd.Add(f.Name, d);
-        	}
+
+	            sd.Add(f.Name, d);
+	            if (breakImmutable){
+                    sd.Add(f.Name.Replace("m_", ""), d);
+                }
+            }
 
         	pr.AddRange(type.GetProperties(BindingFlags.Public | BindingFlags.Instance));
         	foreach (var prop in type.GetInterfaces()
@@ -602,7 +632,7 @@ namespace SkinnyJson
 						   
 						   select new Getters {Name = p.Name, Getter = g, PropertyType = p.PropertyType}).ToList();
 
-        	FieldInfo[] fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
+        	var fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
             foreach (var f in fi)
             {
                 var att = f.GetCustomAttributes(typeof(System.Xml.Serialization.XmlIgnoreAttribute), false);
@@ -622,8 +652,8 @@ namespace SkinnyJson
         static MyPropInfo CreateMyProp(Type t)
         {
         	var d = new MyPropInfo {filled = true, CanWrite = true, pt = t, isDictionary = t.Name.Contains("Dictionary")};
-        	if (d.isDictionary)
-                d.GenericTypes = t.GetGenericArguments();
+        	if (d.isDictionary) d.GenericTypes = t.GetGenericArguments();
+
             d.isValueType = t.IsValueType;
             d.isGenericType = t.IsGenericType;
             d.isArray = t.IsArray;
@@ -716,8 +746,8 @@ namespace SkinnyJson
 
         static object ChangeType(object value, Type conversionType)
         {
-            if (conversionType == typeof(int)) return (int)CreateLong((string)value);
-        	if (conversionType == typeof(long)) return CreateLong((string)value);
+            if (conversionType == typeof(int)) return (int)CreateLong(value);
+        	if (conversionType == typeof(long)) return CreateLong(value);
         	if (conversionType == typeof(string)) return value;
         	if (conversionType == typeof(Guid)) return CreateGuid((string)value);
         	if (conversionType.IsEnum) return CreateEnum(conversionType, (string)value);
@@ -735,7 +765,13 @@ namespace SkinnyJson
             }
         }
 
-        static long CreateLong(IEnumerable<char> s)
+        static long CreateLong(object obj){
+            if (obj is string s) return ParseLong(s);
+            if (obj is double d) return (long)d;
+            throw new Exception("Unsupported int type: "+obj.GetType());
+        }
+
+        static long ParseLong(IEnumerable<char> s)
         {
             long num = 0;
             var neg = false;
@@ -814,9 +850,13 @@ namespace SkinnyJson
                 var key = values.Key;
                 object val;
                 if (values.Value is Dictionary<string, object> objects)
+                {
                     val = ParseDictionary(objects, globalTypes, t2, null);
+                }
                 else
+                {
                     val = ChangeType(values.Value, t2);
+                }
                 col.Add(key, val);
             }
 
