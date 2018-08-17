@@ -69,5 +69,13 @@ namespace SkinnyJson.Unit.Tests
             });
             Assert.That(actual, Is.EqualTo(expected));
         }
+
+        [Test]
+        public void Can_inspect_type_names ()
+        {
+            var obj = new SimpleObjectUnderInterface();
+            var result = Json.WrapperType(obj);
+            Assert.That(result, Is.StringContaining("ISimpleObject"));
+        }
     }
 }

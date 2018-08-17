@@ -4,6 +4,47 @@ using System.Linq;
 using NUnit.Framework;
 
 namespace SkinnyJson.Unit.Tests {
+
+    [TestFixture]
+    public class CloningTests {
+
+        
+        [Test]
+        public void clone_has_same_property_values_as_original (){
+            var original = ComplexTypes.DictionaryOfDictionary();
+
+            var clone = Json.Clone(original);
+
+            Assert.That(clone.Count, Is.EqualTo(original.Count), "Item count incorrect");
+            Assert.That(clone["A"]["X"], Is.EqualTo(original["A"]["X"]));
+            Assert.That(clone["B"]["1"], Is.EqualTo(original["B"]["1"]));
+        }
+
+        [Test]
+        public void clone_has_same_property_values_as_original_hard (){
+            var original = ComplexTypes.DictionaryOfDictionaryOfTupleWithList();
+
+            var str = Json.Freeze(original);
+            Console.WriteLine(str);
+
+            // TODO: fix tuple deserialising
+            var clone = Json.Clone(original);
+
+            Assert.That(clone["Hello"]["Bob"], Is.EqualTo(original["Hello"]["Bob"]));
+            Assert.That(clone["World"]["Sam"], Is.EqualTo(original["World"]["Sam"]));
+        }
+
+        [Test]
+        public void modifying_the_original_does_not_affect_the_clone (){
+            Assert.Fail();
+        }
+
+        [Test]
+        public void modifying_the_clone_does_not_affect_the_original() {
+            Assert.Fail();
+        }
+    }
+
     [TestFixture]
 	public class FreezingAndUnfreezing {
         [TestFixtureSetUp]
