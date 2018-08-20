@@ -476,9 +476,6 @@ namespace SkinnyJson
                 if (targetObject is IDictionary) {
                     var ok = props.TryGetValue("Item", out pi);
                     if (!ok) return;
-                } else if (IsTuple(targetObject)) {
-                    // immutable type, has to be handled specifically.
-                    throw new Exception("need to map dict to tuple");
                 }
                 else return;
             }
@@ -531,11 +528,6 @@ namespace SkinnyJson
 
     		if (pi.CanWrite) WriteValueToTypeInstance(name, targetObject, pi, oset);
     	}
-
-        private bool IsTuple(object obj)
-        {
-            return obj.GetType().Name.StartsWith("Tuple`");
-        }
 
         static void WriteValueToTypeInstance(string name, object targetObject, MyPropInfo pi, object oset) {
             try
@@ -611,12 +603,14 @@ namespace SkinnyJson
         		var d = CreateMyProp(p.PropertyType);
         		d.CanWrite = p.CanWrite;
         		d.setter = CreateSetMethod(p);
-                if (d.setter == null) continue; // throw new Exception("Property " + p.Name + " has no setter");
+                if (d.setter == null) continue;
         		d.getter = CreateGetMethod(p);
         		sd.Add(p.Name, d);
         	}
 
-        	propertyCache.Add(typename, sd);
+            if (type.GetGenericArguments().Length < 1) {
+        	    propertyCache.Add(typename, sd);
+            }
         	return sd;
         }
 
