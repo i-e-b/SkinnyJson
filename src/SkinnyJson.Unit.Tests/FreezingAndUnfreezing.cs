@@ -24,15 +24,7 @@ namespace SkinnyJson.Unit.Tests {
         public void clone_has_same_property_values_as_original_hard (){
             var original = ComplexTypes.DictionaryOfDictionaryOfTupleWithList();
 
-            var str = Json.Freeze(original);
-            Console.WriteLine(str);
-
-            // TODO: fix the problem when running this after the test above. I think I'm breaking the type cache?
             var clone = Json.Clone(original);
-
-            
-            var str2 = Json.Freeze(clone);
-            Console.WriteLine(str2);
 
             Assert.That(clone["Hello"]["Bob"].Item2, Is.EqualTo(original["Hello"]["Bob"].Item2));
             Assert.That(clone["World"]["Sam"].Item3[0], Is.EqualTo(original["World"]["Sam"].Item3[0]));
@@ -40,12 +32,28 @@ namespace SkinnyJson.Unit.Tests {
 
         [Test]
         public void modifying_the_original_does_not_affect_the_clone (){
-            Assert.Fail();
+            var original = ComplexTypes.DictionaryOfDictionary();
+
+            var clone = Json.Clone(original);
+
+            original.Add("J", new Dictionary<string, string>());
+
+            Assert.That(clone.Count, Is.Not.EqualTo(original.Count), "Item count incorrect");
+            Assert.That(clone.ContainsKey("J"), Is.False);
+            Assert.That(original.ContainsKey("J"), Is.True);
         }
 
         [Test]
         public void modifying_the_clone_does_not_affect_the_original() {
-            Assert.Fail();
+            var original = ComplexTypes.DictionaryOfDictionary();
+
+            var clone = Json.Clone(original);
+
+            clone.Remove("A");
+
+            Assert.That(clone.Count, Is.Not.EqualTo(original.Count), "Item count incorrect");
+            Assert.That(clone.ContainsKey("A"), Is.False);
+            Assert.That(original.ContainsKey("A"), Is.True);
         }
     }
 

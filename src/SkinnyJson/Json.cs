@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Text;
 
@@ -97,7 +98,7 @@ namespace SkinnyJson
             if (obj is DynamicWrapper dyn) {
                 return Freeze(dyn.Parsed);
             }
-            if (IsAnonymousType(obj))
+            if (IsAnonymousTypedObject(obj))
             { // If we are passed an anon type, turn off type information -- it will all be junk.
                 var jsonParameters = DefaultParameters.Clone();
                 jsonParameters.UseExtensions = false; 
@@ -197,12 +198,24 @@ namespace SkinnyJson
         }
 
     	internal static readonly Json Instance = new Json();
-        private Json(){}
+        private Json(){
+            DefaultParameters = DefaultParameters ?? new JsonParameters();
+            jsonParameters = DefaultParameters;
+        }
 
         
-        static bool IsAnonymousType(object obj)
+        static bool IsAnonymousTypedObject(object obj)
         {
-            return obj.GetType().Name.StartsWith("<>f");
+            return IsAnonymousType(obj.GetType());
+        }
+
+        static bool IsAnonymousType(Type type)
+        {
+            //return obj.GetType().Name.StartsWith("<>f"); // only C#
+            return /*Attribute.IsDefined(type, typeof(CompilerGeneratedAttribute), false)
+                   && type.IsGenericType && type.Name.Contains("AnonymousType")
+                   && */(type.Name.StartsWith("<>") || type.Name.StartsWith("VB$"))
+                   && (type.Attributes & TypeAttributes.NotPublic) == TypeAttributes.NotPublic;
         }
 
         // ReSharper disable once FieldCanBeMadeReadOnly.Local
@@ -422,6 +435,8 @@ namespace SkinnyJson
 
         private object ParseDictionary(IDictionary<string, object> jsonValues, IDictionary<string, object> globaltypes, Type type, object input)
         {
+            jsonParameters = jsonParameters ?? DefaultParameters;
+
             object tn;
 
             if (jsonValues.TryGetValue("$types", out tn))
@@ -559,7 +574,10 @@ namespace SkinnyJson
 
         SafeDictionary<string, MyPropInfo> GetProperties(Type type, string typename)
         {
-            bool breakImmutable = typename.StartsWith("Tuple`");
+            bool usePrivateFields = 
+                typename.StartsWith("Tuple`")
+                || IsAnonymousType(type);
+
             SafeDictionary<string, MyPropInfo> sd;
             if (propertyCache.TryGetValue(typename, out sd)) return sd;
         	sd = new SafeDictionary<string, MyPropInfo>();
@@ -569,7 +587,7 @@ namespace SkinnyJson
 			var fi = new List<FieldInfo>();
         	fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Instance));
 
-            if (breakImmutable)
+            if (usePrivateFields)
             {
                 fi.AddRange(type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance));
             }
@@ -586,8 +604,8 @@ namespace SkinnyJson
         		d.getter = CreateGetField(type, f);
 
 	            sd.Add(f.Name, d);
-	            if (breakImmutable){
-                    sd.Add(f.Name.Replace("m_", ""), d);
+	            if (usePrivateFields){
+                    sd.Add(AnonFieldFilter(f.Name.Replace("m_", "")), d);
                 }
             }
 
@@ -612,6 +630,16 @@ namespace SkinnyJson
         	    propertyCache.Add(typename, sd);
             }
         	return sd;
+        }
+
+        // Anonymous fields like "A" will be named like "<A>i__Field" in the type def.
+        // so we filter them here:
+        private string AnonFieldFilter(string name)
+        {
+            if (name[0] != '<') return name;
+            var idx = name.IndexOf('>', 2);
+            if (idx < 2) return name;
+            return name.Substring(1, idx - 1);
         }
 
         internal List<Getters> GetGetters(Type type)
