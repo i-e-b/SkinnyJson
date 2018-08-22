@@ -1,7 +1,24 @@
 ﻿// ReSharper disable InconsistentNaming
+
+using System.IO;
+using System.Text;
+
 namespace SkinnyJson.Unit.Tests {
     using System;
     using System.Collections.Generic;
+
+    public class StreamData {
+        public static Stream StreamOfJson() {
+            var stringForm = Json.Freeze(ComplexTypes.DictionaryOfDictionaryOfTupleWithList());
+
+            var output = new MemoryStream();
+            var bytes = Encoding.UTF8.GetBytes(stringForm);
+            output.Write(bytes, 0, bytes.Length);
+            output.Seek(0, SeekOrigin.Begin);
+
+            return output;
+        }
+    }
 
     public class ComplexTypes {
 		public static IDictionary<string, Dictionary<string, string>> DictionaryOfDictionary() {

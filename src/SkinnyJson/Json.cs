@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Text;
 
@@ -116,6 +115,13 @@ namespace SkinnyJson
 			return Instance.ToObject(json, null);
 		}
 
+        
+        /// <summary> Turn a JSON string into a detected object </summary>
+        public static object Defrost(Stream json)
+        {
+            return Instance.ToObject(json, null);
+        }
+
 		/// <summary> Return the type name that SkinnyJson will use for the serialising the object </summary>
     	public static string WrapperType(object obj)
     	{
@@ -211,10 +217,7 @@ namespace SkinnyJson
 
         static bool IsAnonymousType(Type type)
         {
-            //return obj.GetType().Name.StartsWith("<>f"); // only C#
-            return /*Attribute.IsDefined(type, typeof(CompilerGeneratedAttribute), false)
-                   && type.IsGenericType && type.Name.Contains("AnonymousType")
-                   && */(type.Name.StartsWith("<>") || type.Name.StartsWith("VB$"))
+            return (type.Name.StartsWith("<>") || type.Name.StartsWith("VB$"))
                    && (type.Attributes & TypeAttributes.NotPublic) == TypeAttributes.NotPublic;
         }
 
@@ -232,33 +235,46 @@ namespace SkinnyJson
             return new JsonSerializer(jsonParameters).ConvertToJson(obj);
         }
 
-        internal object ToObject(string json, Type type)
+        internal object ToObject(object json, Type type)
         {
 			jsonParameters = jsonParameters ?? DefaultParameters;
 			var globalTypes = new Dictionary<string, object>();
 			
-			var decodedObject = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode();
-			if (decodedObject is Dictionary<string, object> objects)
-	        {
-				return ParseDictionary(objects, globalTypes, type, null);
-	        }
+            JsonParser parser;
+            switch (json)
+            {
+                case Stream jsonStream:
+                    parser = new JsonParser(jsonStream, DefaultParameters.IgnoreCaseOnDeserialize);
+                    break;
+                case string jsonString:
+                    parser = new JsonParser(jsonString, DefaultParameters.IgnoreCaseOnDeserialize);
+                    break;
+                default:
+                    throw new Exception("supplied object is not json data");
+            }
 
-	        if (decodedObject is ArrayList arrayList)
-	        {
-                if (type.IsArray) {
-                    return arrayList.ToArray(type.GetElementType() ?? typeof(object));
-                }
+            var decodedObject = parser.Decode();
+			switch (decodedObject)
+			{
+			    case Dictionary<string, object> objects:
+			        return ParseDictionary(objects, globalTypes, type, null);
 
-	            var containedType = type.GetGenericArguments().Single();
-	            var list = (IList)Activator.CreateInstance(GenericListType(containedType));
-	            foreach (var obj in arrayList)
-	            {
-	                list.Add(ParseDictionary((Dictionary<string, object>)obj, globalTypes, containedType, null));
-	            }
-	            return list;
-	        }
+			    case ArrayList arrayList when type.IsArray:
+			        return arrayList.ToArray(type.GetElementType() ?? typeof(object));
 
-	        throw new Exception("Don't understand this JSON");
+			    case ArrayList arrayList:
+			        var containedType = type.GetGenericArguments().Single();
+			        var list = (IList)Activator.CreateInstance(GenericListType(containedType));
+			        foreach (var obj in arrayList)
+			        {
+			            list.Add(ParseDictionary((Dictionary<string, object>)obj, globalTypes, containedType, null));
+			        }
+			        return list;
+
+                default:
+                    throw new Exception("Don't understand this JSON");
+            }
+
         }
 
 	    Type GenericListType(Type containedType)

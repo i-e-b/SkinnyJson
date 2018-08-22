@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace SkinnyJson
@@ -12,7 +13,7 @@ namespace SkinnyJson
     /// JSON uses Arrays and Objects. These correspond here to the datatypes ArrayList and Hashtable.
     /// All numbers are parsed to doubles.
     /// </summary>
-    internal class JsonParser
+    public class JsonParser
     {
         enum Token
         {
@@ -31,18 +32,38 @@ namespace SkinnyJson
             Comment
         }
 
-        readonly char[] json;
-        readonly StringBuilder s = new StringBuilder();
+        readonly TextReader json;
+        readonly StringBuilder s = new StringBuilder(); // common builder for building partials
     	readonly bool ignorecase;
         Token lookAheadToken = Token.None;
-        int index;
+        char lookAheadChar = '\0';
+        int index; // string index. Only used for reporting back error positions
 
-        internal JsonParser(string json, bool ignorecase)
+        /// <summary>
+        /// Create a parser for an JSON string loaded in memory
+        /// </summary>
+        /// <param name="json">The input JSON string</param>
+        /// <param name="ignorecase">If `true`, all property names will be lowercased</param>
+        public JsonParser(string json, bool ignorecase)
         {
-            this.json = json.ToCharArray();
+            this.json = new StringReader(json);
+            this.ignorecase = ignorecase;
+        }
+        
+        /// <summary>
+        /// Create a parser for an JSON string accessible as a stream
+        /// </summary>
+        /// <param name="json">The input JSON stream</param>
+        /// <param name="ignorecase">If `true`, all property names will be lowercased</param>
+        public JsonParser(Stream json, bool ignorecase)
+        {
+            this.json = new StreamReader(json);
             this.ignorecase = ignorecase;
         }
 
+        /// <summary>
+        /// Decode the provided JSON into an object representation
+        /// </summary>
         public object Decode()
         {
             return ParseValue();
@@ -115,6 +136,9 @@ namespace SkinnyJson
                         ConsumeToken();
                         return array;
 
+                    case Token.CurlyClose:
+                        throw new Exception("Parser state exception at " + index + ": advanced too far in an array.");
+
                     default:
                         {
                             array.Add(ParseValue());
@@ -153,7 +177,7 @@ namespace SkinnyJson
                     return null;
             }
 
-            throw new Exception("Unrecognized token at index" + index);
+            throw new Exception("Unrecognized token '" + lookAheadChar + "' at index " + index + " while looking for a value");
         }
 
         private string ParseString()
@@ -162,41 +186,35 @@ namespace SkinnyJson
 
             s.Length = 0;
 
-            int runIndex = -1;
-
-            while (index < json.Length)
+            while (true)
             {
-                var c = json[index++];
+                index++;
+                var next = json.Read();
+                if (next <= 0) break;
+                var c = (char)next;
+                lookAheadChar = c;
 
-                if (c == '"')
+                if (c == '"') // end of string, not in escape
                 {
-                    if (runIndex != -1)
-                    {
-                        if (s.Length == 0)
-                            return new string(json, runIndex, index - runIndex - 1);
-
-                        s.Append(json, runIndex, index - runIndex - 1);
-                    }
                     return s.ToString();
                 }
 
-                if (c != '\\')
+                if (c != '\\') // not end, not escape
                 {
-                    if (runIndex == -1)
-                        runIndex = index - 1;
-
+                    s.Append(c);
                     continue;
                 }
 
-                if (index == json.Length) break;
+                // now we are in an escape sequence
+                
+                // grab the escape char
+                index++;
+                next = json.Read();
+                if (next <= 0) break;
+                var c2 = (char)next;
+                lookAheadChar = c2;
 
-                if (runIndex != -1)
-                {
-                    s.Append(json, runIndex, index - runIndex - 1);
-                    runIndex = -1;
-                }
-
-                switch (json[index++])
+                switch (c2)
                 {
                     case '"':
                         s.Append('"');
@@ -232,11 +250,15 @@ namespace SkinnyJson
 
                     case 'u':
                         {
-                            int remainingLength = json.Length - index;
-                            if (remainingLength < 4) break;
+                            var ua = json.Read();
+                            var ub = json.Read();
+                            var uc = json.Read();
+                            var ud = json.Read();
+
+                            if (ua <= 0 || ub <= 0 || uc <= 0 || ud <= 0) break;
 
                             // parse the 32 bit hex into an integer codepoint
-                            uint codePoint = ParseUnicode(json[index], json[index + 1], json[index + 2], json[index + 3]);
+                            uint codePoint = ParseUnicode(ua, ub, uc, ud);
                             s.Append((char)codePoint);
 
                             // skip 4 chars
@@ -246,10 +268,10 @@ namespace SkinnyJson
                 }
             }
 
-            throw new Exception("Unexpectedly reached end of string");
+            throw new Exception("Unexpectedly reached end of string value");
         }
 
-        private static uint ParseSingleChar(char c1, uint multipliyer)
+        private static uint ParseSingleChar(int c1, uint multipliyer)
         {
             uint p1 = 0;
             if (c1 >= '0' && c1 <= '9')
@@ -261,7 +283,7 @@ namespace SkinnyJson
             return p1;
         }
 
-        private uint ParseUnicode(char c1, char c2, char c3, char c4)
+        private uint ParseUnicode(int c1, int c2, int c3, int c4)
         {
             uint p1 = ParseSingleChar(c1, 0x1000);
             uint p2 = ParseSingleChar(c2, 0x100);
@@ -273,25 +295,30 @@ namespace SkinnyJson
 
         private double ParseNumber()
         {
+            s.Length = 0; // reset string builder
+            s.Append(lookAheadChar); // include first character
             ConsumeToken();
-
-            // Need to start back one place because the first digit is also a token and would have been consumed
-            var startIndex = index - 1;
 
             do
             {
-                var c = json[index];
+                var next = json.Peek();
+                if (next <= 0) throw new Exception("Unexpected end of string whilst parsing number");
+                var c = (char)next;
+                lookAheadChar = c;
 
                 if ((c >= '0' && c <= '9') || c == '.' || c == '-' || c == '+' || c == 'e' || c == 'E')
                 {
-                    if (++index == json.Length) throw new Exception("Unexpected end of string whilst parsing number");
+                    s.Append(c);
+                    json.Read();
+                    index++;
                     continue;
                 }
-
                 break;
             } while (true);
 
-            return double.Parse(new string(json, startIndex, index - startIndex));
+            if (double.TryParse(s.ToString(), out var result)) return result;
+
+            throw new Exception("Incorrect number format at "+index+": '"+s+"'");
         }
 
         private Token LookAhead()
@@ -308,15 +335,18 @@ namespace SkinnyJson
 
         private void ConsumeLine()
         {
-            char c;
             // Skip until new line
-            do
+            while (true)
             {
-                c = json[index];
+                
+                index++;
+                var next = json.Read();
+                if (next <= 0) break;
+                lookAheadChar = (char)next;
 
-                if (c == '\n' || c == '\r') break;
+                if (lookAheadChar == '\n' || lookAheadChar == '\r') break;
 
-            } while (++index < json.Length);
+            }
             lookAheadToken = Token.None;
         }
 
@@ -331,28 +361,24 @@ namespace SkinnyJson
 
         private Token NextTokenCore()
         {
-            char c;
+            int next;
 
-            // Skip past whitespace
-            do
+            // Read next non-whitespace char
+            while (true)
             {
-                c = json[index];
+                next = json.Read();
+                if (next <= 0) break;
+                index++;
+                lookAheadChar = (char)next;
 
+                var c = lookAheadChar;
                 if (c > ' ') break;
                 if (c != ' ' && c != '\t' && c != '\n' && c != '\r') break;
-
-            } while (++index < json.Length);
-
-            if (index == json.Length)
-            {
-                throw new Exception("Reached end of string unexpectedly");
             }
+            
+            if (next <= 0) throw new Exception("Reached end of input unexpectedly");
 
-            c = json[index];
-
-            index++;
-
-            switch (c)
+            switch (lookAheadChar)
             {
                 case '{':
                     return Token.CurlyOpen;
@@ -381,11 +407,7 @@ namespace SkinnyJson
                     return Token.Colon;
 
                 case 'f':
-                    if (json.Length - index >= 4 &&
-                        json[index + 0] == 'a' &&
-                        json[index + 1] == 'l' &&
-                        json[index + 2] == 's' &&
-                        json[index + 3] == 'e')
+                    if (NextCharsAre('a', 'l', 's', 'e'))
                     {
                         index += 4;
                         return Token.False;
@@ -393,10 +415,7 @@ namespace SkinnyJson
                     break;
 
                 case 't':
-                    if (json.Length - index >= 3 &&
-                        json[index + 0] == 'r' &&
-                        json[index + 1] == 'u' &&
-                        json[index + 2] == 'e')
+                    if (NextCharsAre('r', 'u', 'e'))
                     {
                         index += 3;
                         return Token.True;
@@ -404,10 +423,7 @@ namespace SkinnyJson
                     break;
 
                 case 'n':
-                    if (json.Length - index >= 3 &&
-                        json[index + 0] == 'u' &&
-                        json[index + 1] == 'l' &&
-                        json[index + 2] == 'l')
+                    if (NextCharsAre('u', 'l', 'l'))
                     {
                         index += 3;
                         return Token.Null;
@@ -415,8 +431,7 @@ namespace SkinnyJson
                     break;
 
                 case '/':
-                    if (json.Length - index >= 1 &&
-                        json[index + 0] == '/')
+                    if (NextCharsAre('/')) // double slash line comment (not standard JSON)
                     {
                         index += 1;
                         return Token.Comment;
@@ -426,6 +441,18 @@ namespace SkinnyJson
             }
 
             throw new Exception("Could not find token at index " + --index);
+        }
+
+        private bool NextCharsAre(params char[] cs)
+        {
+            for (int i = 0; i < cs.Length; i++)
+            {
+                var next = json.Read();
+                if (next <= 0) return false;
+                lookAheadChar = (char)next;
+                if (lookAheadChar != cs[i]) return false;
+            }
+            return true;
         }
     }
 }

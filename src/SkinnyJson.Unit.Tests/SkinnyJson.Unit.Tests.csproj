@@ -46,6 +46,7 @@
     <Compile Include="BeautifyTests.cs" />
     <Compile Include="ChangingSettings.cs" />
     <Compile Include="ClarityTests.cs" />
+    <Compile Include="CloningTests.cs" />
     <Compile Include="CommentingTests.cs" />
     <Compile Include="DynamicTypeTests.cs" />
     <Compile Include="Helpers\ChainedClass.cs" />
