@@ -49,10 +49,12 @@
     <Compile Include="Formatter.cs" />
     <Compile Include="Getters.cs" />
     <Compile Include="Json.cs" />
+    <Compile Include="JsonParameters.cs" />
     <Compile Include="JsonParser.cs" />
     <Compile Include="JsonSerializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SafeDictionary.cs" />
+    <Compile Include="TypePropertyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

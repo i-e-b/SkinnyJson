@@ -13,83 +13,9 @@ using System.Text;
 namespace SkinnyJson
 {
     /// <summary>
-    /// Parameters for serialising and deserialising.
+    /// SkinnyJson entry point. Use the static methods of this class to interact with JSON data
     /// </summary>
-    public class JsonParameters
-    {
-// ReSharper disable RedundantDefaultFieldInitializer
-        /// <summary>
-        /// Use a special format for Sql Datasets. Default true
-        /// </summary>
-        public bool UseOptimizedDatasetSchema = true;
-
-        /// <summary>
-        /// Use Base64 encoding for Guids. If false, uses Hex.
-        /// Default true
-        /// </summary>
-        public bool UseFastGuid = true;
-
-        /// <summary>
-        /// Insert null values into JSON output. Otherwise remove field.
-        /// Default true
-        /// </summary>
-        public bool SerializeNullValues = true;
-
-        /// <summary>
-        /// Force datetimes to UTC. Default true
-        /// </summary>
-        public bool UseUtcDateTime = true;
-
-        /// <summary>
-        /// Serialise properties that can't be written on deserialise. Default false
-        /// </summary>
-        public bool ShowReadOnlyProperties = false;
-
-        /// <summary>
-        /// Declare types once at the start of a document. Otherwise declare in each object.
-        /// Default true, but overridden by `EnableAnonymousTypes`
-        /// </summary>
-        public bool UsingGlobalTypes = true;
-
-        /// <summary>
-        /// Allow case insensitive matching on deserialise. Default false
-        /// </summary>
-        public bool IgnoreCaseOnDeserialize = false;
-
-        /// <summary>
-        /// Default true. If false, source type information will be included in serialised output.<para></para>
-        /// Sets `UseExtensions` and `UsingGlobalTypes` to false.
-        /// Directly serialising an anonymous type will use these settings for that call, without needing a global setting.
-        /// </summary>
-        public bool EnableAnonymousTypes = true;
-
-        /// <summary>
-        /// Add type and schema information to output JSON, using $type, $types, $schema and $map properties.
-        /// Default true, but overridden by `EnableAnonymousTypes`
-        /// </summary>
-        public bool UseExtensions = true;
-// ReSharper restore RedundantDefaultFieldInitializer
-
-        internal JsonParameters Clone()
-        {
-            return new JsonParameters { 
-                EnableAnonymousTypes = EnableAnonymousTypes,
-                IgnoreCaseOnDeserialize = IgnoreCaseOnDeserialize,
-                SerializeNullValues = SerializeNullValues,
-                ShowReadOnlyProperties = ShowReadOnlyProperties,
-                UseExtensions = UseExtensions,
-                UseFastGuid = UseFastGuid,
-                UseOptimizedDatasetSchema = UseOptimizedDatasetSchema,
-                UseUtcDateTime = UseUtcDateTime,
-                UsingGlobalTypes = UsingGlobalTypes
-            };
-        }
-    }
-
-    /// <summary>
-    /// SkinnyJson entry point
-    /// </summary>
-    public class Json
+    public partial class Json
     {
 		/// <summary> Turn an object into a JSON string </summary>
 		public static string Freeze(object obj)
@@ -114,7 +40,6 @@ namespace SkinnyJson
 		{
 			return Instance.ToObject(json, null);
 		}
-
         
         /// <summary> Turn a JSON string into a detected object </summary>
         public static object Defrost(Stream json)
@@ -154,11 +79,11 @@ namespace SkinnyJson
             if (string.IsNullOrWhiteSpace(path)) {
                 return new[] { Defrost<T>(json) };
             }
-
-            return null;
+            
+            return Instance.SelectObjects<T>(json, path);
         }
-		
-		/// <summary> Create a copy of an object through serialisation </summary>
+
+        /// <summary> Create a copy of an object through serialisation </summary>
         public static T Clone<T>(T obj)
         {
             return Defrost<T>(Freeze(obj));
@@ -203,6 +128,11 @@ namespace SkinnyJson
             return ht == null ? null : Instance.ParseDictionary(ht, null, input.GetType(), input);
         }
 
+        /// <summary>
+        /// You can set these parameters globally for all calls
+        /// </summary>
+        public static JsonParameters DefaultParameters = new JsonParameters();
+
     	internal static readonly Json Instance = new Json();
         private Json(){
             DefaultParameters = DefaultParameters ?? new JsonParameters();
@@ -222,10 +152,6 @@ namespace SkinnyJson
         }
 
         // ReSharper disable once FieldCanBeMadeReadOnly.Local
-        /// <summary>
-        /// You can set these paramters globally for all calls
-        /// </summary>
-        public static JsonParameters DefaultParameters = new JsonParameters();
         private JsonParameters jsonParameters;
 
         internal string ToJson(object obj, JsonParameters param)
@@ -234,12 +160,121 @@ namespace SkinnyJson
             if (jsonParameters.EnableAnonymousTypes) { jsonParameters.UseExtensions = false; jsonParameters.UsingGlobalTypes = false; }
             return new JsonSerializer(jsonParameters).ConvertToJson(obj);
         }
+        
+        /// <summary>
+        /// Pick items out of a parsed object using dotted string path
+        /// </summary>
+        private IEnumerable<T> SelectObjects<T>(object json, string path)
+        {
+            var parser = ParserFromStreamOrString(json);
+            var globalTypes = new Dictionary<string, object>();
 
+            var rawObject = parser.Decode();
+            var pathParts = path.Split('.');
+
+            return PathWalk<T>(rawObject, globalTypes, pathParts, 0);
+        }
+
+        /// <summary>
+        /// Recursive helper for SelectObjects˂T˃
+        /// </summary>
+        private IEnumerable<T> PathWalk<T>(object rawObject, Dictionary<string, object> globalTypes, string[] pathParts, int pathIndex)
+        {
+            var type = typeof(T);
+            if (pathIndex >= pathParts.Length) {
+                var container = StrengthenType(type, rawObject, globalTypes); // Really, convert the raw object to the target and output it
+                if (container is IList results) {
+                    foreach (var result in results) { yield return (T)result; }
+                } else if (container is T result){
+                    yield return result;
+                } else {
+                    yield break;
+                }
+                    
+                yield break;
+            }
+            var step = pathParts[pathIndex];
+            
+            switch (rawObject)
+            {
+                case Dictionary<string, object> objects:
+                    {
+                        if (objects.ContainsKey(step)) {
+                            var elems = PathWalk<T>(objects[step], globalTypes, pathParts, pathIndex + 1);
+                            foreach (var elem in elems) { yield return elem; }
+                        }
+                        yield break;
+                    }
+
+                case ArrayList arrayList:
+                    {
+                        foreach (var item in arrayList)
+                        {
+                            var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex); // ignore arrays while walking path name elements
+                            foreach (var elem in elems) { yield return elem; }
+                        }
+                        yield break;
+                    }
+
+                default:
+                    throw new Exception("Don't understand this JSON");
+            }
+        }
+
+        /// <summary>
+        /// Create a new object by type, using input json data
+        /// </summary>
+        /// <param name="json">Either a stream of utf-8 data or an in-memory `string`</param>
+        /// <param name="type">Target return type</param>
         internal object ToObject(object json, Type type)
         {
 			jsonParameters = jsonParameters ?? DefaultParameters;
 			var globalTypes = new Dictionary<string, object>();
 			
+            var parser = ParserFromStreamOrString(json);
+
+            var decodedObject = parser.Decode();
+			return StrengthenType(type, decodedObject, globalTypes);
+
+        }
+
+        /// <summary>
+        /// Try to decode a parsed json object into a new type instance
+        /// </summary>
+        /// <param name="type">Target output type</param>
+        /// <param name="decodedObject">raw memory map of json</param>
+        /// <param name="globalTypes">cache of typematches</param>
+        private object StrengthenType(Type type, object decodedObject, Dictionary<string, object> globalTypes)
+        {
+            switch (decodedObject)
+            {
+                case Dictionary<string, object> objects:
+                    return ParseDictionary(objects, globalTypes, type, null);
+
+                case ArrayList arrayList when type.IsArray:
+                    return arrayList.ToArray(type.GetElementType() ?? typeof(object));
+
+                case ArrayList arrayList:
+                    var containedType = type.GetGenericArguments().SingleOrDefault() ?? type;
+                    var list = (IList) Activator.CreateInstance(GenericListType(containedType));
+                    foreach (var obj in arrayList)
+                    {
+                        var parsed = ParseDictionary((Dictionary<string, object>) obj, globalTypes, containedType, null);
+                        if (parsed != null) list.Add(parsed);
+                    }
+
+                    return list;
+
+                default:
+                    throw new Exception("Don't understand this JSON");
+            }
+        }
+
+        /// <summary>
+        /// Pass in either a string or a stream and get back a parser instance
+        /// </summary>
+        private static JsonParser ParserFromStreamOrString(object json)
+        {
             JsonParser parser;
             switch (json)
             {
@@ -253,31 +288,13 @@ namespace SkinnyJson
                     throw new Exception("supplied object is not json data");
             }
 
-            var decodedObject = parser.Decode();
-			switch (decodedObject)
-			{
-			    case Dictionary<string, object> objects:
-			        return ParseDictionary(objects, globalTypes, type, null);
-
-			    case ArrayList arrayList when type.IsArray:
-			        return arrayList.ToArray(type.GetElementType() ?? typeof(object));
-
-			    case ArrayList arrayList:
-			        var containedType = type.GetGenericArguments().Single();
-			        var list = (IList)Activator.CreateInstance(GenericListType(containedType));
-			        foreach (var obj in arrayList)
-			        {
-			            list.Add(ParseDictionary((Dictionary<string, object>)obj, globalTypes, containedType, null));
-			        }
-			        return list;
-
-                default:
-                    throw new Exception("Don't understand this JSON");
-            }
-
+            return parser;
         }
 
-	    Type GenericListType(Type containedType)
+        /// <summary>
+        /// Make an IList˂T˃() instance for a runtime type
+        /// </summary>
+        private Type GenericListType(Type containedType)
 	    {
 			var d1 = typeof(List<>);
 			Type[] typeArgs = { containedType };
@@ -285,6 +302,10 @@ namespace SkinnyJson
 	    }
 
 	    readonly SafeDictionary<Type, string> tyname = new SafeDictionary<Type, string>();
+
+        /// <summary>
+        /// Get a shortened string name for a type's containing assembly
+        /// </summary>
         internal string GetTypeAssemblyName(Type t)
         {
             string val;
@@ -304,6 +325,9 @@ namespace SkinnyJson
         	return tyname[t];
         }
 
+        /// <summary>
+        /// Shorten an assembly qualified name
+        /// </summary>
     	static string ShortenName(string assemblyQualifiedName) {
 			var one = assemblyQualifiedName.IndexOf(',');
 			var two = assemblyQualifiedName.IndexOf(',', one+1);
@@ -311,6 +335,10 @@ namespace SkinnyJson
     	}
 
     	readonly SafeDictionary<string, Type> typecache = new SafeDictionary<string, Type>();
+
+        /// <summary>
+        /// Try to get or build a type for a given type-name
+        /// </summary>
         private Type GetTypeFromCache(string typename) {
 			Type val;
 			if (typecache.TryGetValue(typename, out val)) return val;
@@ -337,6 +365,11 @@ namespace SkinnyJson
 
     	readonly SafeDictionary<Type, CreateObject> constrcache = new SafeDictionary<Type, CreateObject>();
         private delegate object CreateObject();
+
+        /// <summary>
+        /// Try to make a new instance of a type.
+        /// Will drop down to 'SlowCreateInstance' in special cases
+        /// </summary>
 		private object FastCreateInstance(Type objtype)
         {
             if (objtype == null) return null;
@@ -407,39 +440,8 @@ namespace SkinnyJson
 
         bool usingGlobals;
 
-    	private struct MyPropInfo
-        {
-// ReSharper disable InconsistentNaming
-            public bool filled;
-            public Type pt;
-            public Type bt;
-            public Type changeType;
-            public bool isDictionary;
-            public bool isValueType;
-            public bool isGenericType;
-            public bool isArray;
-            public bool isByteArray;
-            public bool isGuid;
-            public bool isDataSet;
-            public bool isDataTable;
-            public bool isHashtable;
-            public GenericSetter setter;
-            public bool isEnum;
-            public bool isDateTime;
-            public Type[] GenericTypes;
-            public bool isInt;
-            public bool isLong;
-            public bool isString;
-            public bool isBool;
-            public bool isClass;
-            public GenericGetter getter;
-            public bool isStringDictionary;
-// ReSharper restore InconsistentNaming
-            public bool CanWrite;
-        }
-
         readonly SafeDictionary<Type, List<Getters>> getterCache = new SafeDictionary<Type, List<Getters>>();
-    	readonly SafeDictionary<string, SafeDictionary<string, MyPropInfo>> propertyCache = new SafeDictionary<string, SafeDictionary<string, MyPropInfo>>();
+    	readonly SafeDictionary<string, SafeDictionary<string, TypePropertyInfo>> propertyCache = new SafeDictionary<string, SafeDictionary<string, TypePropertyInfo>>();
         
         internal delegate object GenericGetter(object obj);
 
@@ -448,7 +450,11 @@ namespace SkinnyJson
         /// <param name="key">optional key for dictionaries</param>
         private delegate void GenericSetter(object target, object value, object key);
 
-
+        /// <summary>
+        /// Read a weakly-typed dictionary tree into a strong type. If the keys do not match exactly,
+        /// all matching field/properties will be filled.
+        /// If *no* keys match the target type, this will return `null`
+        /// </summary>
         private object ParseDictionary(IDictionary<string, object> jsonValues, IDictionary<string, object> globaltypes, Type type, object input)
         {
             jsonParameters = jsonParameters ?? DefaultParameters;
@@ -485,15 +491,36 @@ namespace SkinnyJson
 
             if (targetObject == null) return jsonValues; // can't work out what object to fill, send back the raw values
 
-			var props = GetProperties(targetObject.GetType(), targetObject.GetType().Name);
+            var targetType = targetObject.GetType();
+
+			var props = GetProperties(targetType, targetType.Name);
+            if (!IsDictionary(targetType) && NoPropertiesMatch(props.Keys, jsonValues.Keys)) return null;
             foreach (var key in jsonValues.Keys)
             {
                 MapJsonValueToObject(key, targetObject, jsonValues, globaltypes, props);
             }
+
             return targetObject;
         }
 
-    	void MapJsonValueToObject(string objectKey, object targetObject, IDictionary<string, object> jsonValues, IDictionary<string, object> globaltypes, SafeDictionary<string, MyPropInfo> props)
+        private bool IsDictionary(Type targetType)
+        {
+            return targetType.GetInterface("IDictionary") != null;
+        }
+
+        private bool NoPropertiesMatch(string[] props, ICollection<string> jsonValuesKeys)
+        {
+            foreach (var jsonKey in jsonValuesKeys)
+            {
+                if (props.Contains(jsonKey)) return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Map json value dictionary to the properties and fields of a target object instance
+        /// </summary>
+        void MapJsonValueToObject(string objectKey, object targetObject, IDictionary<string, object> jsonValues, IDictionary<string, object> globaltypes, SafeDictionary<string, TypePropertyInfo> props)
     	{
     		var name = objectKey;
     		if (jsonParameters.IgnoreCaseOnDeserialize) name = name.ToLower();
@@ -502,7 +529,7 @@ namespace SkinnyJson
     			ProcessMap(targetObject, props, (Dictionary<string, object>) jsonValues[name]);
     			return;
     		}
-    		MyPropInfo pi;
+    		TypePropertyInfo pi;
     		if (props.TryGetValue(name, out pi) == false) {
                 if (targetObject is IDictionary) {
                     var ok = props.TryGetValue("Item", out pi);
@@ -560,7 +587,10 @@ namespace SkinnyJson
     		if (pi.CanWrite) WriteValueToTypeInstance(name, targetObject, pi, oset);
     	}
 
-        static void WriteValueToTypeInstance(string name, object targetObject, MyPropInfo pi, object oset) {
+        /// <summary>
+        /// Inject a value into an object's property
+        /// </summary>
+        static void WriteValueToTypeInstance(string name, object targetObject, TypePropertyInfo pi, object oset) {
             try
             {
                 var typ = targetObject.GetType();
@@ -588,15 +618,19 @@ namespace SkinnyJson
             }
         }
 
-        SafeDictionary<string, MyPropInfo> GetProperties(Type type, string typename)
+        /// <summary>
+        /// Read the properties and public fields of a type.
+        /// In special cases, this will also read private fields
+        /// </summary>
+        SafeDictionary<string, TypePropertyInfo> GetProperties(Type type, string typename)
         {
             bool usePrivateFields = 
                 typename.StartsWith("Tuple`")
                 || IsAnonymousType(type);
 
-            SafeDictionary<string, MyPropInfo> sd;
+            SafeDictionary<string, TypePropertyInfo> sd;
             if (propertyCache.TryGetValue(typename, out sd)) return sd;
-        	sd = new SafeDictionary<string, MyPropInfo>();
+        	sd = new SafeDictionary<string, TypePropertyInfo>();
 
 			var pr = new List<PropertyInfo>();
 
@@ -658,6 +692,9 @@ namespace SkinnyJson
             return name.Substring(1, idx - 1);
         }
 
+        /// <summary>
+        /// Return a list of propery/field access proxies for a type
+        /// </summary>
         internal List<Getters> GetGetters(Type type)
         {
             List<Getters> val;
@@ -687,9 +724,12 @@ namespace SkinnyJson
             return getters;
         }
 
-        static MyPropInfo CreateMyProp(Type t)
+        /// <summary>
+        /// Read reflection data for a type
+        /// </summary>
+        static TypePropertyInfo CreateMyProp(Type t)
         {
-        	var d = new MyPropInfo {filled = true, CanWrite = true, pt = t, isDictionary = t.Name.Contains("Dictionary")};
+        	var d = new TypePropertyInfo {filled = true, CanWrite = true, pt = t, isDictionary = t.Name.Contains("Dictionary")};
         	if (d.isDictionary) d.GenericTypes = t.GetGenericArguments();
 
             d.isValueType = t.IsValueType;
@@ -717,6 +757,9 @@ namespace SkinnyJson
             return d;
         }
 
+        /// <summary>
+        /// Try to create a value-setting proxy for an object property
+        /// </summary>
         static GenericSetter CreateSetMethod(PropertyInfo propertyInfo)
         {
             if (propertyInfo.GetSetMethod(true) == null) return null;
@@ -729,6 +772,9 @@ namespace SkinnyJson
             return (a, b, k) => throw new Exception("Multiple index data types are not supported");
         }
 
+        /// <summary>
+        /// Create a value-reading proxy for an object field
+        /// </summary>
         static GenericGetter CreateGetField(Type type, FieldInfo fieldInfo)
         {
             var dynamicGet = new DynamicMethod("_"+fieldInfo.Name
@@ -743,6 +789,9 @@ namespace SkinnyJson
             return (GenericGetter)dynamicGet.CreateDelegate(typeof(GenericGetter));
         }
 
+        /// <summary>
+        /// Create a value-setting proxy for an object field
+        /// </summary>
         static GenericSetter CreateSetField(Type type, FieldInfo fieldInfo)
         {
             var arguments = new[] { typeof(object), typeof(object), typeof(object) };
@@ -759,6 +808,10 @@ namespace SkinnyJson
             return (GenericSetter)dynamicSet.CreateDelegate(typeof(GenericSetter));
         }
 
+        
+        /// <summary>
+        /// Try to create a value-reading proxy for an object property
+        /// </summary>
         static GenericGetter CreateGetMethod(PropertyInfo propertyInfo)
         {
             var getMethod = propertyInfo.GetGetMethod();
@@ -782,6 +835,9 @@ namespace SkinnyJson
             return (GenericGetter)getter.CreateDelegate(typeof(GenericGetter));
         }
 
+        /// <summary>
+        /// Convert between runtime types
+        /// </summary>
         static object ChangeType(object value, Type conversionType)
         {
             if (conversionType == typeof(int)) return (int)CreateLong(value);
@@ -792,7 +848,7 @@ namespace SkinnyJson
         	return Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
         }
 
-    	static void ProcessMap(object obj, SafeDictionary<string, MyPropInfo> props, Dictionary<string, object> dic)
+    	static void ProcessMap(object obj, SafeDictionary<string, TypePropertyInfo> props, Dictionary<string, object> dic)
         {
             foreach (var kv in dic)
             {

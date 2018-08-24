@@ -57,7 +57,7 @@ namespace SkinnyJson
             }
             return true;
         }
-        
+
         /// <summary>
         /// Syntax: dyn.path.elems[0]()
         /// Try to directly invoke an instance
@@ -120,18 +120,17 @@ namespace SkinnyJson
 
             if (indexes.Length != 1) throw new ArgumentException("Multi-dimensional indexes not allowed (at " + GetChainString() + ")");
 
-            if (indexes[0] is int i)
+            switch (indexes[0])
             {
-                if (!(targ is ArrayList arr)) return false;
-                arr[i] = value;
-                return true;
-            }
-            else if (indexes[0] is string s)
-            {
-                if (!(targ is Dictionary<string, object> dict))return false;
-                if (dict.ContainsKey(s)) dict[s] = value;
-                else dict.Add(s, value);
-                return true;
+                case int i:
+                    if (!(targ is ArrayList arr)) return false;
+                    arr[i] = value;
+                    return true;
+                case string s:
+                    if (!(targ is Dictionary<string, object> dict)) return false;
+                    if (dict.ContainsKey(s)) dict[s] = value;
+                    else dict.Add(s, value);
+                    return true;
             }
 
             return false;

@@ -55,49 +55,65 @@ namespace SkinnyJson
 		/// This is the root of the serialiser.
 		/// </summary>
         private void WriteValue(object obj)
-        {
-            if (obj == null || obj is DBNull)
-                output.Append("null");
+		{
+		    switch (obj)
+		    {
+		        case null:
+		        case DBNull _:
+		            output.Append("null");
+		            break;
+		        case string _:
+		        case char _:
+		            WriteString((string)obj);
+		            break;
+		        case Guid guid:
+		            WriteGuid(guid);
+		            break;
+		        case bool b:
+		            output.Append(b ? "true" : "false"); // conform to standard
+		            break;
+		        default:
+		            if (isNumericPrimitive(obj))
+		                output.Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo));
 
-            else if (obj is string || obj is char)
-                WriteString((string)obj);
-
-            else if (obj is Guid)
-                WriteGuid((Guid)obj);
-
-            else if (obj is bool)
-                output.Append(((bool)obj) ? "true" : "false"); // conform to standard
-
-            else if (isNumericPrimitive(obj))
-                output.Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo));
-
-            else if (obj is DateTime)
-                WriteDateTime((DateTime)obj);
-
-            else if (obj is IDictionary && obj.GetType().IsGenericType && obj.GetType().GetGenericArguments()[0] == typeof(string))
-                WriteStringDictionary((IDictionary)obj);
-
-            else if (obj is IDictionary)
-                WriteDictionary((IDictionary)obj);
-            else if (obj is DataSet)
-                WriteDataset((DataSet)obj);
-
-            else if (obj is DataTable)
-                WriteDataTable((DataTable)obj);
-            else if (obj is byte[])
-                WriteBytes((byte[])obj);
-
-            else if (obj is Array || obj is IList || obj is ICollection)
-                WriteArray((IEnumerable)obj);
-
-            else if (obj is IEnumerable)
-                WriteArray((IEnumerable)obj);
-
-            else if (obj is Enum)
-                WriteEnum((Enum)obj);
-            else
-                WriteObject(obj);
-        }
+		            else switch (obj)
+		            {
+		                case DateTime time:
+		                    WriteDateTime(time);
+		                    break;
+		                case IDictionary dictionary when dictionary.GetType().IsGenericType && dictionary.GetType().GetGenericArguments()[0] == typeof(string):
+		                    WriteStringDictionary(dictionary);
+		                    break;
+		                case IDictionary dictionary1:
+		                    WriteDictionary(dictionary1);
+		                    break;
+		                case DataSet set:
+		                    WriteDataset(set);
+		                    break;
+		                case DataTable table:
+		                    WriteDataTable(table);
+		                    break;
+		                case byte[] bytes:
+		                    WriteBytes(bytes);
+		                    break;
+		                case Array _:
+		                case IList _:
+		                case ICollection _:
+		                    WriteArray((IEnumerable)obj);
+		                    break;
+		                case IEnumerable enumerable:
+		                    WriteArray(enumerable);
+		                    break;
+		                case Enum enumeration:
+		                    WriteEnum(enumeration);
+		                    break;
+		                default:
+		                    WriteObject(obj);
+		                    break;
+		            }
+		            break;
+		    }
+		}
 
 	    static bool isNumericPrimitive(object obj)
 	    {
