@@ -1,11 +1,11 @@
 ﻿using System;
 using System.IO;
 using System.Text;
-// ReSharper disable InconsistentNaming
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
+// ReSharper disable InconsistentNaming
 namespace SkinnyJson.Unit.Tests {
     [TestFixture]
 	public class FreezingAndUnfreezing {

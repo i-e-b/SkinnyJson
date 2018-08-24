@@ -49,15 +49,16 @@ namespace SkinnyJson
             this.json = new StringReader(json);
             this.ignorecase = ignorecase;
         }
-        
+
         /// <summary>
         /// Create a parser for an JSON string accessible as a stream
         /// </summary>
         /// <param name="json">The input JSON stream</param>
         /// <param name="ignorecase">If `true`, all property names will be lowercased</param>
-        public JsonParser(Stream json, bool ignorecase)
+        /// <param name="encoding">String encoding to use</param>
+        public JsonParser(Stream json, bool ignorecase, Encoding encoding)
         {
-            this.json = new StreamReader(json);
+            this.json = new StreamReader(json, encoding);
             this.ignorecase = ignorecase;
         }
 

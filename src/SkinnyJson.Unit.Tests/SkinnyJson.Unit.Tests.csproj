@@ -49,6 +49,7 @@
     <Compile Include="CloningTests.cs" />
     <Compile Include="CommentingTests.cs" />
     <Compile Include="DynamicTypeTests.cs" />
+    <Compile Include="FileStreamTests.cs" />
     <Compile Include="Helpers\ChainedClass.cs" />
     <Compile Include="Helpers\ChainedInterface.cs" />
     <Compile Include="Helpers\ComplexTypes.cs" />

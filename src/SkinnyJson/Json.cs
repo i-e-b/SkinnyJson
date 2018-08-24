@@ -17,6 +17,12 @@ namespace SkinnyJson
     /// </summary>
     public partial class Json
     {
+        /// <summary>
+        /// String encoding to use for streams, when no specific encoding is provided.
+        /// Initial value is UTF8.
+        /// </summary>
+        public static Encoding DefaultStreamEncoding = new UTF8Encoding(false);
+
 		/// <summary> Turn an object into a JSON string </summary>
 		public static string Freeze(object obj)
 		{
@@ -36,8 +42,10 @@ namespace SkinnyJson
 		}
 
         /// <summary> Write an object to a stream as a JSON string </summary>
-        public static void Freeze(object obj, Stream target)
+        public static void Freeze(object obj, Stream target, Encoding encoding = null)
         {
+            if (encoding == null) encoding = DefaultStreamEncoding;
+
             if (obj is DynamicWrapper dyn) {
                 Freeze(dyn.Parsed, target);
             }
@@ -48,21 +56,21 @@ namespace SkinnyJson
                 jsonParameters.UsingGlobalTypes = false;
                 jsonParameters.EnableAnonymousTypes = true;
 
-                Instance.ToJsonStream(obj, target, jsonParameters);
+                Instance.ToJsonStream(obj, target, jsonParameters, encoding);
             }
-            Instance.ToJsonStream(obj, target, DefaultParameters);
+            Instance.ToJsonStream(obj, target, DefaultParameters, encoding);
         }
 
         /// <summary> Turn a JSON string into a detected object </summary>
 		public static object Defrost(string json)
 		{
-			return Instance.ToObject(json, null);
+			return Instance.ToObject(json, null, null);
 		}
         
-        /// <summary> Turn a JSON string into a detected object </summary>
-        public static object Defrost(Stream json)
+        /// <summary> Turn a JSON data stream into a detected object </summary>
+        public static object Defrost(Stream json, Encoding encoding = null)
         {
-            return Instance.ToObject(json, null);
+            return Instance.ToObject(json, null, encoding ?? DefaultStreamEncoding);
         }
 
 		/// <summary> Return the type name that SkinnyJson will use for the serialising the object </summary>
@@ -75,8 +83,14 @@ namespace SkinnyJson
 		/// <summary> Turn a JSON string into a specific object </summary>
 		public static T Defrost<T>(string json)
 		{
-			return (T)Instance.ToObject(json, typeof(T));
+			return (T)Instance.ToObject(json, typeof(T), null);
 		}
+        
+        /// <summary> Turn a JSON data stream into a specific object </summary>
+        public static T Defrost<T>(Stream json, Encoding encoding = null)
+        {
+            return (T)Instance.ToObject(json, typeof(T), encoding ?? DefaultStreamEncoding);
+        }
 
         /// <summary> Turn a JSON string into an object containing properties found </summary>
         public static dynamic DefrostDynamic(string json)
@@ -98,7 +112,7 @@ namespace SkinnyJson
                 return new[] { Defrost<T>(json) };
             }
             
-            return Instance.SelectObjects<T>(json, path);
+            return Instance.SelectObjects<T>(json, path, null);
         }
 
         /// <summary> Create a copy of an object through serialisation </summary>
@@ -179,19 +193,19 @@ namespace SkinnyJson
             return new JsonSerializer(jsonParameters).ConvertToJson(obj);
         }
 
-        internal void ToJsonStream(object obj, Stream target, JsonParameters param)
+        internal void ToJsonStream(object obj, Stream target, JsonParameters param, Encoding encoding)
         {
             jsonParameters = param.Clone();
             if (jsonParameters.EnableAnonymousTypes) { jsonParameters.UseExtensions = false; jsonParameters.UsingGlobalTypes = false; }
-            new JsonSerializer(jsonParameters).ConvertToJson(obj, target);
+            new JsonSerializer(jsonParameters).ConvertToJson(obj, target, encoding);
         }
         
         /// <summary>
         /// Pick items out of a parsed object using dotted string path
         /// </summary>
-        private IEnumerable<T> SelectObjects<T>(object json, string path)
+        private IEnumerable<T> SelectObjects<T>(object json, string path, Encoding encoding)
         {
-            var parser = ParserFromStreamOrString(json);
+            var parser = ParserFromStreamOrString(json, encoding);
             var globalTypes = new Dictionary<string, object>();
 
             var rawObject = parser.Decode();
@@ -251,12 +265,13 @@ namespace SkinnyJson
         /// </summary>
         /// <param name="json">Either a stream of utf-8 data or an in-memory `string`</param>
         /// <param name="type">Target return type</param>
-        internal object ToObject(object json, Type type)
+        /// <param name="encoding">String encoding to use, if reading from a stream</param>
+        internal object ToObject(object json, Type type, Encoding encoding)
         {
 			jsonParameters = jsonParameters ?? DefaultParameters;
 			var globalTypes = new Dictionary<string, object>();
 			
-            var parser = ParserFromStreamOrString(json);
+            var parser = ParserFromStreamOrString(json, encoding);
 
             var decodedObject = parser.Decode();
 			return StrengthenType(type, decodedObject, globalTypes);
@@ -298,13 +313,13 @@ namespace SkinnyJson
         /// <summary>
         /// Pass in either a string or a stream and get back a parser instance
         /// </summary>
-        private static JsonParser ParserFromStreamOrString(object json)
+        private static JsonParser ParserFromStreamOrString(object json, Encoding encoding)
         {
             JsonParser parser;
             switch (json)
             {
                 case Stream jsonStream:
-                    parser = new JsonParser(jsonStream, DefaultParameters.IgnoreCaseOnDeserialize);
+                    parser = new JsonParser(jsonStream, DefaultParameters.IgnoreCaseOnDeserialize, encoding);
                     break;
                 case string jsonString:
                     parser = new JsonParser(jsonString, DefaultParameters.IgnoreCaseOnDeserialize);

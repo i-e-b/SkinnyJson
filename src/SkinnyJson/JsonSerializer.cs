@@ -26,11 +26,11 @@ namespace SkinnyJson
         /// Serialise a .Net object to a writable stream.
         /// Ignores the 'globalTypes' setting, will always either write types inline or elide them.
         /// </summary>
-        public void ConvertToJson(object obj, Stream target)
+        public void ConvertToJson(object obj, Stream target, Encoding encoding)
         {
             if (!target.CanWrite) throw new Exception("Output stream must be writable");
 
-            output = new StreamWriter(target);
+            output = new StreamWriter(target, encoding);
             WriteValue(obj);
             output.Flush();
         }

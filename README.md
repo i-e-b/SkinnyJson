@@ -22,6 +22,7 @@ Deserialise a known type:
 ```csharp
 IMyInterface values = Json.Defrost<IMyInterface>(jsonString);
 ```
+
 Serialise any object to JSON:
 ```csharp
 string jsonString = Json.Freeze(myObject);
@@ -56,7 +57,3 @@ string newJson = Json.Edit(oldJson, d => {
 ```
 
 See the test cases for deeper examples
-
-## TO-DO:
-
-* [ ] Selectable Encoding for stream deserialisation
