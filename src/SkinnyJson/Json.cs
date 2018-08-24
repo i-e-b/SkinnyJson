@@ -35,6 +35,24 @@ namespace SkinnyJson
             return Instance.ToJson(obj, DefaultParameters);
 		}
 
+        /// <summary> Write an object to a stream as a JSON string </summary>
+        public static void Freeze(object obj, Stream target)
+        {
+            if (obj is DynamicWrapper dyn) {
+                Freeze(dyn.Parsed, target);
+            }
+            if (IsAnonymousTypedObject(obj))
+            { // If we are passed an anon type, turn off type information -- it will all be junk.
+                var jsonParameters = DefaultParameters.Clone();
+                jsonParameters.UseExtensions = false; 
+                jsonParameters.UsingGlobalTypes = false;
+                jsonParameters.EnableAnonymousTypes = true;
+
+                Instance.ToJsonStream(obj, target, jsonParameters);
+            }
+            Instance.ToJsonStream(obj, target, DefaultParameters);
+        }
+
         /// <summary> Turn a JSON string into a detected object </summary>
 		public static object Defrost(string json)
 		{
@@ -159,6 +177,13 @@ namespace SkinnyJson
             jsonParameters = param.Clone();
             if (jsonParameters.EnableAnonymousTypes) { jsonParameters.UseExtensions = false; jsonParameters.UsingGlobalTypes = false; }
             return new JsonSerializer(jsonParameters).ConvertToJson(obj);
+        }
+
+        internal void ToJsonStream(object obj, Stream target, JsonParameters param)
+        {
+            jsonParameters = param.Clone();
+            if (jsonParameters.EnableAnonymousTypes) { jsonParameters.UseExtensions = false; jsonParameters.UsingGlobalTypes = false; }
+            new JsonSerializer(jsonParameters).ConvertToJson(obj, target);
         }
         
         /// <summary>

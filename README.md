@@ -59,5 +59,4 @@ See the test cases for deeper examples
 
 ## TO-DO:
 
-* [ ] Streaming serialisation (including type def outputs)
 * [ ] Selectable Encoding for stream deserialisation

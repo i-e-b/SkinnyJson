@@ -1,4 +1,7 @@
-﻿using System; // ReSharper disable InconsistentNaming
+﻿using System;
+using System.IO;
+using System.Text;
+// ReSharper disable InconsistentNaming
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -212,7 +215,21 @@ namespace SkinnyJson.Unit.Tests {
         [Test]
         public void Can_serialise_to_a_stream ()
         {
-            Assert.Inconclusive("Not yet implemented");
+            
+            Json.DefaultParameters.EnableAnonymousTypes = true;
+            var input = ComplexTypes.DictionaryOfDictionaryOfTupleWithList();
+            var expected = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":4,\"Item3\":[10,20,30]}}}";
+
+            var ms = new MemoryStream();
+
+            Json.Freeze(input, ms);
+
+
+            ms.Seek(0, SeekOrigin.Begin);
+            var actual = Encoding.UTF8.GetString(ms.ToArray());
+
+            Assert.That(actual, Is.EqualTo(expected));
+            Json.DefaultParameters.EnableAnonymousTypes = false;
         }
 
 	}
