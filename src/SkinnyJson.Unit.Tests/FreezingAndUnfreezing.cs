@@ -232,5 +232,20 @@ namespace SkinnyJson.Unit.Tests {
             Json.DefaultParameters.EnableAnonymousTypes = false;
         }
 
-	}
+        [Test]
+        public void Can_defrost_from_a_byte_array()
+        {
+            Json.DefaultParameters.EnableAnonymousTypes = true;
+            var input = ByteData.ByteArrayOfJson();
+            var expected = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":4,\"Item3\":[10,20,30]}}}";
+
+            
+            var defrosted = Json.Defrost(input) as Dictionary<string, object>;
+            var interpreted = Json.Freeze(defrosted);
+
+            Assert.That(defrosted, Is.Not.Null);
+            Assert.That(interpreted, Is.EqualTo(expected));
+            Json.DefaultParameters.EnableAnonymousTypes = false;
+        }
+    }
 }

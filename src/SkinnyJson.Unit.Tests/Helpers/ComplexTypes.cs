@@ -20,6 +20,16 @@ namespace SkinnyJson.Unit.Tests {
         }
     }
 
+    public class ByteData
+    {
+        public static byte[] ByteArrayOfJson()
+        {
+            var stringForm = Json.Freeze(ComplexTypes.DictionaryOfDictionaryOfTupleWithList());
+            var bytes = Encoding.UTF8.GetBytes(stringForm);
+            return bytes;
+        }
+    }
+
     public class ComplexTypes {
 		public static IDictionary<string, Dictionary<string, string>> DictionaryOfDictionary() {
 			var x = new Dictionary<string, Dictionary<string, string>>();

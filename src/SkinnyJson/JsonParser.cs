@@ -63,6 +63,18 @@ namespace SkinnyJson
         }
 
         /// <summary>
+        /// Create a parser for an JSON byte array loaded in memory
+        /// </summary>
+        /// <param name="json">The input JSON byte array</param>
+        /// <param name="ignorecase">If `true`, all property names will be lowercased</param>
+        public JsonParser(byte[] json, bool ignorecase)
+        {
+            var jsonBytesString = Encoding.UTF8.GetString(json);
+            this.json = new StringReader(jsonBytesString);
+            this.ignorecase = ignorecase;
+        }
+
+        /// <summary>
         /// Decode the provided JSON into an object representation
         /// </summary>
         public object Decode()
