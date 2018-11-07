@@ -66,6 +66,12 @@ namespace SkinnyJson
 		{
 			return Instance.ToObject(json, null, null);
 		}
+
+        /// <summary> Turn a JSON byte array into a detected object </summary>
+        public static object Defrost(byte[] json)
+        {
+            return Instance.ToObject(json, null, null);
+        }
         
         /// <summary> Turn a JSON data stream into a detected object </summary>
         public static object Defrost(Stream json, Encoding encoding = null)
@@ -205,7 +211,7 @@ namespace SkinnyJson
         /// </summary>
         private IEnumerable<T> SelectObjects<T>(object json, string path, Encoding encoding)
         {
-            var parser = ParserFromStreamOrString(json, encoding);
+            var parser = ParserFromStreamOrStringOrBytes(json, encoding);
             var globalTypes = new Dictionary<string, object>();
 
             var rawObject = parser.Decode();
@@ -271,7 +277,7 @@ namespace SkinnyJson
 			jsonParameters = jsonParameters ?? DefaultParameters;
 			var globalTypes = new Dictionary<string, object>();
 			
-            var parser = ParserFromStreamOrString(json, encoding);
+            var parser = ParserFromStreamOrStringOrBytes(json, encoding);
 
             var decodedObject = parser.Decode();
 			return StrengthenType(type, decodedObject, globalTypes);
@@ -313,7 +319,7 @@ namespace SkinnyJson
         /// <summary>
         /// Pass in either a string or a stream and get back a parser instance
         /// </summary>
-        private static JsonParser ParserFromStreamOrString(object json, Encoding encoding)
+        private static JsonParser ParserFromStreamOrStringOrBytes(object json, Encoding encoding)
         {
             JsonParser parser;
             switch (json)
@@ -323,6 +329,9 @@ namespace SkinnyJson
                     break;
                 case string jsonString:
                     parser = new JsonParser(jsonString, DefaultParameters.IgnoreCaseOnDeserialize);
+                    break;
+                case byte[] jsonBytes:
+                    parser = new JsonParser(jsonBytes, DefaultParameters.IgnoreCaseOnDeserialize);
                     break;
                 default:
                     throw new Exception("supplied object is not json data");
