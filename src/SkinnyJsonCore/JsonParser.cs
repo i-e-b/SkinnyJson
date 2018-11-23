@@ -381,7 +381,10 @@ namespace SkinnyJson
             {
                 next = json.Read();
                 if (next <= 0) break;
+
                 index++;
+                if (next == 0xFEFF) continue; // BOM
+
                 lookAheadChar = (char)next;
 
                 var c = lookAheadChar;
@@ -453,7 +456,7 @@ namespace SkinnyJson
 
             }
 
-            throw new Exception("Could not find token at index " + --index);
+            throw new Exception("Could not find token at index " + --index + "; Got '" + lookAheadChar + "' "+((int)lookAheadChar).ToString("X2"));
         }
 
         private bool NextCharsAre(params char[] cs)

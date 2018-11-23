@@ -57,3 +57,12 @@ string newJson = Json.Edit(oldJson, d => {
 ```
 
 See the test cases for deeper examples
+
+
+
+   at SkinnyJson.JsonParser.NextTokenCore() in C:\Gits\SkinnyJson\src\SkinnyJsonCore\JsonParser.cs:line 456
+   at SkinnyJson.JsonParser.LookAhead() in C:\Gits\SkinnyJson\src\SkinnyJsonCore\JsonParser.cs:line 341
+   at SkinnyJson.JsonParser.ParseValue() in C:\Gits\SkinnyJson\src\SkinnyJsonCore\JsonParser.cs:line 166
+   at SkinnyJson.Json.ToObject(Object json, Type type, Encoding encoding) in C:\Gits\SkinnyJson\src\SkinnyJsonCore\Json.cs:line 280
+   at SkinnyJson.Json.Defrost[T](String json) in C:\Gits\SkinnyJson\src\SkinnyJsonCore\Json.cs:line 92
+   at ExampleRouter.Internal.AzureServiceBusReceiver.PickupHandler(Message msg, CancellationToken arg2) in C:\Experiments\ServiceBusExperiments\ExampleRouter\Internal\AzureServiceBusReceiver.cs:line 74

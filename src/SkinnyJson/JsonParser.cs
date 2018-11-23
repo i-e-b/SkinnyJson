@@ -381,7 +381,10 @@ namespace SkinnyJson
             {
                 next = json.Read();
                 if (next <= 0) break;
+
                 index++;
+                if (next == 0xFEFF) continue; // BOM
+
                 lookAheadChar = (char)next;
 
                 var c = lookAheadChar;
