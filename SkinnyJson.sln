@@ -1,6 +1,8 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.106
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinnyJson", "src\SkinnyJson\SkinnyJson.csproj", "{EC0CAFCB-260D-462E-B834-2ECDE016BA7D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinnyJson.Unit.Tests", "src\SkinnyJson.Unit.Tests\SkinnyJson.Unit.Tests.csproj", "{88827C30-74DC-4F8C-A0C5-C28017C4C6D1}"
@@ -9,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Info", "Info", "{03EC198A-6
 	ProjectSection(SolutionItems) = preProject
 		README.md = README.md
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinnyJsonCore", "src\SkinnyJsonCore\SkinnyJsonCore.csproj", "{E416DA6F-9484-4BE1-BA77-9A6356A72962}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,8 +28,15 @@ Global
 		{88827C30-74DC-4F8C-A0C5-C28017C4C6D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{88827C30-74DC-4F8C-A0C5-C28017C4C6D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{88827C30-74DC-4F8C-A0C5-C28017C4C6D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E416DA6F-9484-4BE1-BA77-9A6356A72962}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E416DA6F-9484-4BE1-BA77-9A6356A72962}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E416DA6F-9484-4BE1-BA77-9A6356A72962}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E416DA6F-9484-4BE1-BA77-9A6356A72962}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {68DB5AB9-9DCB-4633-9230-42315D287140}
 	EndGlobalSection
 EndGlobal
