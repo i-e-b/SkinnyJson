@@ -98,6 +98,18 @@ namespace SkinnyJson
             return (T)Instance.ToObject(json, typeof(T), encoding ?? DefaultStreamEncoding);
         }
 
+        /// <summary> Turn a JSON byte array into a runtime type </summary>
+        public static object Defrost(byte[] json, Type runtimeType)
+        {
+            return Instance.ToObject(json, runtimeType, null);
+        }
+
+        /// <summary> Turn a JSON data stream into a runtime type </summary>
+        public static object Defrost(Stream json, Type runtimeType, Encoding encoding = null)
+        {
+            return Instance.ToObject(json, runtimeType, encoding);
+        }
+
         /// <summary> Turn a JSON string into an object containing properties found </summary>
         public static dynamic DefrostDynamic(string json)
         {

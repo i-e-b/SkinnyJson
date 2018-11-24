@@ -165,6 +165,12 @@
         <member name="M:SkinnyJson.Json.Defrost``1(System.IO.Stream,System.Text.Encoding)">
             <summary> Turn a JSON data stream into a specific object </summary>
         </member>
+        <member name="M:SkinnyJson.Json.Defrost(System.Byte[],System.Type)">
+            <summary> Turn a JSON byte array into a runtime type </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.Defrost(System.IO.Stream,System.Type,System.Text.Encoding)">
+            <summary> Turn a JSON data stream into a runtime type </summary>
+        </member>
         <member name="M:SkinnyJson.Json.DefrostDynamic(System.String)">
             <summary> Turn a JSON string into an object containing properties found </summary>
         </member>
