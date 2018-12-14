@@ -38,6 +38,7 @@ namespace SkinnyJson.Unit.Tests {
 
 		[Test]
 		public void Should_be_able_to_assert_type_on_boxed_defrost () {
+            Json.DefaultParameters.EnableAnonymousTypes = false;
 			var frozen = Json.Freeze(SimpleObjectUnderInterface.Make());
 			Console.WriteLine(frozen);
 			object defrosted = Json.Defrost(frozen);

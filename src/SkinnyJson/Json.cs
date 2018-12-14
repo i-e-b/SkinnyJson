@@ -97,6 +97,12 @@ namespace SkinnyJson
         {
             return (T)Instance.ToObject(json, typeof(T), encoding ?? DefaultStreamEncoding);
         }
+        
+        /// <summary> Turn a JSON string into a runtime type </summary>
+        public static object Defrost(string json, Type runtimeType)
+        {
+            return Instance.ToObject(json, runtimeType, null);
+        }
 
         /// <summary> Turn a JSON byte array into a runtime type </summary>
         public static object Defrost(byte[] json, Type runtimeType)
@@ -309,23 +315,48 @@ namespace SkinnyJson
                 case Dictionary<string, object> objects:
                     return ParseDictionary(objects, globalTypes, type, null);
 
-                case ArrayList arrayList when type.IsArray:
-                    return arrayList.ToArray(type.GetElementType() ?? typeof(object));
-
                 case ArrayList arrayList:
-                    var containedType = type.GetGenericArguments().SingleOrDefault() ?? type;
-                    var list = (IList) Activator.CreateInstance(GenericListType(containedType));
-                    foreach (var obj in arrayList)
+                    if (type != null && type.IsArray)
                     {
-                        var parsed = ParseDictionary((Dictionary<string, object>) obj, globalTypes, containedType, null);
-                        if (parsed != null) list.Add(parsed);
-                    }
+                        var elementType = type.GetElementType() ?? typeof(object);
+                        var list = ConvertToList(elementType, globalTypes, arrayList);
+                        return ListToArray(list, elementType);
 
-                    return list;
+                    }
+                    else
+                    {
+                        var containedType = type.GetGenericArguments().SingleOrDefault() ?? type;
+                        return ConvertToList(containedType, globalTypes, arrayList);
+                    }
 
                 default:
                     throw new Exception("Don't understand this JSON");
             }
+        }
+
+        private Array ListToArray(IList list, Type elementType)
+        {
+            var x = new ArrayList(list);
+            return x.ToArray(elementType);
+        }
+
+        private IList ConvertToList(Type elementType, Dictionary<string, object> globalTypes, ArrayList arrayList)
+        {
+            var list = (IList) Activator.CreateInstance(GenericListType(elementType));
+            foreach (var obj in arrayList)
+            {
+                if (obj == null) list.Add(obj);
+                else if (obj.GetType().IsAssignableFrom(elementType)) list.Add(obj);
+                else
+                { // a complex type?
+                    var dict = obj as Dictionary<string, object>;
+                    if (dict == null) throw new Exception("Element of array not assignable to the array type");
+                    var parsed = ParseDictionary(dict, globalTypes, elementType, null);
+                    if (parsed != null) list.Add(parsed);
+                }
+            }
+
+            return list;
         }
 
         /// <summary>

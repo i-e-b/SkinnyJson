@@ -165,6 +165,9 @@
         <member name="M:SkinnyJson.Json.Defrost``1(System.IO.Stream,System.Text.Encoding)">
             <summary> Turn a JSON data stream into a specific object </summary>
         </member>
+        <member name="M:SkinnyJson.Json.Defrost(System.String,System.Type)">
+            <summary> Turn a JSON string into a runtime type </summary>
+        </member>
         <member name="M:SkinnyJson.Json.Defrost(System.Byte[],System.Type)">
             <summary> Turn a JSON byte array into a runtime type </summary>
         </member>
