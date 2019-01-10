@@ -991,10 +991,25 @@ namespace SkinnyJson
         	return s.Length > 30 ? new Guid(s) : new Guid(Convert.FromBase64String(s));
         }
 
+        private static readonly string[] DateFormatsInPreferenceOrder = {
+            "yyyy-MM-dd HH:mm:ss", // our output format
+            "yyyy-MM-ddTHH:mm:ss", // correct ISO 8601 'extended'
+            "yyyy-MM-dd H:mm:ss", // Erlang style
+            "yyyy-MM-ddTHH:mm:ssZ", // with zone specifier
+            "yyyy-MM-dd HH:mm:ssZ", // with zone specifier, but no T
+            "yyyy-MM-ddTHHmmss", // ISO 8601 'basic'
+        };
     	static DateTime CreateDateTime(string value)
         {
-			if (value.EndsWith("Z")) return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ssZ", null).ToLocalTime();
-			return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ss", null);
+            if (DateFormatsInPreferenceOrder == null) return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ss", null);
+            foreach (var format in DateFormatsInPreferenceOrder)
+            {
+                if (DateTime.TryParseExact(value, format, null, DateTimeStyles.AssumeLocal, out var dateVal)) {
+                    return dateVal;
+                }
+            }
+            // None of our prefered formats, so let .Net guess
+            return DateTime.Parse(value);
 		}
 
         object CreateArray(IEnumerable data, Type bt, IDictionary<string, object> globalTypes)

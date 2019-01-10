@@ -9,9 +9,9 @@ Nuget:
 
 The default is usually ahead of the strong-named version. If you need an updated version of the Strong-Named package, please open a Github issue.
 
-SkinnyJson has a cleaned-up interface, and handles interface based serialisation much better.
+SkinnyJson has a simple interface, and handles interface based serialisation better than most other .Net json libraries.
 SkinnyJson was designed to handle Event Store messages, and is tuned to
-deal with situations where a common interface declaration is available, but the original serialised objects are not available.
+deal with situations where a common interface declaration is available, but the original serialised objects/types are not available.
 
 To adjust settings globally, look in `SkinnyJson.Json.DefaultParameters`
 
