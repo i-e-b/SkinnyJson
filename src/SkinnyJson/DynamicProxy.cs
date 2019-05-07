@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -36,22 +37,26 @@ namespace SkinnyJson {
 		}
 
 		static DynamicProxy () {
-			var assemblyName = new AssemblyName("DynImpl");
-			DynamicAssembly = AppDomain.CurrentDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndSave);
-			ModuleBuilder = DynamicAssembly.DefineDynamicModule("DynImplModule");
-		}
+            var assemblyName = new AssemblyName("DynImpl");
+#if (NETSTANDARD1_6)
+            DynamicAssembly = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
+#else
+            DynamicAssembly = AppDomain.CurrentDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndSave);
+#endif
+            ModuleBuilder = DynamicAssembly.DefineDynamicModule("DynImplModule");
+        }
 
         static Type GetConstructedType (Type targetType) {
 			var typeBuilder = ModuleBuilder.DefineType(ProxyName(targetType), TypeAttributes.Public);
 
 
-            var gtypes = targetType.GetGenericArguments();
+            var gtypes = GetGenericArguments(targetType);
             if (gtypes.Any())
             {
                 typeBuilder.DefineGenericParameters(gtypes.Select(g=>g.Name).ToArray());
             }
 
-			foreach (var face in targetType.GetInterfaces()) { IncludeType(face, typeBuilder); }
+			foreach (var face in GetInterfaces(targetType)) { IncludeType(face, typeBuilder); }
 
 			IncludeType(targetType, typeBuilder);
 			var ctorBuilder = typeBuilder.DefineConstructor(
@@ -63,7 +68,12 @@ namespace SkinnyJson {
 
             try
             {
+
+#if (NETSTANDARD1_6)
+                return typeBuilder.CreateTypeInfo()?.AsType();
+#else
                 return typeBuilder.CreateType();
+#endif
             }
             catch (TypeLoadException tlex)
             {
@@ -71,8 +81,35 @@ namespace SkinnyJson {
             }
         }
 
+        private static IEnumerable<Type> GetInterfaces(Type targetType)
+        {
+#if (NETSTANDARD1_6)
+            return targetType.GetTypeInfo()?.GetInterfaces();
+#else
+            return targetType.GetInterfaces();
+#endif
+        }
+
+        private static Type[] GetGenericArguments(Type targetType)
+        {
+#if (NETSTANDARD1_6)
+            return targetType.GetTypeInfo()?.GetGenericArguments();
+#else
+            return targetType.GetGenericArguments();
+#endif
+        }
+
+        private static MethodInfo[] GetMethods(Type targetType)
+        {
+#if (NETSTANDARD1_6)
+            return targetType.GetTypeInfo()?.GetMethods();
+#else
+            return targetType.GetMethods();
+#endif
+        }
+
         static void IncludeType (Type typeOfT, TypeBuilder typeBuilder) {
-			var methodInfos = typeOfT.GetMethods();
+			var methodInfos = GetMethods(typeOfT);
 			foreach (var methodInfo in methodInfos) {
 				if (methodInfo.Name.StartsWith("set_")) continue; // we always add a set for a get.
 
@@ -107,10 +144,10 @@ namespace SkinnyJson {
             if (methodInfo.ReturnType == typeof(void)) {
 				methodILGen.Emit(OpCodes.Ret);
 			} else {
-				if (methodInfo.ReturnType.IsValueType || methodInfo.ReturnType.IsEnum) {
-					var getMethod = typeof(Activator).GetMethod("CreateInstance", new[] { typeof(Type) });
+				if (IsValueType(methodInfo.ReturnType) || IsEnum(methodInfo.ReturnType)) {
+					var getMethod = GetMethod(typeof(Activator), "CreateInstance", new[] { typeof(Type) });
 					var lb = methodILGen.DeclareLocal(methodInfo.ReturnType);
-                    var getTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle");
+                    var getTypeFromHandle = GetMethod(typeof(Type), "GetTypeFromHandle");
 
 				    if (lb.LocalType == null) return;
                     if (getMethod == null) return;
@@ -127,6 +164,37 @@ namespace SkinnyJson {
 			}
 
             typeBuilder.DefineMethodOverride(methodBuilder, methodInfo);
+        }
+
+        private static MethodInfo GetMethod(Type type, string name, Type[] types = null)
+        {
+            if (type == null || name == null) return null;
+#if (NETSTANDARD1_6)
+            return type.GetTypeInfo()?.GetMethod(name, types);
+#else
+            if (types == null) {
+                return type.GetMethod(name);
+            } else {
+                return type.GetMethod(name, types);
+            }
+#endif
+        }
+
+        private static bool IsValueType(Type t)
+        {
+#if (NETSTANDARD1_6)
+            return t.GetTypeInfo()?.IsValueType ?? false;
+#else
+            return t.IsValueType;
+#endif
+        }
+        private static bool IsEnum(Type t)
+        {
+#if (NETSTANDARD1_6)
+            return t.GetTypeInfo()?.IsEnum ?? false;
+#else
+            return t.IsEnum;
+#endif
         }
 
         static void BindProperty (TypeBuilder typeBuilder, MethodInfo methodInfo) {

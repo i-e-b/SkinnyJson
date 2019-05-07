@@ -1,14 +1,16 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.Serialization;
 using System.Text;
+
+using System.Data;
+using System.Runtime.Serialization;
+using Microsoft.Extensions.PlatformAbstractions;
 
 namespace SkinnyJson
 {
@@ -201,10 +203,18 @@ namespace SkinnyJson
             return IsAnonymousType(obj.GetType());
         }
 
+        private static TypeAttributes GetTypeAttr(Type type) {
+#if (NETSTANDARD1_6)
+            return type.GetTypeInfo()?.Attributes ?? TypeAttributes.NotPublic;
+#else
+            return type.Attributes;
+#endif
+        }
+
         static bool IsAnonymousType(Type type)
         {
             return (type.Name.StartsWith("<>") || type.Name.StartsWith("VB$"))
-                   && (type.Attributes & TypeAttributes.NotPublic) == TypeAttributes.NotPublic;
+                   && (GetTypeAttr(type) & TypeAttributes.NotPublic) == TypeAttributes.NotPublic;
         }
 
         // ReSharper disable once FieldCanBeMadeReadOnly.Local
@@ -325,13 +335,30 @@ namespace SkinnyJson
                     }
                     else
                     {
-                        var containedType = type.GetGenericArguments().SingleOrDefault() ?? type;
+                        var containedType = GetGenericArguments(type).SingleOrDefault() ?? type;
                         return ConvertToList(containedType, globalTypes, arrayList);
                     }
 
                 default:
                     throw new Exception("Don't understand this JSON");
             }
+        }
+
+        private static Type[] GetGenericArguments(Type type) {
+#if (NETSTANDARD1_6)
+            return type.GetTypeInfo()?.GetGenericArguments() ?? new Type[0];
+#else
+            return type.GetGenericArguments();
+#endif
+        }
+
+        private static bool IsAssignableFrom(Type baseType, Type elementType)
+        {
+#if (NETSTANDARD1_6)
+            return baseType.GetTypeInfo()?.IsAssignableFrom(elementType) ?? false;
+#else
+            return baseType.IsAssignableFrom(elementType);
+#endif
         }
 
         private Array ListToArray(IList list, Type elementType)
@@ -346,7 +373,7 @@ namespace SkinnyJson
             foreach (var obj in arrayList)
             {
                 if (obj == null) list.Add(obj);
-                else if (obj.GetType().IsAssignableFrom(elementType)) list.Add(obj);
+                else if (IsAssignableFrom(obj.GetType(), elementType)) list.Add(obj);
                 else
                 { // a complex type?
                     var dict = obj as Dictionary<string, object>;
@@ -395,6 +422,22 @@ namespace SkinnyJson
 
 	    readonly SafeDictionary<Type, string> tyname = new SafeDictionary<Type, string>();
 
+        private static Type BaseType(Type t) {
+#if (NETSTANDARD1_6)
+            return t.GetTypeInfo()?.BaseType;
+#else
+            return t.BaseType;
+#endif
+        }
+        
+        private static Type[] GetInterfaces(Type t) {
+#if (NETSTANDARD1_6)
+            return t.GetTypeInfo()?.GetInterfaces();
+#else
+            return t.GetInterfaces();
+#endif
+        }
+
         /// <summary>
         /// Get a shortened string name for a type's containing assembly
         /// </summary>
@@ -404,9 +447,9 @@ namespace SkinnyJson
             if (tyname.TryGetValue(t, out val)) return val;
 
         	string name;
-			if (t.BaseType == typeof(object)) {
+			if (BaseType(t) == typeof(object)) {
 				// on Windows, this can be just "t.GetInterfaces()" but Mono doesn't return in order.
-				var interfaceType = t.GetInterfaces().FirstOrDefault(i => !t.GetInterfaces().Any(i2 => i2.GetInterfaces().Contains(i)));
+				var interfaceType = GetInterfaces(t).FirstOrDefault(i => !GetInterfaces(t).Any(i2 => GetInterfaces(i2).Contains(i)));
 				name = ShortenName((interfaceType ?? t).AssemblyQualifiedName);
 			} else {
 				name = ShortenName(t.AssemblyQualifiedName);
@@ -435,27 +478,31 @@ namespace SkinnyJson
 			Type val;
 			if (typecache.TryGetValue(typename, out val)) return val;
 
-			var typeParts = typename.Split(',');
+            // not found...
 
+#if (NETSTANDARD1_6)
+            var t = Type.GetType(typename);
+#else
+			var typeParts = typename.Split(',');
 			Type t;
 			if (typeParts.Length > 1) {
 				var assemblyName = typename.Split(',')[1];
 				var fullName = typename.Split(',')[0];
 				var available = Assembly.Load(assemblyName).GetTypes();
 				t = available.SingleOrDefault(type => type?.FullName?.ToLower() == fullName.ToLower());
-			} else {
-				// slow but robust way of finding a type fragment.
+			} else {				// slow but robust way of finding a type fragment.
 				t = AppDomain.CurrentDomain.GetAssemblies()
 					.SelectMany(asm => asm.GetTypes())
 					.SingleOrDefault(type => type.FullName?.StartsWith(typeParts[0]) ?? false);
 			}
+#endif
         	if (t != null) {
 				typecache.Add(typename, t);
 			}
 			return t;
-		}
+        }
 
-    	readonly SafeDictionary<Type, CreateObject> constrcache = new SafeDictionary<Type, CreateObject>();
+        readonly SafeDictionary<Type, CreateObject> constrcache = new SafeDictionary<Type, CreateObject>();
         private delegate object CreateObject();
 
         /// <summary>

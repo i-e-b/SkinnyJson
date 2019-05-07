@@ -162,10 +162,9 @@ namespace SkinnyJson
         {
             var targ = Walk(Parsed, _chain);
 
-            var tc = new TypeConverter();
             try
             {
-                result = tc.ConvertTo(targ, binder.Type);
+                result = Convert.ChangeType(targ, binder.Type);
                 return true;
             }
             catch
