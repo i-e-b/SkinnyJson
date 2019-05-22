@@ -1130,6 +1130,8 @@ namespace SkinnyJson
 
         void ReadSchema(IDictionary<string, object> reader, DataSet ds, IDictionary<string, object> globalTypes)
         {
+            if (reader?.ContainsKey("$schema") != true) return;
+
             var schema = reader["$schema"];
 
             if (schema is string s)
@@ -1197,17 +1199,25 @@ namespace SkinnyJson
         {
             var dt = new DataTable();
 
+            object schema;
             // read dataset schema here
-            var schema = reader["$schema"];
+            if (reader?.ContainsKey("$schema") != true)
+            {
+                schema = null;
+            }
+            else
+            {
+                schema = reader["$schema"];
+            }
 
             if (schema is string s)
             {
                 TextReader tr = new StringReader(s);
                 dt.ReadXmlSchema(tr);
             }
-            else
+            else if (schema is Dictionary<string, object> dictSchema)
             {
-                var ms = (DatasetSchema)ParseDictionary((Dictionary<string, object>)schema, globalTypes, typeof(DatasetSchema), null);
+                var ms = (DatasetSchema)ParseDictionary(dictSchema, globalTypes, typeof(DatasetSchema), null);
                 dt.TableName = ms.Info[0];
                 for (int i = 0; i < ms.Info.Count; i += 3)
                 {

@@ -199,6 +199,16 @@ namespace SkinnyJson.Unit.Tests {
 		}
 
         [Test]
+        public void Can_use_base_simple_objects_with_no_schema() {
+            
+            var str = "{ \"TEST\":\"test2\", \"signupId\": 4259648, \"postcode\": \"NP10 8UH\" }";
+
+            var obj = Json.Defrost<object>(str);
+
+            Assert.That(obj, Is.Not.Null);
+        }
+
+        [Test]
         public void Can_defrost_from_a_stream ()
         {
             Json.DefaultParameters.EnableAnonymousTypes = true;

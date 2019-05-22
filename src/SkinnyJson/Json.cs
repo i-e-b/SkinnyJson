@@ -567,7 +567,9 @@ namespace SkinnyJson
             var found = jsonValues.TryGetValue("$type", out tn);
             if (found == false && type == typeof(object))
             {
-                return CreateDataset(jsonValues, globaltypes);
+                var ds = CreateDataset(jsonValues, globaltypes);
+                if (ds != null) return ds;
+                else return jsonValues; // couldn't make a dataset
             }
             if (found)
             {
@@ -999,7 +1001,7 @@ namespace SkinnyJson
             "yyyy-MM-dd HH:mm:ssZ", // with zone specifier, but no T
             "yyyy-MM-ddTHHmmss", // ISO 8601 'basic'
         };
-    	static DateTime CreateDateTime(string value)
+        static DateTime CreateDateTime(string value)
         {
             if (DateFormatsInPreferenceOrder == null) return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ss", null);
             foreach (var format in DateFormatsInPreferenceOrder)
@@ -1010,7 +1012,7 @@ namespace SkinnyJson
             }
             // None of our prefered formats, so let .Net guess
             return DateTime.Parse(value);
-		}
+        }
 
         object CreateArray(IEnumerable data, Type bt, IDictionary<string, object> globalTypes)
         {
@@ -1110,7 +1112,7 @@ namespace SkinnyJson
         	ds.BeginInit();
 
             // read dataset schema here
-            ReadSchema(reader, ds, globalTypes);
+            if (!ReadSchema(reader, ds, globalTypes)) return null;
 
             foreach (var pair in reader)
             {
@@ -1128,8 +1130,10 @@ namespace SkinnyJson
             return ds;
         }
 
-        void ReadSchema(IDictionary<string, object> reader, DataSet ds, IDictionary<string, object> globalTypes)
+        bool ReadSchema(IDictionary<string, object> reader, DataSet ds, IDictionary<string, object> globalTypes)
         {
+            if (reader?.ContainsKey("$schema") != true) return false;
+
             var schema = reader["$schema"];
 
             if (schema is string s)
@@ -1150,6 +1154,7 @@ namespace SkinnyJson
                 	ds.Tables[ms.Info[i]].Columns.Add(ms.Info[i + 1], type);
                 }
             }
+            return true;
         }
 
         void ReadDataTable(IEnumerable rows, DataTable dt)
@@ -1197,17 +1202,25 @@ namespace SkinnyJson
         {
             var dt = new DataTable();
 
+            object schema;
             // read dataset schema here
-            var schema = reader["$schema"];
+            if (reader?.ContainsKey("$schema") != true)
+            {
+                schema = null;
+            }
+            else
+            {
+                schema = reader["$schema"];
+            }
 
             if (schema is string s)
             {
                 TextReader tr = new StringReader(s);
                 dt.ReadXmlSchema(tr);
             }
-            else
+            else if (schema is Dictionary<string, object> dictSchema)
             {
-                var ms = (DatasetSchema)ParseDictionary((Dictionary<string, object>)schema, globalTypes, typeof(DatasetSchema), null);
+                var ms = (DatasetSchema)ParseDictionary(dictSchema, globalTypes, typeof(DatasetSchema), null);
                 dt.TableName = ms.Info[0];
                 for (int i = 0; i < ms.Info.Count; i += 3)
                 {
