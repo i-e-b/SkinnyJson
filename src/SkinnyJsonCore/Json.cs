@@ -567,7 +567,9 @@ namespace SkinnyJson
             var found = jsonValues.TryGetValue("$type", out tn);
             if (found == false && type == typeof(object))
             {
-                return CreateDataset(jsonValues, globaltypes);
+                var ds = CreateDataset(jsonValues, globaltypes);
+                if (ds != null) return ds;
+                else return jsonValues; // couldn't make a dataset
             }
             if (found)
             {
@@ -1110,7 +1112,7 @@ namespace SkinnyJson
         	ds.BeginInit();
 
             // read dataset schema here
-            ReadSchema(reader, ds, globalTypes);
+            if (!ReadSchema(reader, ds, globalTypes)) return null;
 
             foreach (var pair in reader)
             {
@@ -1128,9 +1130,9 @@ namespace SkinnyJson
             return ds;
         }
 
-        void ReadSchema(IDictionary<string, object> reader, DataSet ds, IDictionary<string, object> globalTypes)
+        bool ReadSchema(IDictionary<string, object> reader, DataSet ds, IDictionary<string, object> globalTypes)
         {
-            if (reader?.ContainsKey("$schema") != true) return;
+            if (reader?.ContainsKey("$schema") != true) return false;
 
             var schema = reader["$schema"];
 
@@ -1152,6 +1154,7 @@ namespace SkinnyJson
                 	ds.Tables[ms.Info[i]].Columns.Add(ms.Info[i + 1], type);
                 }
             }
+            return true;
         }
 
         void ReadDataTable(IEnumerable rows, DataTable dt)
