@@ -994,13 +994,15 @@ namespace SkinnyJson
         }
 
         private static readonly string[] DateFormatsInPreferenceOrder = {
-            "yyyy-MM-dd HH:mm:ss", // our output format
-            "yyyy-MM-ddTHH:mm:ss", // correct ISO 8601 'extended'
-            "yyyy-MM-dd H:mm:ss", // Erlang style
+            "yyyy-MM-ddTHH:mm:ss",  // correct ISO 8601 'extended'
+            "yyyy-MM-dd HH:mm:ss",  // our old output format
+            "yyyy-MM-dd H:mm:ss",   // Erlang style
+            "yyyy-MM-ddTH:mm:ss",   // Erlang style with a T
             "yyyy-MM-ddTHH:mm:ssZ", // with zone specifier
             "yyyy-MM-dd HH:mm:ssZ", // with zone specifier, but no T
-            "yyyy-MM-ddTHHmmss", // ISO 8601 'basic'
+            "yyyy-MM-ddTHHmmss",    // ISO 8601 'basic'
         };
+
         static DateTime CreateDateTime(string value)
         {
             if (DateFormatsInPreferenceOrder == null) return DateTime.ParseExact(value, "yyyy-MM-dd HH:mm:ss", null);

@@ -177,8 +177,8 @@ namespace SkinnyJson
             Append('\"');
         	Append(
 				jsonParameters.UseUtcDateTime
-					? dateTime.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ssZ")
-					: dateTime.ToString("yyyy-MM-dd HH:mm:ss"));
+					? dateTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+					: dateTime.ToString("yyyy-MM-ddTHH:mm:ss"));
         	Append('\"');
 
         }
