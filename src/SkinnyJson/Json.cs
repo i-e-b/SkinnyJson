@@ -640,7 +640,7 @@ namespace SkinnyJson
     		if (pi.isInt) oset = (int) CreateLong(v);
     		else if (pi.isLong) oset = CreateLong(v);
     		else if (pi.isString) oset = v;
-    		else if (pi.isBool) oset = (bool) v;
+    		else if (pi.isBool) oset = InterpretBool(v);
     		else if (pi.isGenericType && pi.isValueType == false && pi.isDictionary == false)
     			oset = CreateGenericList((ArrayList) v, pi.pt, pi.bt, globaltypes);
     		else if (pi.isByteArray)
@@ -680,6 +680,21 @@ namespace SkinnyJson
 
     		if (pi.CanWrite) WriteValueToTypeInstance(name, targetObject, pi, oset);
     	}
+
+        private bool InterpretBool(object o)
+        {
+            if (o is bool b) return b;
+            if (o is string s)
+            {
+                if (jsonParameters.IgnoreCaseOnDeserialize) s = s.ToLowerInvariant();
+                switch (s)
+                {
+                    case "true": return true;
+                    case "false": return false;
+                }
+            }
+            throw new Exception("Can't interpret '"+o+"' as a boolean");
+        }
 
         /// <summary>
         /// Inject a value into an object's property

@@ -45,6 +45,17 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(frozen, Contains.Substring("2019-01-10T09:48:27"), "Date was stored in an unexpected format");
         }
 
+        [Test]
+        public void Can_map_bool_strings_to_bool_fields_and_properties()
+        {
+            var defrosted = Json.Defrost<ILikeBools>("{\"val1\":\"true\",\"val2\":\"false\",\"val3\":true,\"val4\":false}");
+            
+            Assert.That(defrosted.val1, Is.True, "'true' string was not correctly interpreted");
+            Assert.That(defrosted.val2, Is.False, "'false' string was not correctly interpreted");
+            Assert.That(defrosted.val3, Is.True, "'true' bool was not correctly interpreted");
+            Assert.That(defrosted.val4, Is.False, "'false' bool was not correctly interpreted");
+        }
+
         private bool SimilarDate(DateTime? defrostedDateTime, DateTime dateTime)
         {
             if (defrostedDateTime == null) return false;
@@ -53,6 +64,12 @@ namespace SkinnyJson.Unit.Tests
         }
     }
 
+    public interface ILikeBools {
+        bool val1 { get; set; }
+        bool val2 { get; set; }
+        bool val3 { get; set; }
+        bool val4 { get; set; }
+    }
     public interface IHaveLotsOfTypes {
         DateTime date_time { get; set; }
     }
