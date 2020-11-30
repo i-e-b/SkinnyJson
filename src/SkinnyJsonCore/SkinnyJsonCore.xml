@@ -4,6 +4,18 @@
         <name>SkinnyJsonCore</name>
     </assembly>
     <members>
+        <member name="T:JetBrains.Annotations.CanBeNullAttribute">
+            <summary>Marked element could be <c>null</c></summary>
+        </member>
+        <member name="T:JetBrains.Annotations.NotNullAttribute">
+            <summary>Marked element could never be <c>null</c></summary>
+        </member>
+        <member name="T:JetBrains.Annotations.ItemNotNullAttribute">
+            <summary>IEnumerable, Task.Result, or Lazy.Value property can never be null.</summary>
+        </member>
+        <member name="T:JetBrains.Annotations.ItemCanBeNullAttribute">
+            <summary>IEnumerable, Task.Result, or Lazy.Value property can be null.</summary>
+        </member>
         <member name="T:SkinnyJson.ChainStep">
             <summary>
             Represents a step in a dynamic call chain
@@ -240,7 +252,7 @@
             </summary>
             <param name="type">Target output type</param>
             <param name="decodedObject">raw memory map of json</param>
-            <param name="globalTypes">cache of typematches</param>
+            <param name="globalTypes">cache of type matches</param>
         </member>
         <member name="M:SkinnyJson.Json.ParserFromStreamOrStringOrBytes(System.Object,System.Text.Encoding)">
             <summary>
@@ -250,6 +262,16 @@
         <member name="M:SkinnyJson.Json.GenericListType(System.Type)">
             <summary>
             Make an IList˂T˃() instance for a runtime type
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.GenericSetInterfaceType(System.Type)">
+            <summary>
+            Make an ISet˂T˃() instance for a runtime type
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.GenericHashSetType(System.Type)">
+            <summary>
+            Make an HashSet˂T˃() instance for a runtime type
             </summary>
         </member>
         <member name="M:SkinnyJson.Json.GetTypeAssemblyName(System.Type)">

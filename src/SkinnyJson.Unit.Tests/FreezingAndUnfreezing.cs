@@ -4,6 +4,8 @@ using System.Text;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+// ReSharper disable PossibleNullReferenceException
+// ReSharper disable AssignNullToNotNullAttribute
 
 // ReSharper disable InconsistentNaming
 namespace SkinnyJson.Unit.Tests {
@@ -72,6 +74,21 @@ namespace SkinnyJson.Unit.Tests {
 
 			Assert.That(defrosted.B, Is.EqualTo(original.B));
 		}
+
+		[Test]
+		public void Well_known_interfaces_are_treated_specially()
+		{
+			var input = Quote("[{'B':'x'},{'B':'y'},{'B':'z'}]");
+			//var resultEnumerable = Json.Defrost<IEnumerable<ISimpleObject>>(input);
+			//var resultCollection = Json.Defrost<ICollection<ISimpleObject>>(input);
+			var resultSet = Json.Defrost<ISet<ISimpleObject>>(input);
+			
+			//Assert.That(resultEnumerable.ToList().Count, Is.EqualTo(3), "Enumerable length is wrong");
+			//Assert.That(resultCollection.Count, Is.EqualTo(3), "Collection length is wrong");
+			Assert.That(resultSet.Count, Is.EqualTo(3), "Set length is wrong");
+		}
+
+		private static string Quote(string str) => str.Replace('\'', '"');
 
 		[Test]
 		public void Can_proxy_a_basic_interface () {

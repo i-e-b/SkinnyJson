@@ -63,7 +63,7 @@ namespace SkinnyJson {
 
             try
             {
-                return typeBuilder.CreateType();
+                return typeBuilder.CreateTypeInfo();
             }
             catch (TypeLoadException tlex)
             {

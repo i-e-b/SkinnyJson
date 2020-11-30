@@ -10,9 +10,10 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>SkinnyJson.Unit.Tests</RootNamespace>
     <AssemblyName>SkinnyJson.Unit.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <LangVersion>8</LangVersion>
     <FileAlignment>512</FileAlignment>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -67,13 +68,13 @@
     <Compile Include="UnfreezeSubtypeTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SkinnyJson\SkinnyJson.csproj">
-      <Project>{EC0CAFCB-260D-462E-B834-2ECDE016BA7D}</Project>
-      <Name>SkinnyJson</Name>
-    </ProjectReference>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
+    <ProjectReference Include="..\SkinnyJsonCore\SkinnyJsonCore.csproj">
+      <Project>{e416da6f-9484-4be1-ba77-9a6356a72962}</Project>
+      <Name>SkinnyJsonCore</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

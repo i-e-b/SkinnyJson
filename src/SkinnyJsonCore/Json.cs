@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
 using System.Text;
+using JetBrains.Annotations;
 
 namespace SkinnyJson
 {
@@ -187,8 +188,9 @@ namespace SkinnyJson
         /// <summary>
         /// You can set these parameters globally for all calls
         /// </summary>
-        public static JsonParameters DefaultParameters = new JsonParameters();
+        [NotNull] public static JsonParameters DefaultParameters = new JsonParameters();
 
+        [NotNull]
     	internal static readonly Json Instance = new Json();
         private Json(){
             DefaultParameters = DefaultParameters ?? new JsonParameters();
@@ -198,17 +200,17 @@ namespace SkinnyJson
         
         static bool IsAnonymousTypedObject(object obj)
         {
-            return IsAnonymousType(obj.GetType());
+            return IsAnonymousType(obj?.GetType());
         }
 
-        static bool IsAnonymousType(Type type)
+        static bool IsAnonymousType([CanBeNull] Type type)
         {
-            return (type.Name.StartsWith("<>") || type.Name.StartsWith("VB$"))
-                   && (type.Attributes & TypeAttributes.NotPublic) == TypeAttributes.NotPublic;
+            if (type == null) return false;
+            return (type.Name.StartsWith("<>") || type.Name.StartsWith("VB$")) && (type.Attributes.HasFlag(TypeAttributes.NotPublic));
         }
 
         // ReSharper disable once FieldCanBeMadeReadOnly.Local
-        private JsonParameters jsonParameters;
+        [CanBeNull] private JsonParameters jsonParameters;
 
         internal string ToJson(object obj, JsonParameters param)
         {
@@ -299,7 +301,6 @@ namespace SkinnyJson
 
             var decodedObject = parser.Decode();
 			return StrengthenType(type, decodedObject, globalTypes);
-
         }
 
         /// <summary>
@@ -307,8 +308,8 @@ namespace SkinnyJson
         /// </summary>
         /// <param name="type">Target output type</param>
         /// <param name="decodedObject">raw memory map of json</param>
-        /// <param name="globalTypes">cache of typematches</param>
-        private object StrengthenType(Type type, object decodedObject, Dictionary<string, object> globalTypes)
+        /// <param name="globalTypes">cache of type matches</param>
+        private object StrengthenType(Type? type, object decodedObject, Dictionary<string, object> globalTypes)
         {
             switch (decodedObject)
             {
@@ -316,16 +317,18 @@ namespace SkinnyJson
                     return ParseDictionary(objects, globalTypes, type, null);
 
                 case ArrayList arrayList:
-                    if (type != null && type.IsArray)
+                    if (type?.IsArray == true)
                     {
                         var elementType = type.GetElementType() ?? typeof(object);
                         var list = ConvertToList(elementType, globalTypes, arrayList);
                         return ListToArray(list, elementType);
-
                     }
                     else
                     {
-                        var containedType = type.GetGenericArguments().SingleOrDefault() ?? type;
+                        var containedType = (type?.GetGenericArguments().SingleOrDefault() ?? type) ?? typeof(object);
+                        
+                        var setType = GenericSetInterfaceType(containedType);
+                        if (type == setType) return ConvertToSet(containedType, globalTypes, arrayList);
                         return ConvertToList(containedType, globalTypes, arrayList);
                     }
 
@@ -358,10 +361,33 @@ namespace SkinnyJson
 
             return list;
         }
+        
+        private object ConvertToSet(Type elementType, Dictionary<string, object> globalTypes, [NotNull] ArrayList arrayList)
+        {
+            var set = Activator.CreateInstance(GenericHashSetType(elementType));
+            var adder = set?.GetType().GetMethod("Add", BindingFlags.Public|BindingFlags.Instance) ?? throw new Exception("Failed to find add method on set");
+            foreach (var obj in arrayList)
+            {
+                if (obj == null) adder.Invoke(set, new object[]{null});
+                else if (obj.GetType().IsAssignableFrom(elementType)) adder.Invoke(set, new []{obj});
+                else
+                { // a complex type?
+                    var dict = obj as Dictionary<string, object>;
+                    if (dict == null) throw new Exception("Element of array not assignable to the array type");
+                    //var child = Activator.CreateInstance(elementType);
+                    var parsed = ParseDictionary(dict, globalTypes, elementType, null);//child);
+                    // Need to bring the parsed type up to the container type
+                    if (parsed != null) adder.Invoke(set, new []{parsed});
+                }
+            }
+
+            return set;
+        }
 
         /// <summary>
         /// Pass in either a string or a stream and get back a parser instance
         /// </summary>
+        [NotNull]
         private static JsonParser ParserFromStreamOrStringOrBytes(object json, Encoding encoding)
         {
             JsonParser parser;
@@ -386,12 +412,35 @@ namespace SkinnyJson
         /// <summary>
         /// Make an IList˂T˃() instance for a runtime type
         /// </summary>
+        [NotNull]
         private Type GenericListType(Type containedType)
 	    {
 			var d1 = typeof(List<>);
 			Type[] typeArgs = { containedType };
 			return d1.MakeGenericType(typeArgs);
 	    }
+        
+        /// <summary>
+        /// Make an ISet˂T˃() instance for a runtime type
+        /// </summary>
+        [NotNull]
+        private Type GenericSetInterfaceType(Type containedType)
+        {
+            var d1 = typeof(ISet<>);
+            Type[] typeArgs = { containedType };
+            return d1.MakeGenericType(typeArgs);
+        }
+        
+        /// <summary>
+        /// Make an HashSet˂T˃() instance for a runtime type
+        /// </summary>
+        [NotNull]
+        private Type GenericHashSetType(Type containedType)
+        {
+            var d1 = typeof(HashSet<>);
+            Type[] typeArgs = { containedType };
+            return d1.MakeGenericType(typeArgs);
+        }
 
 	    readonly SafeDictionary<Type, string> tyname = new SafeDictionary<Type, string>();
 
@@ -547,7 +596,7 @@ namespace SkinnyJson
         /// all matching field/properties will be filled.
         /// If *no* keys match the target type, this will return `null`
         /// </summary>
-        private object ParseDictionary(IDictionary<string, object> jsonValues, IDictionary<string, object> globaltypes, Type type, object input)
+        private object ParseDictionary(IDictionary<string, object> jsonValues, IDictionary<string, object> globalTypes, Type? type, object? input)
         {
             jsonParameters = jsonParameters ?? DefaultParameters;
 
@@ -558,7 +607,7 @@ namespace SkinnyJson
 				var dic = ((Dictionary<string, object>) tn);
 	            foreach (var kvp in dic)
 	            {
-		            globaltypes.Add((string)kvp.Value, kvp.Key);
+		            globalTypes.Add((string)kvp.Value, kvp.Key);
 	            }
 				
 				usingGlobals = true;
@@ -567,7 +616,7 @@ namespace SkinnyJson
             var found = jsonValues.TryGetValue("$type", out tn);
             if (found == false && type == typeof(object))
             {
-                var ds = CreateDataset(jsonValues, globaltypes);
+                var ds = CreateDataset(jsonValues, globalTypes);
                 if (ds != null) return ds;
                 else return jsonValues; // couldn't make a dataset
             }
@@ -576,7 +625,7 @@ namespace SkinnyJson
                 if (usingGlobals)
                 {
                     object tname;
-                    if (globaltypes.TryGetValue((string)tn, out tname)) tn = tname;
+                    if (globalTypes.TryGetValue((string)tn, out tname)) tn = tname;
                 }
                 if (type == null || !type.IsInterface) type = GetTypeFromCache((string)tn);
             }
@@ -591,7 +640,7 @@ namespace SkinnyJson
             if (!IsDictionary(targetType) && NoPropertiesMatch(props.Keys, jsonValues.Keys)) return null;
             foreach (var key in jsonValues.Keys)
             {
-                MapJsonValueToObject(key, targetObject, jsonValues, globaltypes, props);
+                MapJsonValueToObject(key, targetObject, jsonValues, globalTypes, props);
             }
 
             return targetObject;
