@@ -1,6 +1,7 @@
 ﻿using System; // ReSharper disable InconsistentNaming
 using System.Collections.Generic;
 using NUnit.Framework;
+// ReSharper disable AssignNullToNotNullAttribute
 
 namespace SkinnyJson.Unit.Tests {
     [TestFixture]
@@ -11,10 +12,11 @@ namespace SkinnyJson.Unit.Tests {
             var target = new ObjectWithoutAnInterface();
             var source = "{\"A\":\"master\",\r\n \"B\": \"blaster\"}";
 
-            Json.FillObject(target, source);
+            var same = Json.FillObject(target, source);
 
             Assert.That(target.A, Is.EqualTo("master"));
             Assert.That(target.B, Is.EqualTo("blaster"));
+            Assert.That(same, Is.SameAs(target), "Did not return original");
         }
 
         [Test]

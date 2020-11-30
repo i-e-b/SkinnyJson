@@ -88,7 +88,42 @@ namespace SkinnyJson.Unit.Tests {
 			Assert.That(resultSet.Count, Is.EqualTo(3), "Set length is wrong");
 		}
 
-		private static string Quote(string str) => str.Replace('\'', '"');
+		[Test]
+		public void Can_deserialise_string_to_a_runtime_type()
+		{
+			var result = Json.Defrost(Quote("['a','b','c']"), typeof(IEnumerable<string>));
+			
+			Assert.That(result, Is.Not.Null);
+			
+			var final = result as IEnumerable<string>;
+			Assert.That(final?.ToList().Count, Is.EqualTo(3), "Did not get expected list");
+		}
+		
+		[Test]
+		public void Can_deserialise_bytes_to_a_runtime_type()
+		{
+			var bytes = Encoding.Unicode.GetBytes(Quote("['a','b','c']"));
+			var result = Json.Defrost(bytes, typeof(IEnumerable<string>), Encoding.Unicode);
+			
+			Assert.That(result, Is.Not.Null);
+			
+			var final = result as IEnumerable<string>;
+			Assert.That(final?.ToList().Count, Is.EqualTo(3), "Did not get expected list");
+		}
+		
+		[Test]
+		public void Can_deserialise_a_stream_to_a_runtime_type()
+		{
+			var bytes = Encoding.Unicode.GetBytes(Quote("['a','b','c']"));
+			var stream = new MemoryStream(bytes);
+			stream.Seek(0, SeekOrigin.Begin);
+			var result = Json.Defrost(stream, typeof(IEnumerable<string>), Encoding.Unicode);
+			
+			Assert.That(result, Is.Not.Null);
+			
+			var final = result as IEnumerable<string>;
+			Assert.That(final?.ToList().Count, Is.EqualTo(3), "Did not get expected list");
+		}
 
 		[Test]
 		public void Can_proxy_a_basic_interface () {
@@ -245,12 +280,13 @@ namespace SkinnyJson.Unit.Tests {
         {
             
             Json.DefaultParameters.EnableAnonymousTypes = true;
+            Json.DefaultStreamEncoding = Encoding.UTF8;
             var input = ComplexTypes.DictionaryOfDictionaryOfTupleWithList();
             var expected = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":4,\"Item3\":[10,20,30]}}}";
 
             var ms = new MemoryStream();
 
-            Json.Freeze(input, ms);
+            Json.Freeze(input, ms, Encoding.Default);
 
 
             ms.Seek(0, SeekOrigin.Begin);
@@ -275,5 +311,8 @@ namespace SkinnyJson.Unit.Tests {
             Assert.That(interpreted, Is.EqualTo(expected));
             Json.DefaultParameters.EnableAnonymousTypes = false;
         }
+        
+
+        private static string Quote(string str) => str.Replace('\'', '"');
     }
 }

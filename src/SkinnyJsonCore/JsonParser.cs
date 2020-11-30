@@ -10,7 +10,7 @@ namespace SkinnyJson
     /// This class encodes and decodes JSON strings.
     /// Spec. details, see http://www.json.org/
     /// 
-    /// JSON uses Arrays and Objects. These correspond here to the datatypes ArrayList and Hashtable.
+    /// JSON uses Arrays and Objects. These correspond here to the data types ArrayList and Hashtable.
     /// All numbers are parsed to doubles.
     /// </summary>
     public class JsonParser
@@ -32,59 +32,60 @@ namespace SkinnyJson
             Comment
         }
 
-        readonly TextReader json;
-        readonly StringBuilder s = new StringBuilder(); // common builder for building partials
-    	readonly bool ignorecase;
-        Token lookAheadToken = Token.None;
-        char lookAheadChar = '\0';
-        int index; // string index. Only used for reporting back error positions
+        readonly TextReader _json;
+        readonly StringBuilder _sb = new StringBuilder(); // common builder for building partials
+    	readonly bool _ignoreCase;
+        Token _lookAheadToken = Token.None;
+        char _lookAheadChar = '\0';
+        int _index; // string index. Only used for reporting back error positions
 
         /// <summary>
         /// Create a parser for an JSON string loaded in memory
         /// </summary>
         /// <param name="json">The input JSON string</param>
-        /// <param name="ignorecase">If `true`, all property names will be lowercased</param>
-        public JsonParser(string json, bool ignorecase)
+        /// <param name="ignoreCase">If `true`, all property names will be lowercased</param>
+        public JsonParser(string json, bool ignoreCase)
         {
-            this.json = new StringReader(json);
-            this.ignorecase = ignorecase;
+            this._json = new StringReader(json);
+            this._ignoreCase = ignoreCase;
         }
 
         /// <summary>
         /// Create a parser for an JSON string accessible as a stream
         /// </summary>
         /// <param name="json">The input JSON stream</param>
-        /// <param name="ignorecase">If `true`, all property names will be lowercased</param>
+        /// <param name="ignoreCase">If `true`, all property names will be lowercased</param>
         /// <param name="encoding">String encoding to use</param>
-        public JsonParser(Stream json, bool ignorecase, Encoding encoding)
+        public JsonParser(Stream json, bool ignoreCase, Encoding? encoding)
         {
-            this.json = new StreamReader(json, encoding);
-            this.ignorecase = ignorecase;
+            _json = new StreamReader(json, encoding ?? Json.DefaultStreamEncoding);
+            _ignoreCase = ignoreCase;
         }
 
         /// <summary>
         /// Create a parser for an JSON byte array loaded in memory
         /// </summary>
         /// <param name="json">The input JSON byte array</param>
-        /// <param name="ignorecase">If `true`, all property names will be lowercased</param>
-        public JsonParser(byte[] json, bool ignorecase)
+        /// <param name="ignoreCase">If `true`, all property names will be lowercased</param>
+        /// <param name="encoding">Encoding of the bytes. Defaults to UTF8</param>
+        public JsonParser(byte[] json, bool ignoreCase, Encoding? encoding)
         {
-            var jsonBytesString = Encoding.UTF8.GetString(json);
-            this.json = new StringReader(jsonBytesString);
-            this.ignorecase = ignorecase;
+            var jsonBytesString = (encoding ?? Encoding.UTF8).GetString(json);
+            _json = new StringReader(jsonBytesString);
+            _ignoreCase = ignoreCase;
         }
 
         /// <summary>
         /// Decode the provided JSON into an object representation
         /// </summary>
-        public object Decode()
+        public object? Decode()
         {
             return ParseValue();
         }
 
-	    private Dictionary<string, object> ParseObject()
+	    private Dictionary<string, object?> ParseObject()
         {
-			var table = new Dictionary<string, object>();
+			var table = new Dictionary<string, object?>();
 
 	        ConsumeToken(); // {
 
@@ -109,18 +110,17 @@ namespace SkinnyJson
 
                             // name
                             string name = ParseString();
-                            if (ignorecase)
+                            if (_ignoreCase)
                                 name = name.ToLower();
 
                             // :
                             if (NextToken() != Token.Colon)
                             {
-                                throw new Exception("Expected colon at index " + index);
+                                throw new Exception("Expected colon at index " + _index);
                             }
 
                             // value
-                            object value = ParseValue();
-
+                            var value = ParseValue();
                             table[name] = value;
                         }
                         break;
@@ -150,7 +150,7 @@ namespace SkinnyJson
                         return array;
 
                     case Token.CurlyClose:
-                        throw new Exception("Parser state exception at " + index + ": advanced too far in an array.");
+                        throw new Exception("Parser state exception at " + _index + ": advanced too far in an array.");
 
                     default:
                         {
@@ -161,7 +161,7 @@ namespace SkinnyJson
             }
         }
 
-        private object ParseValue()
+        private object? ParseValue()
         {
             switch (LookAhead())
             {
@@ -188,94 +188,105 @@ namespace SkinnyJson
                 case Token.Null:
                     ConsumeToken();
                     return null;
+                
+                case Token.None:
+                case Token.CurlyClose:
+                case Token.SquaredClose:
+                case Token.Colon:
+                case Token.Comma:
+                case Token.Comment:
+                    break;
+                
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
 
-            throw new Exception("Unrecognized token '" + lookAheadChar + "' at index " + index + " while looking for a value");
+            throw new Exception("Unrecognized token '" + _lookAheadChar + "' at index " + _index + " while looking for a value");
         }
 
         private string ParseString()
         {
             ConsumeToken(); // "
 
-            s.Length = 0;
+            _sb.Length = 0;
 
             while (true)
             {
-                index++;
-                var next = json.Read();
+                _index++;
+                var next = _json.Read();
                 if (next <= 0) break;
                 var c = (char)next;
-                lookAheadChar = c;
+                _lookAheadChar = c;
 
                 if (c == '"') // end of string, not in escape
                 {
-                    return s.ToString();
+                    return _sb.ToString();
                 }
 
                 if (c != '\\') // not end, not escape
                 {
-                    s.Append(c);
+                    _sb.Append(c);
                     continue;
                 }
 
                 // now we are in an escape sequence
                 
                 // grab the escape char
-                index++;
-                next = json.Read();
+                _index++;
+                next = _json.Read();
                 if (next <= 0) break;
                 var c2 = (char)next;
-                lookAheadChar = c2;
+                _lookAheadChar = c2;
 
                 switch (c2)
                 {
                     case '"':
-                        s.Append('"');
+                        _sb.Append('"');
                         break;
 
                     case '\\':
-                        s.Append('\\');
+                        _sb.Append('\\');
                         break;
 
                     case '/':
-                        s.Append('/');
+                        _sb.Append('/');
                         break;
 
                     case 'b':
-                        s.Append('\b');
+                        _sb.Append('\b');
                         break;
 
                     case 'f':
-                        s.Append('\f');
+                        _sb.Append('\f');
                         break;
 
                     case 'n':
-                        s.Append('\n');
+                        _sb.Append('\n');
                         break;
 
                     case 'r':
-                        s.Append('\r');
+                        _sb.Append('\r');
                         break;
 
                     case 't':
-                        s.Append('\t');
+                        _sb.Append('\t');
                         break;
 
                     case 'u':
                         {
-                            var ua = json.Read();
-                            var ub = json.Read();
-                            var uc = json.Read();
-                            var ud = json.Read();
+                            var ua = _json.Read();
+                            var ub = _json.Read();
+                            var uc = _json.Read();
+                            var ud = _json.Read();
 
                             if (ua <= 0 || ub <= 0 || uc <= 0 || ud <= 0) break;
 
                             // parse the 32 bit hex into an integer codepoint
                             uint codePoint = ParseUnicode(ua, ub, uc, ud);
-                            s.Append((char)codePoint);
+                            _sb.Append((char)codePoint);
 
                             // skip 4 chars
-                            index += 4;
+                            _index += 4;
                         }
                         break;
                 }
@@ -284,15 +295,15 @@ namespace SkinnyJson
             throw new Exception("Unexpectedly reached end of string value");
         }
 
-        private static uint ParseSingleChar(int c1, uint multipliyer)
+        private static uint ParseSingleChar(int c1, uint multiplier)
         {
             uint p1 = 0;
             if (c1 >= '0' && c1 <= '9')
-                p1 = (uint)(c1 - '0') * multipliyer;
+                p1 = (uint)(c1 - '0') * multiplier;
             else if (c1 >= 'A' && c1 <= 'F')
-                p1 = (uint)((c1 - 'A') + 10) * multipliyer;
+                p1 = (uint)((c1 - 'A') + 10) * multiplier;
             else if (c1 >= 'a' && c1 <= 'f')
-                p1 = (uint)((c1 - 'a') + 10) * multipliyer;
+                p1 = (uint)((c1 - 'a') + 10) * multiplier;
             return p1;
         }
 
@@ -308,42 +319,42 @@ namespace SkinnyJson
 
         private double ParseNumber()
         {
-            s.Length = 0; // reset string builder
-            s.Append(lookAheadChar); // include first character
+            _sb.Length = 0; // reset string builder
+            _sb.Append(_lookAheadChar); // include first character
             ConsumeToken();
 
             do
             {
-                var next = json.Peek();
+                var next = _json.Peek();
                 if (next <= 0) throw new Exception("Unexpected end of string whilst parsing number");
                 var c = (char)next;
-                lookAheadChar = c;
+                _lookAheadChar = c;
 
                 if ((c >= '0' && c <= '9') || c == '.' || c == '-' || c == '+' || c == 'e' || c == 'E')
                 {
-                    s.Append(c);
-                    json.Read();
-                    index++;
+                    _sb.Append(c);
+                    _json.Read();
+                    _index++;
                     continue;
                 }
                 break;
             } while (true);
 
-            if (double.TryParse(s.ToString(), out var result)) return result;
+            if (double.TryParse(_sb.ToString(), out var result)) return result;
 
-            throw new Exception("Incorrect number format at "+index+": '"+s+"'");
+            throw new Exception("Incorrect number format at "+_index+": '"+_sb+"'");
         }
 
         private Token LookAhead()
         {
-            if (lookAheadToken != Token.None) return lookAheadToken;
+            if (_lookAheadToken != Token.None) return _lookAheadToken;
 
-            return lookAheadToken = NextTokenCore();
+            return _lookAheadToken = NextTokenCore();
         }
 
         private void ConsumeToken()
         {
-            lookAheadToken = Token.None;
+            _lookAheadToken = Token.None;
         }
 
         private void ConsumeLine()
@@ -352,22 +363,22 @@ namespace SkinnyJson
             while (true)
             {
                 
-                index++;
-                var next = json.Read();
+                _index++;
+                var next = _json.Read();
                 if (next <= 0) break;
-                lookAheadChar = (char)next;
+                _lookAheadChar = (char)next;
 
-                if (lookAheadChar == '\n' || lookAheadChar == '\r') break;
+                if (_lookAheadChar == '\n' || _lookAheadChar == '\r') break;
 
             }
-            lookAheadToken = Token.None;
+            _lookAheadToken = Token.None;
         }
 
         private Token NextToken()
         {
-            var result = lookAheadToken != Token.None ? lookAheadToken : NextTokenCore();
+            var result = _lookAheadToken != Token.None ? _lookAheadToken : NextTokenCore();
 
-            lookAheadToken = Token.None;
+            _lookAheadToken = Token.None;
 
             return result;
         }
@@ -379,22 +390,22 @@ namespace SkinnyJson
             // Read next non-whitespace char
             while (true)
             {
-                next = json.Read();
+                next = _json.Read();
                 if (next <= 0) break;
 
-                index++;
+                _index++;
                 if (next == 0xFEFF) continue; // BOM
 
-                lookAheadChar = (char)next;
+                _lookAheadChar = (char)next;
 
-                var c = lookAheadChar;
+                var c = _lookAheadChar;
                 if (c > ' ') break;
                 if (c != ' ' && c != '\t' && c != '\n' && c != '\r') break;
             }
             
             if (next <= 0) throw new Exception("Reached end of input unexpectedly");
 
-            switch (lookAheadChar)
+            switch (_lookAheadChar)
             {
                 case '{':
                     return Token.CurlyOpen;
@@ -425,7 +436,7 @@ namespace SkinnyJson
                 case 'f':
                     if (NextCharsAre('a', 'l', 's', 'e'))
                     {
-                        index += 4;
+                        _index += 4;
                         return Token.False;
                     }
                     break;
@@ -433,7 +444,7 @@ namespace SkinnyJson
                 case 't':
                     if (NextCharsAre('r', 'u', 'e'))
                     {
-                        index += 3;
+                        _index += 3;
                         return Token.True;
                     }
                     break;
@@ -441,7 +452,7 @@ namespace SkinnyJson
                 case 'n':
                     if (NextCharsAre('u', 'l', 'l'))
                     {
-                        index += 3;
+                        _index += 3;
                         return Token.Null;
                     }
                     break;
@@ -449,24 +460,24 @@ namespace SkinnyJson
                 case '/':
                     if (NextCharsAre('/')) // double slash line comment (not standard JSON)
                     {
-                        index += 1;
+                        _index += 1;
                         return Token.Comment;
                     }
                     break;
 
             }
 
-            throw new Exception("Could not find token at index " + --index + "; Got '" + lookAheadChar + "' "+((int)lookAheadChar).ToString("X2"));
+            throw new Exception("Could not find token at index " + --_index + "; Got '" + _lookAheadChar + "' "+((int)_lookAheadChar).ToString("X2"));
         }
 
         private bool NextCharsAre(params char[] cs)
         {
-            for (int i = 0; i < cs.Length; i++)
+            foreach (var t in cs)
             {
-                var next = json.Read();
+                var next = _json.Read();
                 if (next <= 0) return false;
-                lookAheadChar = (char)next;
-                if (lookAheadChar != cs[i]) return false;
+                _lookAheadChar = (char)next;
+                if (_lookAheadChar != t) return false;
             }
             return true;
         }

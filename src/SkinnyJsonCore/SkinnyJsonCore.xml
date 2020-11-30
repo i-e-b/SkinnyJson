@@ -147,7 +147,7 @@
             SkinnyJson entry point. Use the static methods of this class to interact with JSON data
             </summary>
         </member>
-        <member name="F:SkinnyJson.Json.DefaultStreamEncoding">
+        <member name="P:SkinnyJson.Json.DefaultStreamEncoding">
             <summary>
             String encoding to use for streams, when no specific encoding is provided.
             Initial value is UTF8.
@@ -180,7 +180,7 @@
         <member name="M:SkinnyJson.Json.Defrost(System.String,System.Type)">
             <summary> Turn a JSON string into a runtime type </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Defrost(System.Byte[],System.Type)">
+        <member name="M:SkinnyJson.Json.Defrost(System.Byte[],System.Type,System.Text.Encoding)">
             <summary> Turn a JSON byte array into a runtime type </summary>
         </member>
         <member name="M:SkinnyJson.Json.Defrost(System.IO.Stream,System.Type,System.Text.Encoding)">
@@ -424,7 +424,7 @@
             This class encodes and decodes JSON strings.
             Spec. details, see http://www.json.org/
             
-            JSON uses Arrays and Objects. These correspond here to the datatypes ArrayList and Hashtable.
+            JSON uses Arrays and Objects. These correspond here to the data types ArrayList and Hashtable.
             All numbers are parsed to doubles.
             </summary>
         </member>
@@ -433,22 +433,23 @@
             Create a parser for an JSON string loaded in memory
             </summary>
             <param name="json">The input JSON string</param>
-            <param name="ignorecase">If `true`, all property names will be lowercased</param>
+            <param name="ignoreCase">If `true`, all property names will be lowercased</param>
         </member>
         <member name="M:SkinnyJson.JsonParser.#ctor(System.IO.Stream,System.Boolean,System.Text.Encoding)">
             <summary>
             Create a parser for an JSON string accessible as a stream
             </summary>
             <param name="json">The input JSON stream</param>
-            <param name="ignorecase">If `true`, all property names will be lowercased</param>
+            <param name="ignoreCase">If `true`, all property names will be lowercased</param>
             <param name="encoding">String encoding to use</param>
         </member>
-        <member name="M:SkinnyJson.JsonParser.#ctor(System.Byte[],System.Boolean)">
+        <member name="M:SkinnyJson.JsonParser.#ctor(System.Byte[],System.Boolean,System.Text.Encoding)">
             <summary>
             Create a parser for an JSON byte array loaded in memory
             </summary>
             <param name="json">The input JSON byte array</param>
-            <param name="ignorecase">If `true`, all property names will be lowercased</param>
+            <param name="ignoreCase">If `true`, all property names will be lowercased</param>
+            <param name="encoding">Encoding of the bytes. Defaults to UTF8</param>
         </member>
         <member name="M:SkinnyJson.JsonParser.Decode">
             <summary>

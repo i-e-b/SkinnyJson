@@ -1,4 +1,8 @@
-﻿namespace SkinnyJson.Unit.Tests
+﻿using System.Text;
+// ReSharper disable AssignNullToNotNullAttribute
+// ReSharper disable PossibleNullReferenceException
+
+namespace SkinnyJson.Unit.Tests
 {
     using NUnit.Framework;
 
@@ -14,6 +18,8 @@
             var on = Json.Freeze(original);
             Json.DefaultParameters.EnableAnonymousTypes = false;
             var off = Json.Freeze(original);
+            
+            Json.DefaultStreamEncoding = Encoding.UTF7;
 
             Assert.That(on, Is.Not.StringContaining("$type"));
             Assert.That(off, Is.StringContaining("$type"));
