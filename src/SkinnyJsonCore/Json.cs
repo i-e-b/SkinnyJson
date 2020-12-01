@@ -317,6 +317,7 @@ namespace SkinnyJson
         {
             switch (decodedObject)
             {
+                // TODO: See if this can be integrated with `TryMakeStandardContainer()`
                 case Dictionary<string, object> objects:
                     return ParseDictionary(objects, globalTypes, type, null);
 
@@ -479,6 +480,7 @@ namespace SkinnyJson
     	}
 
     	readonly SafeDictionary<string, Type> _typeCache = new SafeDictionary<string, Type>();
+        readonly List<Type> _assemblyCache = new List<Type>();
 
         /// <summary>
         /// Try to get or build a type for a given type-name
@@ -491,14 +493,13 @@ namespace SkinnyJson
 			Type? t;
 			if (typeParts.Length > 1) {
 				var assemblyName = typeParts[1];
-				var fullName = typeParts[0];
+				var fullName = typeParts[0]!;
 				var available = Assembly.Load(assemblyName!)?.GetTypes();
-				t = available?.SingleOrDefault(type => type?.FullName?.ToLower() == fullName!.ToLower());
+				t = available?.SingleOrDefault(type => type?.FullName?.Equals(fullName, StringComparison.OrdinalIgnoreCase) == true);
 			} else if (typeParts.Length == 1) {
-				// slow but robust way of finding a type fragment.
-				t = AppDomain.CurrentDomain.GetAssemblies()
-					.SelectMany(asm => asm.GetTypes())
-					.SingleOrDefault(type => type.FullName?.StartsWith(typeParts[0]!) ?? false);
+                // slow but robust way of finding a type fragment.
+                if (_assemblyCache.Count < 1) { _assemblyCache.AddRange(AppDomain.CurrentDomain.GetAssemblies().SelectMany(asm => asm.GetTypes())); }
+				t = _assemblyCache.SingleOrDefault(type => type.FullName?.StartsWith(typeParts[0]!, StringComparison.OrdinalIgnoreCase) ?? false);
 			} else throw new Exception("Invalid type description: "+typename);
             
         	if (t != null) {
@@ -553,16 +554,35 @@ namespace SkinnyJson
         private static bool TryMakeStandardContainer(Type objType, out object? inst)
         {
             inst = null;
-            if (objType.Name == "IDictionary`2")
+            switch (objType.Name)
             {
-                var d1 = typeof(Dictionary<,>);
-                var typeParameters = objType.GetGenericArguments();
-                var constructed = d1.MakeGenericType(typeParameters);
-                inst = Activator.CreateInstance(constructed);
-                return true;
+                case "IDictionary`2":
+                {
+                    inst = CreateGenericInstance(objType, typeof(Dictionary<,>));
+                    return true;
+                }
+                case "IEnumerable`1":
+                case "IList`1":
+                case "IContainer`1":
+                {
+                    inst = CreateGenericInstance(objType, typeof(List<>));
+                    return true;
+                }
+                case "ISet`1":
+                {
+                    inst = CreateGenericInstance(objType, typeof(HashSet<>));
+                    return true;
+                }
             }
 
             return false;
+        }
+
+        private static object CreateGenericInstance(Type interfaceType, Type concreteType)
+        {
+            var typeParameters = interfaceType.GetGenericArguments();
+            var constructed = concreteType.MakeGenericType(typeParameters);
+            return Activator.CreateInstance(constructed)!;
         }
 
         private object SlowCreateInstance(Type objType)
@@ -780,9 +800,7 @@ namespace SkinnyJson
         /// </summary>
         SafeDictionary<string, TypePropertyInfo> GetProperties(Type type, string typename)
         {
-            var usePrivateFields = 
-                typename.StartsWith("Tuple`")
-                || IsAnonymousType(type);
+            var usePrivateFields = typename.StartsWith("Tuple`", StringComparison.Ordinal) || IsAnonymousType(type);
 
             if (_propertyCache.TryGetValue(typename, out SafeDictionary<string, TypePropertyInfo> sd)) return sd;
         	sd = new SafeDictionary<string, TypePropertyInfo>();
@@ -1105,7 +1123,7 @@ namespace SkinnyJson
         {
             if (pt == null) throw new Exception("Invalid container type");
             if (bt == null) throw new Exception("Invalid element type");
-            var col = FastCreateInstance(pt) as IList; // BUG: double proxy issue here?
+            var col = FastCreateInstance(pt) as IList;
             if (col == null) throw new Exception("Failed to create instance of " + pt);
             foreach (var ob in data)
             {

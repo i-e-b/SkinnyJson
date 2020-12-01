@@ -66,6 +66,7 @@ namespace SkinnyJson.Unit.Tests
         [Test]
         public void Can_chain_well_known_containers_and_unknown_interface_types()
         {
+            // See Json.cs::TryMakeStandardContainer() if your container type isn't supported
             var d = Json.Defrost<ContainerOfEnumerators>(Quote("{'Prop1':[{'val1':'true','val2':'false','val3':true,'val4':false}], 'Prop2':['Hello', 'world']}"));
             
             Assert.That(d.Prop1, Is.Not.Null, "First enumerable was null");
