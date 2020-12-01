@@ -3,6 +3,7 @@ using System.Text;
 using NUnit.Framework;
 // ReSharper disable InconsistentNaming
 // ReSharper disable AssignNullToNotNullAttribute
+// ReSharper disable PossibleNullReferenceException
 
 namespace SkinnyJson.Unit.Tests
 {

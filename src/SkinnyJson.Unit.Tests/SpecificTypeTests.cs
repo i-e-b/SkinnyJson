@@ -1,7 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 // ReSharper disable AssignNullToNotNullAttribute
 // ReSharper disable InconsistentNaming
+// ReSharper disable PossibleNullReferenceException
+// ReSharper disable UnusedMember.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
 
 namespace SkinnyJson.Unit.Tests
 {
@@ -58,12 +63,36 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(defrosted.val4, Is.False, "'false' bool was not correctly interpreted");
         }
 
+        [Test]
+        public void Can_chain_well_known_containers_and_unknown_interface_types()
+        {
+            var d = Json.Defrost<ContainerOfEnumerators>(Quote("{'Prop1':[{'val1':'true','val2':'false','val3':true,'val4':false}], 'Prop2':['Hello', 'world']}"));
+            
+            Assert.That(d.Prop1, Is.Not.Null, "First enumerable was null");
+            var l1 = d.Prop1.ToList();
+            Assert.That(l1.Count, Is.EqualTo(1), "First enumerable was wrong length");
+            
+            Assert.That(d.Prop2, Is.Not.Null, "Second enumerable was null");
+            var l2 = d.Prop2.ToList();
+            Assert.That(l2.Count, Is.EqualTo(2), "Second enumerable was wrong length");
+        }
+
+        private string Quote(string src) => src.Replace('\'', '"');
+
         private bool SimilarDate(DateTime? defrostedDateTime, DateTime dateTime)
         {
             if (defrostedDateTime == null) return false;
             var diff = dateTime - defrostedDateTime.Value;
             return (diff.TotalSeconds * diff.TotalSeconds) < 2;
         }
+    }
+
+    public class ContainerOfEnumerators
+    {
+#pragma warning disable 8618
+        public IEnumerable<ILikeBools> Prop1 { get; set; }
+        public IEnumerable<string> Prop2 { get; set; }
+#pragma warning restore 8618
     }
 
     // ReSharper disable once IdentifierTypo

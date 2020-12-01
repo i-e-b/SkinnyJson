@@ -1105,7 +1105,7 @@ namespace SkinnyJson
         {
             if (pt == null) throw new Exception("Invalid container type");
             if (bt == null) throw new Exception("Invalid element type");
-            var col = FastCreateInstance(pt) as IList;
+            var col = FastCreateInstance(pt) as IList; // BUG: double proxy issue here?
             if (col == null) throw new Exception("Failed to create instance of " + pt);
             foreach (var ob in data)
             {
