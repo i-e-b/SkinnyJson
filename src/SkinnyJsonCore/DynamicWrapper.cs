@@ -39,7 +39,7 @@ namespace SkinnyJson
         /// Syntax: dyn.path.elems()
         /// Access value at position
         /// </summary>
-        public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object result)
+        public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object? result)
         {
             _chain.Add(ChainStep.PropertyStep(binder.Name));
             result = null;
@@ -50,8 +50,7 @@ namespace SkinnyJson
                     result = Walk(Parsed, _chain);
                     break;
                 case 1: // Set value? Throw?
-                    // TODO: implement
-                    break;
+                    throw new Exception("Can't set value");
                 default: // don't understand!
                     throw new ArgumentException("Multiple arguments not allowed (at " + GetChainString() + ")");
             }
@@ -62,7 +61,7 @@ namespace SkinnyJson
         /// Syntax: dyn.path.elems[0]()
         /// Try to directly invoke an instance
         /// </summary>
-        public override bool TryInvoke(InvokeBinder binder, object[] args, out object result)
+        public override bool TryInvoke(InvokeBinder binder, object[] args, out object? result)
         {
             result = null;
             switch (args.Length)
@@ -72,8 +71,7 @@ namespace SkinnyJson
                     result = Walk(Parsed, _chain);
                     break;
                 case 1: // Set value? Throw?
-                    // TODO: implement
-                    break;
+                    throw new Exception("Can't set value");
                 default: // don't understand!
                     throw new ArgumentException("Multiple arguments not allowed (at " + GetChainString() + ")");
             }
@@ -116,18 +114,18 @@ namespace SkinnyJson
         public override bool TrySetIndex(SetIndexBinder binder, object[] indexes, object value)
         {
             // find the path so far, then update found array
-            var targ = Walk(Parsed, _chain);
+            var target = Walk(Parsed, _chain);
 
             if (indexes.Length != 1) throw new ArgumentException("Multi-dimensional indexes not allowed (at " + GetChainString() + ")");
 
             switch (indexes[0])
             {
                 case int i:
-                    if (!(targ is ArrayList arr)) return false;
+                    if (!(target is ArrayList arr)) return false;
                     arr[i] = value;
                     return true;
                 case string s:
-                    if (!(targ is Dictionary<string, object> dict)) return false;
+                    if (!(target is Dictionary<string, object> dict)) return false;
                     if (dict.ContainsKey(s)) dict[s] = value;
                     else dict.Add(s, value);
                     return true;
@@ -143,9 +141,9 @@ namespace SkinnyJson
         public override bool TrySetMember(SetMemberBinder binder, object value)
         {
             // find the object at path so far. If dict, update entry. Otherwise change value
-            var targ = Walk(Parsed, _chain);
+            var target = Walk(Parsed, _chain);
             
-            if (targ is Dictionary<string, object> dict) {
+            if (target is Dictionary<string, object> dict) {
                 if (dict.ContainsKey(binder.Name)) dict[binder.Name] = value;
                 else dict.Add(binder.Name, value);
                 return true;
@@ -158,19 +156,21 @@ namespace SkinnyJson
         /// <summary>
         /// Handle conversions
         /// </summary>
-        public override bool TryConvert(ConvertBinder binder, out object result)
+        public override bool TryConvert(ConvertBinder binder, out object? result)
         {
-            var targ = Walk(Parsed, _chain);
+            result = null;
+            if (binder.Type == null) return false;
 
             var tc = new TypeConverter();
             try
             {
-                result = tc.ConvertTo(targ, binder.Type);
+                var found = Walk(Parsed, _chain);
+                if (found == null) return false;
+                result = tc.ConvertTo(found, binder.Type);
                 return true;
             }
             catch
             {
-                result = null;
                 return false;
             }
         }
@@ -189,32 +189,27 @@ namespace SkinnyJson
             return new DynamicWrapper(Parsed, _chain, name);
         }
 
-        private static object Walk(object parsed, List<ChainStep> chain)
+        private static object? Walk(object parsed, List<ChainStep> chain)
         {
-            var targ = parsed;
+            var target = parsed;
             foreach (var step in chain)
             {
                 if (step.IsIndex)
                 {
-                    if ( ! (targ is ArrayList arr) ) return null;
-                    if (arr.Count > step.SingleIndex) {
-                        targ = arr[(int)step.SingleIndex];
-                        continue;
-                    }
-                    return null;
-                }
-
-                // expecting a property name now
-                if ( ! (targ is Dictionary<string, object> dict)) return null;
-                if ( dict.ContainsKey(step.Name) ) {
-                    targ = dict[step.Name];
+                    if ( ! (target is ArrayList arr) ) return null;
+                    if (!(arr.Count > step.SingleIndex)) return null;
+                    
+                    target = arr[(int)step.SingleIndex];
                     continue;
                 }
 
-                return null;
+                // expecting a property name now
+                if ( ! (target is Dictionary<string, object> dict)) return null;
+                if (step.Name == null || !dict.ContainsKey(step.Name)) return null;
+                target = dict[step.Name];
             }
 
-            return targ;
+            return target;
         }
 
         /// <summary>
@@ -223,16 +218,17 @@ namespace SkinnyJson
         public delegate object Valuate();
         
         /// <summary>
-        /// Cast path to an integer value
+        /// Cast path to a value
         /// </summary>
         public static explicit operator Valuate(DynamicWrapper d){
-            return () => Walk(d.Parsed, d._chain);
+            return () => Walk(d.Parsed, d._chain) ?? new object();
         }
 
         /// <summary>
         /// Cast to object by resolving path
         /// </summary>
-        public static object ToObject(DynamicWrapper d)
+        // ReSharper disable once UnusedMember.Global
+        public static object? ToObject(DynamicWrapper d)
         {
             return Walk(d.Parsed, d._chain);
         }
@@ -241,18 +237,17 @@ namespace SkinnyJson
         /// Cast path to an integer value
         /// </summary>
         public static explicit operator int(DynamicWrapper d){
-            var targ = Walk(d.Parsed, d._chain);
-            if (targ == null) throw new NullReferenceException();
-            return int.Parse(targ.ToString());
+            var target = Walk(d.Parsed, d._chain);
+            if (target == null) throw new NullReferenceException();
+            return int.Parse(target.ToString()!);
         }
 
         /// <summary>
-        /// Cast path to an integer value
+        /// Cast path to a string value
         /// </summary>
         public static explicit operator string(DynamicWrapper d){
-            var targ = Walk(d.Parsed, d._chain);
-            if (targ == null) return null;
-            return targ.ToString();
+            var target = Walk(d.Parsed, d._chain);
+            return target?.ToString() ?? "";
         }
     }
 }

@@ -6,35 +6,35 @@ namespace SkinnyJson {
     /// Dictionary with thread locks
     /// </summary>
 	internal class SafeDictionary<TKey, TValue> {
-		private readonly object padlock = new object();
-		private readonly Dictionary<TKey, TValue> dictionary;
+		private readonly object _padlock = new object();
+		private readonly Dictionary<TKey, TValue> _dictionary;
 
 		public SafeDictionary () {
-			dictionary = new Dictionary<TKey, TValue>();
+			_dictionary = new Dictionary<TKey, TValue>();
 		}
 
         public TKey[] Keys {
             get {
-                lock(padlock){
-                    return dictionary.Keys.ToArray();
+                lock(_padlock){
+                    return _dictionary.Keys.ToArray();
                 }
             }
         }
 
 		public bool TryGetValue (TKey key, out TValue value) {
-			lock (padlock) {
-			    return dictionary.TryGetValue(key, out value);
+			lock (_padlock) {
+			    return _dictionary.TryGetValue(key, out value);
             }
 		}
 
 		public TValue this[TKey key] {
-			get { lock (padlock) return dictionary[key]; }
-			set { lock (padlock) dictionary[key] = value; }
+			get { lock (_padlock) return _dictionary[key]; }
+			set { lock (_padlock) _dictionary[key] = value; }
 		}
 
 		public void Add (TKey key, TValue value) {
-			lock (padlock) {
-				if (dictionary.ContainsKey(key) == false) dictionary.Add(key, value);
+			lock (_padlock) {
+				if (_dictionary.ContainsKey(key) == false) _dictionary.Add(key, value);
 			}
 		}
 	}

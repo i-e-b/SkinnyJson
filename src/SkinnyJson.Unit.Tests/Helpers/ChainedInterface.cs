@@ -1,12 +1,13 @@
+// ReSharper disable UnusedMemberInSuper.Global
 namespace SkinnyJson.Unit.Tests
 {
 	public class ChainedInterface : ITopLevel
 	{
-		public string A{ get; set; }
+		public string? A{ get; set; }
 
-		public string B{ get; set; }
+		public string? B{ get; set; }
 
-		public string C{ get; set; }
+		public string? C{ get; set; }
 
 		public static ChainedInterface Make()
 		{
@@ -16,16 +17,16 @@ namespace SkinnyJson.Unit.Tests
 	
 	public interface ITopLevel:IMiddle
 	{
-		string C { get; set; }
+		string? C { get; set; }
 	}
 
 	public interface IMiddle: IBottom
 	{
-		string B { get; set; }
+		string? B { get; set; }
 	}
 
 	public interface IBottom
 	{
-		string A { get; set; }
+		string? A { get; set; }
 	}
 }

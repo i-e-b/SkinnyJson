@@ -212,7 +212,7 @@ namespace SkinnyJson.Unit.Tests {
 			Assert.That(defrosted.X, Is.EqualTo(original.X));
 			Assert.That(defrosted.Y, Is.EqualTo(original.Y));
 			Assert.That(defrosted.Z, Is.EqualTo(original.Z));
-			Assert.That(defrosted.IKMP, Is.EqualTo(original.IKMP));
+			Assert.That(defrosted.FromBase, Is.EqualTo(original.FromBase));
 		}
 
 		[Test]

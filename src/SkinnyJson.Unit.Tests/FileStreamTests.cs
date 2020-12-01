@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Text;
 using NUnit.Framework;
+// ReSharper disable InconsistentNaming
 
 namespace SkinnyJson.Unit.Tests
 {

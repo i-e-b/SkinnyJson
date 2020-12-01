@@ -24,7 +24,7 @@
         public bool SerializeNullValues = true;
 
         /// <summary>
-        /// Force datetimes to UTC. Default true
+        /// Force date times to UTC. Default true
         /// </summary>
         public bool UseUtcDateTime = true;
 

@@ -6,12 +6,12 @@ namespace SkinnyJson.Unit.Tests {
 		Guid AnId { get; }
 	}
 	public interface IExtendedMarker:IMarkerInterface {
-		string AnotherThing { get; set; }
+		string? AnotherThing { get; set; }
 	}
 
 	public class UsesMarker : IMarkerInterface
 	{
 		public Guid AnId{get; set;}
-		public string AnotherThing { get; set; }
+		public string? AnotherThing { get; set; }
 	}
 }

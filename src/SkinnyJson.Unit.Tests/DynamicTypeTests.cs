@@ -1,5 +1,5 @@
-﻿using System;
-using NUnit.Framework;
+﻿using NUnit.Framework;
+// ReSharper disable AssignNullToNotNullAttribute
 
 namespace SkinnyJson.Unit.Tests
 {

@@ -1,5 +1,7 @@
 ﻿using System.Linq;
 using NUnit.Framework;
+// ReSharper disable AssignNullToNotNullAttribute
+// ReSharper disable UnusedMemberInSuper.Global
 
 namespace SkinnyJson.Unit.Tests
 {
@@ -12,7 +14,7 @@ namespace SkinnyJson.Unit.Tests
             var input = RepositoryType.RawList();
 
             var result1 = Json.DefrostFromPath<ISubtype>("", input);
-            var result2 = Json.DefrostFromPath<ISubtype>(null, input);
+            var result2 = Json.DefrostFromPath<ISubtype>(null!, input);
 
             Assert.That(result1.Select(t=>t.Value), Is.EquivalentTo(new []{ "1st" }));
             Assert.That(result2.Select(t=>t.Value), Is.EquivalentTo(new []{ "1st" }));
@@ -44,7 +46,7 @@ namespace SkinnyJson.Unit.Tests
         {
             var input = RepositoryType.SimpleList();
 
-            var result = Json.DefrostFromPath<ISubtype>("Path.To", input);
+            var result = Json.DefrostFromPath<ISubtype>("Path.To", input); // points to an array of this type
 
             Assert.That(result, Is.Empty);
         }
@@ -73,14 +75,14 @@ namespace SkinnyJson.Unit.Tests
     }
 
     public interface ISubtype {
-        string Name { get; set; }
-        string Value { get; set; }
+        string? Name { get; set; }
+        string? Value { get; set; }
     }
 
     public class SampleSubtype : ISubtype
     {
-        public string Name { get; set; }
-        public string Value { get; set; }
+        public string? Name { get; set; }
+        public string? Value { get; set; }
     }
 
     public class RepositoryType

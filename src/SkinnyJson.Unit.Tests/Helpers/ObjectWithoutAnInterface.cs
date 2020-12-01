@@ -6,7 +6,7 @@ namespace SkinnyJson.Unit.Tests {
 			return x;
 		}
 
-		public string A;
-		public string B {get;set;}
+		public string? A;
+		public string? B {get;set;}
 	}
 }

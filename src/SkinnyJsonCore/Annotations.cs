@@ -1,4 +1,5 @@
 ﻿using System;
+// ReSharper disable UnusedType.Global
 #pragma warning disable 1591
 // ReSharper disable once CheckNamespace
 namespace JetBrains.Annotations {

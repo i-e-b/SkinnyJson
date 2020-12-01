@@ -1,5 +1,6 @@
-﻿namespace SkinnyJson.Unit.Tests {
+﻿// ReSharper disable UnusedMemberInSuper.Global
+namespace SkinnyJson.Unit.Tests {
 	public interface ISimpleObject {
-		string B { get; set; }
+		string? B { get; set; }
 	}
 }

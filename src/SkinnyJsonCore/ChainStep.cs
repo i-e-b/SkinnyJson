@@ -8,7 +8,7 @@
         /// <summary>
         /// Name of property
         /// </summary>
-        public string Name { get; set; }
+        public string? Name { get; set; }
         /// <summary>
         /// Index lookup, if any
         /// </summary>
@@ -17,12 +17,12 @@
         /// <summary>
         /// True if there is an index
         /// </summary>
-        public bool IsIndex { get { return SingleIndex != null; } }
+        public bool IsIndex => SingleIndex != null;
 
         /// <summary>
         /// Make a property lookup
         /// </summary>
-        public static ChainStep PropertyStep(string name)
+        public static ChainStep PropertyStep(string? name)
         {
             return new ChainStep{
                 Name = name,

@@ -15,18 +15,17 @@ namespace SkinnyJson {
 			return (T)GetInstanceFor(typeof(T));
 		}
 
-		static readonly ModuleBuilder ModuleBuilder;
-		static readonly AssemblyBuilder DynamicAssembly;
+        private static readonly ModuleBuilder _moduleBuilder;
+        private static readonly AssemblyBuilder _dynamicAssembly;
 
         /// <summary>
         /// Return an instance of the given interface
         /// </summary>
 		public static object GetInstanceFor (Type targetType) {
-			lock (DynamicAssembly) // can race when type has been declared but not built yet
+			lock (_dynamicAssembly) // can race when type has been declared but not built yet
 			{
-				var constructedType = DynamicAssembly.GetType(ProxyName(targetType)) ?? GetConstructedType(targetType);
-				var instance = Activator.CreateInstance(constructedType);
-				return instance;
+				var constructedType = _dynamicAssembly.GetType(ProxyName(targetType)) ?? GetConstructedType(targetType);
+				return Activator.CreateInstance(constructedType)!;
 			}
 		}
 
@@ -37,18 +36,17 @@ namespace SkinnyJson {
 
 		static DynamicProxy () {
 			var assemblyName = new AssemblyName("DynImpl");
-			DynamicAssembly = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
-			ModuleBuilder = DynamicAssembly.DefineDynamicModule("DynImplModule");
+			_dynamicAssembly = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
+			_moduleBuilder = _dynamicAssembly.DefineDynamicModule("DynImplModule");
 		}
 
         static Type GetConstructedType (Type targetType) {
-			var typeBuilder = ModuleBuilder.DefineType(ProxyName(targetType), TypeAttributes.Public);
+			var typeBuilder = _moduleBuilder.DefineType(ProxyName(targetType), TypeAttributes.Public);
 
-
-            var gtypes = targetType.GetGenericArguments();
-            if (gtypes.Any())
+            var gTypes = targetType.GetGenericArguments();
+            if (gTypes.Any())
             {
-                typeBuilder.DefineGenericParameters(gtypes.Select(g=>g.Name).ToArray());
+                typeBuilder.DefineGenericParameters(gTypes.Select(g=>g.Name).ToArray());
             }
 
 			foreach (var face in targetType.GetInterfaces()) { IncludeType(face, typeBuilder); }
@@ -63,11 +61,11 @@ namespace SkinnyJson {
 
             try
             {
-                return typeBuilder.CreateTypeInfo();
+                return typeBuilder.CreateTypeInfo()!;
             }
-            catch (TypeLoadException tlex)
+            catch (TypeLoadException ex)
             {
-                throw new Exception("Failed to build reflection type", tlex);
+                throw new Exception("Failed to build reflection type", ex);
             }
         }
 
@@ -97,40 +95,40 @@ namespace SkinnyJson {
 				);
 
 
-			var methodILGen = methodBuilder.GetILGenerator();
+			var methodIlGen = methodBuilder.GetILGenerator();
 
 		    foreach (var parameter in parameters)
 		    {
-                methodILGen.DeclareLocal(parameter.ParameterType); // help with weird generic types
+                methodIlGen.DeclareLocal(parameter.ParameterType); // help with weird generic types
             }
 
             if (methodInfo.ReturnType == typeof(void)) {
-				methodILGen.Emit(OpCodes.Ret);
+				methodIlGen.Emit(OpCodes.Ret);
 			} else {
 				if (methodInfo.ReturnType.IsValueType || methodInfo.ReturnType.IsEnum) {
 					var getMethod = typeof(Activator).GetMethod("CreateInstance", new[] { typeof(Type) });
-					var lb = methodILGen.DeclareLocal(methodInfo.ReturnType);
+					var lb = methodIlGen.DeclareLocal(methodInfo.ReturnType);
                     var getTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle");
 
 				    if (lb.LocalType == null) return;
                     if (getMethod == null) return;
                     if (getTypeFromHandle == null) return;
 
-					methodILGen.Emit(OpCodes.Ldtoken, lb.LocalType);
-					methodILGen.Emit(OpCodes.Call, getTypeFromHandle);
-					methodILGen.Emit(OpCodes.Callvirt, getMethod);
-					methodILGen.Emit(OpCodes.Unbox_Any, lb.LocalType);
+					methodIlGen.Emit(OpCodes.Ldtoken, lb.LocalType);
+					methodIlGen.Emit(OpCodes.Call, getTypeFromHandle);
+					methodIlGen.Emit(OpCodes.Callvirt, getMethod);
+					methodIlGen.Emit(OpCodes.Unbox_Any, lb.LocalType);
 				} else {
-					methodILGen.Emit(OpCodes.Ldnull);
+					methodIlGen.Emit(OpCodes.Ldnull);
 				}
-				methodILGen.Emit(OpCodes.Ret);
+				methodIlGen.Emit(OpCodes.Ret);
 			}
 
             typeBuilder.DefineMethodOverride(methodBuilder, methodInfo);
         }
 
         static void BindProperty (TypeBuilder typeBuilder, MethodInfo methodInfo) {
-            var ptypes = methodInfo.GetParameters().Select(t=>t.ParameterType).ToArray();
+            var pTypes = methodInfo.GetParameters().Select(t=>t.ParameterType).ToArray();
 
 			// Backing Field
 			var propertyName = methodInfo.Name.Replace("get_", "");
@@ -144,7 +142,7 @@ namespace SkinnyJson {
 			var getIl = backingGet.GetILGenerator();
 
             
-            foreach (var parameter in ptypes) { getIl.DeclareLocal(parameter); }
+            foreach (var parameter in pTypes) { getIl.DeclareLocal(parameter); }
 			getIl.Emit(OpCodes.Ldarg_0);
 			getIl.Emit(OpCodes.Ldfld, backingField);
 			getIl.Emit(OpCodes.Ret);
@@ -157,14 +155,14 @@ namespace SkinnyJson {
 
 			var setIl = backingSet.GetILGenerator();
             
-            foreach (var parameter in ptypes) { setIl.DeclareLocal(parameter); }
+            foreach (var parameter in pTypes) { setIl.DeclareLocal(parameter); }
 			setIl.Emit(OpCodes.Ldarg_0);
 			setIl.Emit(OpCodes.Ldarg_1);
 			setIl.Emit(OpCodes.Stfld, backingField);
 			setIl.Emit(OpCodes.Ret);
 
 			// Property
-			var propertyBuilder = typeBuilder.DefineProperty(propertyName, PropertyAttributes.None, propertyType, ptypes);
+			var propertyBuilder = typeBuilder.DefineProperty(propertyName, PropertyAttributes.None, propertyType, pTypes);
 			propertyBuilder.SetGetMethod(backingGet);
 			propertyBuilder.SetSetMethod(backingSet);
 		}

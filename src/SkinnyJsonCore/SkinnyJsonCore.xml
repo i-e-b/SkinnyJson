@@ -124,7 +124,7 @@
         </member>
         <member name="M:SkinnyJson.DynamicWrapper.op_Explicit(SkinnyJson.DynamicWrapper)~SkinnyJson.DynamicWrapper.Valuate">
             <summary>
-            Cast path to an integer value
+            Cast path to a value
             </summary>
         </member>
         <member name="M:SkinnyJson.DynamicWrapper.ToObject(SkinnyJson.DynamicWrapper)">
@@ -139,7 +139,7 @@
         </member>
         <member name="M:SkinnyJson.DynamicWrapper.op_Explicit(SkinnyJson.DynamicWrapper)~System.String">
             <summary>
-            Cast path to an integer value
+            Cast path to a string value
             </summary>
         </member>
         <member name="T:SkinnyJson.Json">
@@ -325,7 +325,7 @@
         </member>
         <member name="M:SkinnyJson.Json.GetGetters(System.Type)">
             <summary>
-            Return a list of propery/field access proxies for a type
+            Return a list of property/field access proxies for a type
             </summary>
         </member>
         <member name="M:SkinnyJson.Json.CreateMyProp(System.Type)">
@@ -358,9 +358,14 @@
             Convert between runtime types
             </summary>
         </member>
+        <member name="F:SkinnyJson.Json.DateFormatsInPreferenceOrder">
+            <summary>
+            Date formats we expect from JSON strings
+            </summary>
+        </member>
         <member name="T:SkinnyJson.Json.TypePropertyInfo">
             <summary>
-            Record of reflected type infor for fields and properties on objects
+            Record of reflected type info for fields and properties on objects
             </summary>
         </member>
         <member name="T:SkinnyJson.JsonParameters">
@@ -387,7 +392,7 @@
         </member>
         <member name="F:SkinnyJson.JsonParameters.UseUtcDateTime">
             <summary>
-            Force datetimes to UTC. Default true
+            Force date times to UTC. Default true
             </summary>
         </member>
         <member name="F:SkinnyJson.JsonParameters.ShowReadOnlyProperties">

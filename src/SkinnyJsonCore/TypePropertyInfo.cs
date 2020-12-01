@@ -5,15 +5,15 @@ namespace SkinnyJson
     public partial class Json
     {
         /// <summary>
-        /// Record of reflected type infor for fields and properties on objects
+        /// Record of reflected type info for fields and properties on objects
         /// </summary>
         private struct TypePropertyInfo
         {
 // ReSharper disable InconsistentNaming
             public bool filled;
-            public Type pt;
-            public Type bt;
-            public Type changeType;
+            public Type? parameterType;
+            public Type? bt;
+            public Type? changeType;
             public bool isDictionary;
             public bool isValueType;
             public bool isGenericType;
@@ -23,7 +23,7 @@ namespace SkinnyJson
             public bool isDataSet;
             public bool isDataTable;
             public bool isHashtable;
-            public GenericSetter setter;
+            public GenericSetter? setter;
             public bool isEnum;
             public bool isDateTime;
             public Type[] GenericTypes;
@@ -32,7 +32,7 @@ namespace SkinnyJson
             public bool isString;
             public bool isBool;
             public bool isClass;
-            public GenericGetter getter;
+            public GenericGetter? getter;
             public bool isStringDictionary;
 // ReSharper restore InconsistentNaming
             public bool CanWrite;
