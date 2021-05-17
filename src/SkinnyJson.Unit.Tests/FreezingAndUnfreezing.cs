@@ -11,7 +11,7 @@ using NUnit.Framework;
 namespace SkinnyJson.Unit.Tests {
     [TestFixture]
 	public class FreezingAndUnfreezing {
-        [TestFixtureSetUp]
+        [SetUp]
         public void setup() {
             Json.DefaultParameters.EnableAnonymousTypes = false;
         }

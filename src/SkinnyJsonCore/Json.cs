@@ -654,8 +654,12 @@ namespace SkinnyJson
             var targetType = targetObject.GetType();
 
 			var props = GetProperties(targetType, targetType.Name);
-            if (!IsDictionary(targetType) && NoPropertiesMatch(props.Keys, jsonValues.Keys)) return null; // this type doesn't match
-            
+            if (!IsDictionary(targetType) && NoPropertiesMatch(props.Keys, jsonValues.Keys))
+            {
+                if (jsonValues.Count > 0) // unless we were passed an empty object,
+                    return null;          // this type doesn't match
+            }
+
             foreach (var key in jsonValues.Keys)
             {
                 MapJsonValueToObject(key, targetObject, jsonValues, globalTypes, props);
@@ -938,10 +942,10 @@ namespace SkinnyJson
 
             var indexes = propertyInfo.GetIndexParameters();
 
-            if (indexes.Length < 1) { return (a, b, k) => propertyInfo.SetValue(a, b, null!); }
+            if (indexes.Length < 1) { return (a, b, _) => propertyInfo.SetValue(a, b, null!); }
             if (indexes.Length < 2) { return (a, b, k) => propertyInfo.SetValue(a, b, new []{ k }); }
 
-            return (a, b, k) => throw new Exception("Multiple index data types are not supported");
+            return (_, _, _) => throw new Exception("Multiple index data types are not supported");
         }
 
         /// <summary>

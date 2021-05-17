@@ -75,7 +75,7 @@ namespace SkinnyJson.Unit.Tests
         {
             var obj = new SimpleObjectUnderInterface();
             var result = Json.WrapperType(obj);
-            Assert.That(result, Is.StringContaining("ISimpleObject"));
+            Assert.That(result, Contains.Substring("ISimpleObject"));
         }
     }
 }

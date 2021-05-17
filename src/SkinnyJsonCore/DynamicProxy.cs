@@ -110,7 +110,8 @@ namespace SkinnyJson {
 					var lb = methodIlGen.DeclareLocal(methodInfo.ReturnType);
                     var getTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle");
 
-				    if (lb.LocalType == null) return;
+                    // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+                    if (lb.LocalType == null) return;
                     if (getMethod == null) return;
                     if (getTypeFromHandle == null) return;
 

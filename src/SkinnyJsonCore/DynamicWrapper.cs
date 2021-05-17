@@ -194,7 +194,7 @@ namespace SkinnyJson
             var target = parsed;
             foreach (var step in chain)
             {
-                if (step.IsIndex)
+                if (step.IsIndex && step.SingleIndex != null)
                 {
                     if ( ! (target is ArrayList arr) ) return null;
                     if (!(arr.Count > step.SingleIndex)) return null;

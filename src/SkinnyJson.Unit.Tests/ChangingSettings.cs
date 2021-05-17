@@ -21,8 +21,8 @@ namespace SkinnyJson.Unit.Tests
             
             Json.DefaultStreamEncoding = Encoding.UTF7;
 
-            Assert.That(on, Is.Not.StringContaining("$type"));
-            Assert.That(off, Is.StringContaining("$type"));
+            Assert.That(on, Does.Not.Contain("$type"));
+            Assert.That(off, Contains.Substring("$type"));
             Json.DefaultParameters.EnableAnonymousTypes = true;
         }
 
