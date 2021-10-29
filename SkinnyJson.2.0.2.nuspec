@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>SkinnyJson</id>
+    <version>2.0.2</version>
+    <title>SkinnyJson</title>
+    <authors>IainB</authors>
+    <owners>IainB</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://raw.githubusercontent.com/i-e-b/SkinnyJson/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/i-e-b/SkinnyJson</projectUrl>
+    <description>A simple and small JSON (de)serialisation library, focused on simple interactions with contract-based workflows.</description>
+    <summary>A simple and small JSON (de)serialisation library</summary>
+    <releaseNotes>Fix fallback process</releaseNotes>
+    <readme>content\README.md</readme>
+  </metadata>
+  <files>
+    <file src="content\README.md" target="content\README.md" />
+    <file src="lib\netstandard2.0\SkinnyJsonCore.deps.json" target="lib\netstandard2.0\SkinnyJsonCore.deps.json" />
+    <file src="lib\netstandard2.0\SkinnyJsonCore.dll" target="lib\netstandard2.0\SkinnyJsonCore.dll" />
+    <file src="lib\netstandard2.0\SkinnyJsonCore.pdb" target="lib\netstandard2.0\SkinnyJsonCore.pdb" />
+    <file src="lib\netstandard2.0\SkinnyJsonCore.xml" target="lib\netstandard2.0\SkinnyJsonCore.xml" />
+  </files>
+</package>

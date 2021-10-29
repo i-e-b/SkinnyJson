@@ -547,7 +547,8 @@ namespace SkinnyJson
             }
             catch (Exception exc)
             {
-                throw new Exception($"Failed to fast create instance for type '{objType.FullName}' from assembly '{objType.AssemblyQualifiedName}'", exc);
+                //throw new Exception($"Failed to fast create instance for type '{objType.FullName}' from assembly '{objType.AssemblyQualifiedName}'", exc);
+                return null;
             }
         }
 
