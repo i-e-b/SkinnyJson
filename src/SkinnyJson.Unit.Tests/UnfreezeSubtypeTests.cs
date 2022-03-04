@@ -72,6 +72,21 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(result.Select(t=>t.Value), Is.EquivalentTo(new []{ "1st", "2nd", "3rd", "4th" }));
             Assert.That(result.Select(t=>t.Name), Is.EquivalentTo(new []{ "First", "Second", "Third", "Fourth" }));
         }
+
+        [Test]
+        public void complex_sub_path_tests()
+        {
+            var input = RepositoryType.ComplexSubObjects();
+
+            // here we ask for the second item of each "values"
+            var result = Json.DefrostFromPath<string>("metrics.time_series.cpu.values[*].[1]", input).ToList();
+            Assert.That(result, Is.EquivalentTo(new []{ "249","467","209" })); // 4th item has no 2nd child
+            
+            
+            // here we ask for all paths under the option at index 0
+            result = Json.DefrostFromPath<string>("metrics.options[0].name", input).ToList();
+            Assert.That(result, Is.EquivalentTo(new []{ "first option" }));
+        }
     }
 
     public interface ISubtype {
@@ -154,6 +169,42 @@ namespace SkinnyJson.Unit.Tests
                     }
                 }
             );
+        }
+
+        public static string ComplexSubObjects()
+        {
+            return @"{
+  'metrics': {
+    'start': '2022-03-03T00:00:00+00:00',
+    'end': '2022-03-04T00:00:00+00:00',
+    'step': 3600,
+    'options': [
+        {'name':'first option', 'value':1},
+        {'name':'second option', 'value':2}
+    ],
+    'time_series': {
+      'cpu': {
+        'values': [
+          [
+            1646265600,
+            '249'
+          ],
+          [
+            1646269200,
+            '467'
+          ],
+          [
+            1646272800,
+            '209'
+          ],
+          [
+            1646276400,
+          ]
+        ]
+      }
+    }
+  }
+}".Replace('\'', '"');
         }
     }
 }

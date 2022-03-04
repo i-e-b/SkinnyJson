@@ -237,13 +237,13 @@ namespace SkinnyJson
             var rawObject = parser.Decode();
             var pathParts = path.Split('.');
 
-            return PathWalk<T>(rawObject, globalTypes, pathParts, 0);
+            return PathWalk<T>(rawObject, globalTypes, pathParts, 0, false);
         }
 
         /// <summary>
         /// Recursive helper for SelectObjects˂T˃
         /// </summary>
-        private IEnumerable<T> PathWalk<T>(object? rawObject, Dictionary<string, object> globalTypes, string[] pathParts, int pathIndex)
+        private IEnumerable<T> PathWalk<T>(object? rawObject, Dictionary<string, object> globalTypes, string[] pathParts, int pathIndex, bool parentIsArray)
         {
             if (rawObject == null) yield break;
             
@@ -261,30 +261,134 @@ namespace SkinnyJson
                 yield break;
             }
             var step = pathParts[pathIndex];
+            var isIndexed = false;
+            var index = 0;
             
+            // check for indexing in the path element
+            if (step.EndsWith("]"))
+            {
+                var bits = step.Split('[');
+                
+                var indexStr = bits[1].Trim(']');
+                if (indexStr == "*") // special "[*]" syntax to cope with arrays-inside-arrays
+                {
+                    index = -1;
+                }
+                else
+                {
+                    if ((bits.Length != 2) || (!int.TryParse(bits[1].Trim(']'), out index)))
+                        throw new Exception($"Invalid path element: '{step}'");
+                    if (index < 0) throw new Exception($"Invalid array index: '{step}'");
+                }
+
+                step = bits[0]; // trim name
+                isIndexed = true; // set index flag
+                
+                // now, if we have an element name, we expect to step into a dictionary and find an array
+                if (step != "")
+                {
+                    var container = rawObject as Dictionary<string, object>;
+                    if (container is null || !container.ContainsKey(step)) yield break; // doesn't exist at this path
+                    rawObject = container[step]; // step down into container
+                }
+                else if (pathIndex >= pathParts.Length-1) // indexing the last step on a path
+                {
+                    if (parentIsArray) // we should enumerate the parent array on pick n-th elements from child
+                    {
+                        var elems = PathWalk<T>(rawObject, globalTypes, pathParts, pathIndex, false);
+                        foreach (var elem in elems) { yield return elem; }
+                        yield break;
+                    }
+                }
+            }
+
             switch (rawObject)
             {
                 case Dictionary<string, object> objects:
                     {
-                        if (objects.ContainsKey(step)) {
-                            var elems = PathWalk<T>(objects[step], globalTypes, pathParts, pathIndex + 1);
-                            foreach (var elem in elems) { yield return elem; }
+                        if (!objects.ContainsKey(step)) yield break;
+                        var next = objects[step];
+
+                        if (isIndexed) // try to step into an array
+                        {
+                            var arrayList = next as ArrayList;
+                            if (arrayList is null) yield break; // this path point isn't an array
+                            if (index < 0) // we used the '*' syntax
+                            {
+                                foreach (var item in arrayList)
+                                {
+                                    var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true);
+                                    foreach (var elem in indexElems) { yield return elem; }
+                                }
+                            }
+                            else // we want a single item here
+                            {
+                                if (index >= arrayList.Count) yield break; // not available on this path
+                                var item = arrayList[index];
+                                var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true);
+                                foreach (var elem in indexElems) { yield return elem; }
+                            }
                         }
+
+                        var elems = PathWalk<T>(objects[step], globalTypes, pathParts, pathIndex + 1, false);
+                        foreach (var elem in elems) { yield return elem; }
                         yield break;
                     }
 
                 case ArrayList arrayList:
                     {
-                        foreach (var item in arrayList)
+                        if (isIndexed) // try to return a single item out of this path
                         {
-                            var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex); // ignore arrays while walking path name elements
-                            foreach (var elem in elems) { yield return elem; }
+                            if (index >= arrayList.Count) yield break; // not available on this path
+
+                            if (index < 0) // '*' option
+                            {
+                                foreach (var item in arrayList)
+                                {
+                                    var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true);
+                                    foreach (var elem in indexElems) { yield return elem; }
+                                }
+                            }
+                            else // specific index
+                            {
+                                var item = arrayList[index];
+                                var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex + 1, true);
+                                foreach (var elem in elems)
+                                {
+                                    yield return elem;
+                                }
+                            }
+
+                            yield break;
                         }
+                        else // return every child of this path
+                        {
+                            foreach (var item in arrayList)
+                            {
+                                var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex, true); // ignore arrays while walking path name elements
+                                foreach (var elem in elems)
+                                {
+                                    yield return elem;
+                                }
+                            }
+                            yield break;
+                        }
+
                         yield break;
                     }
 
                 default:
-                    throw new Exception("Don't understand this JSON");
+                {
+                    if (step != "") throw new Exception($"Don't understand this JSON at {step}");
+
+                    var elems = PathWalk<T>(rawObject, globalTypes, pathParts, pathIndex + 1, false);
+                    foreach (var elem in elems)
+                    {
+                        yield return elem;
+                    }
+
+                    yield break;
+                }
             }
         }
 
@@ -338,7 +442,7 @@ namespace SkinnyJson
                     }
 
                 default:
-                    throw new Exception("Don't understand this JSON");
+                    return type is null ? decodedObject : ConvertItem(type, globalTypes, decodedObject);
             }
         }
 
@@ -353,20 +457,24 @@ namespace SkinnyJson
             var list = (IList) Activator.CreateInstance(GenericListType(elementType))!;
             foreach (var obj in arrayList)
             {
-                if (obj == null) list.Add(obj);
-                else if (obj.GetType().IsAssignableFrom(elementType)) list.Add(obj);
-                else
-                { // a complex type?
-                    var dict = obj as Dictionary<string, object>;
-                    if (dict == null) throw new Exception("Element of array not assignable to the array type");
-                    var parsed = ParseDictionary(dict, globalTypes, elementType, null);
-                    list.Add(parsed);
-                }
+                list.Add(ConvertItem(elementType, globalTypes, obj));
             }
 
             return list;
         }
-        
+
+        private object? ConvertItem(Type elementType, Dictionary<string, object> globalTypes, object? obj)
+        {
+            if (obj == null) return obj;
+            if (obj.GetType().IsAssignableFrom(elementType)) return obj;
+            
+            // a complex type?
+            var dict = obj as Dictionary<string, object>;
+            if (dict == null) throw new Exception($"Element {obj.GetType().Name} not assignable to the array type {elementType.Name}");
+            var parsed = ParseDictionary(dict, globalTypes, elementType, null);
+            return parsed;
+        }
+
         private object ConvertToSet(Type elementType, Dictionary<string, object> globalTypes, [NotNull] ArrayList arrayList)
         {
             var set = Activator.CreateInstance(GenericHashSetType(elementType));
@@ -375,15 +483,8 @@ namespace SkinnyJson
             {
                 if (obj == null) continue;
                 
-                if (obj.GetType().IsAssignableFrom(elementType)) adder.Invoke(set, new []{obj});
-                else
-                { // a complex type?
-                    var dict = obj as Dictionary<string, object>;
-                    if (dict == null) throw new Exception("Element of array not assignable to the array type");
-                    //var child = Activator.CreateInstance(elementType);
-                    var parsed = ParseDictionary(dict, globalTypes, elementType, null);//child);
-                    adder.Invoke(set, new[] {parsed});
-                }
+                var toAdd = ConvertItem(elementType, globalTypes, obj);
+                adder.Invoke(set, new []{toAdd});
             }
 
             return set;
@@ -545,9 +646,8 @@ namespace SkinnyJson
             	_constructorCache.Add(objType, c);
             	return c();
             }
-            catch (Exception exc)
+            catch (Exception)
             {
-                //throw new Exception($"Failed to fast create instance for type '{objType.FullName}' from assembly '{objType.AssemblyQualifiedName}'", exc);
                 return null;
             }
         }
