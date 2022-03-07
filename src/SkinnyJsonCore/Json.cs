@@ -234,8 +234,10 @@ namespace SkinnyJson
             var parser = ParserFromStreamOrStringOrBytes(json, encoding);
             var globalTypes = new Dictionary<string, object>();
 
+            var ignoreCase = _jsonParameters?.IgnoreCaseOnDeserialize ?? DefaultParameters.IgnoreCaseOnDeserialize;
+            
             var rawObject = parser.Decode();
-            var pathParts = path.Split('.');
+            var pathParts = (ignoreCase ? path.ToLowerInvariant() : path).Split('.');
 
             return PathWalk<T>(rawObject, globalTypes, pathParts, 0, false);
         }
@@ -336,46 +338,42 @@ namespace SkinnyJson
                     }
 
                 case ArrayList arrayList:
+                {
+                    if (isIndexed) // try to return a single item out of this path
                     {
-                        if (isIndexed) // try to return a single item out of this path
-                        {
-                            if (index >= arrayList.Count) yield break; // not available on this path
+                        if (index >= arrayList.Count) yield break; // not available on this path
 
-                            if (index < 0) // '*' option
-                            {
-                                foreach (var item in arrayList)
-                                {
-                                    var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true);
-                                    foreach (var elem in indexElems) { yield return elem; }
-                                }
-                            }
-                            else // specific index
-                            {
-                                var item = arrayList[index];
-                                var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex + 1, true);
-                                foreach (var elem in elems)
-                                {
-                                    yield return elem;
-                                }
-                            }
-
-                            yield break;
-                        }
-                        else // return every child of this path
+                        if (index < 0) // '*' option
                         {
                             foreach (var item in arrayList)
                             {
-                                var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex, true); // ignore arrays while walking path name elements
-                                foreach (var elem in elems)
-                                {
-                                    yield return elem;
-                                }
+                                var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true);
+                                foreach (var elem in indexElems) { yield return elem; }
                             }
-                            yield break;
+                        }
+                        else // specific index
+                        {
+                            var item = arrayList[index];
+                            var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex + 1, true);
+                            foreach (var elem in elems)
+                            {
+                                yield return elem;
+                            }
                         }
 
                         yield break;
                     }
+
+                    foreach (var item in arrayList) // return every child of this path
+                    {
+                        var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex, true); // ignore arrays while walking path name elements
+                        foreach (var elem in elems)
+                        {
+                            yield return elem;
+                        }
+                    }
+                    yield break;
+                }
 
                 default:
                 {
@@ -704,8 +702,8 @@ namespace SkinnyJson
 
         bool _usingGlobals;
 
-        readonly SafeDictionary<Type, List<Getters>> _getterCache = new SafeDictionary<Type, List<Getters>>();
-    	readonly SafeDictionary<string, SafeDictionary<string, TypePropertyInfo>> _propertyCache = new SafeDictionary<string, SafeDictionary<string, TypePropertyInfo>>();
+        readonly SafeDictionary<Type, List<Getters>> _getterCache = new();
+    	readonly SafeDictionary<string, SafeDictionary<string, TypePropertyInfo>> _propertyCache = new();
         
         internal delegate object GenericGetter(object obj);
 
@@ -755,7 +753,7 @@ namespace SkinnyJson
             var targetType = targetObject.GetType();
 
 			var props = GetProperties(targetType, targetType.Name);
-            if (!IsDictionary(targetType) && NoPropertiesMatch(props.Keys, jsonValues.Keys))
+            if (!IsDictionary(targetType) && NoPropertiesMatch(props, jsonValues.Keys))
             {
                 if (jsonValues.Count > 0) // unless we were passed an empty object,
                     return null;          // this type doesn't match
@@ -774,13 +772,9 @@ namespace SkinnyJson
             return targetType.GetInterface("IDictionary") != null;
         }
 
-        private bool NoPropertiesMatch(string[] props, ICollection<string> jsonValuesKeys)
+        private bool NoPropertiesMatch(SafeDictionary<string, TypePropertyInfo> props, ICollection<string> jsonValuesKeys)
         {
-            foreach (var jsonKey in jsonValuesKeys)
-            {
-                if (props.Contains(jsonKey)) return false;
-            }
-            return true;
+            return jsonValuesKeys.All(jsonKey => !props.HasKey(jsonKey));
         }
 
         /// <summary>
@@ -878,20 +872,29 @@ namespace SkinnyJson
 
                 if (typ.IsValueType)
                 {
-                    var fi = typ.GetField(name);
+                    var fi = typ.GetField(pi.Name);
                     if (fi != null)
                     {
                         fi.SetValue(targetObject, objSet);
                         return;
                     }
-                    var pr = typ.GetProperty(name, BindingFlags.Instance | BindingFlags.Public);
+                    var pr = typ.GetProperty(pi.Name, BindingFlags.Instance | BindingFlags.Public);
                     if (pr != null)
                     {
                         pr.SetValue(targetObject, objSet, null!);
                         return;
                     }
                 }
-                pi.setter?.Invoke(targetObject, objSet, name);
+
+                if (pi.isDictionary || pi.isHashtable) // use display name
+                {
+                    pi.setter?.Invoke(targetObject, objSet, name);
+                }
+                else // use reflection name
+                {
+                    pi.setter?.Invoke(targetObject, objSet, pi.Name);
+                }
+
             }
             catch (System.Security.VerificationException vex)
             {
@@ -906,6 +909,7 @@ namespace SkinnyJson
         SafeDictionary<string, TypePropertyInfo> GetProperties(Type type, string typename)
         {
             var usePrivateFields = typename.StartsWith("Tuple`", StringComparison.Ordinal) || IsAnonymousType(type);
+            var ignoreCase = _jsonParameters?.IgnoreCaseOnDeserialize ?? DefaultParameters.IgnoreCaseOnDeserialize;
 
             if (_propertyCache.TryGetValue(typename, out SafeDictionary<string, TypePropertyInfo> sd)) return sd;
         	sd = new SafeDictionary<string, TypePropertyInfo>();
@@ -927,13 +931,16 @@ namespace SkinnyJson
 
         	foreach (var f in fi)
         	{
-        		var d = CreateMyProp(f.FieldType);
+        		var d = CreateMyProp(f.FieldType, f.Name);
         		d.setter = CreateSetField(type, f);
         		d.getter = CreateGetField(type, f);
 
 	            sd.Add(f.Name, d);
+                if (ignoreCase) sd.TryAdd(f.Name.ToLowerInvariant(), d);
 	            if (usePrivateFields){
-                    sd.Add(AnonFieldFilter(f.Name.Replace("m_", "")), d);
+                    var privateName = f.Name.Replace("m_", "");
+                    sd.Add(AnonFieldFilter(privateName), d);
+                    if (ignoreCase) sd.TryAdd(privateName.ToLowerInvariant(), d);
                 }
             }
 
@@ -946,12 +953,13 @@ namespace SkinnyJson
 
         	foreach (var p in pr)
         	{
-        		var d = CreateMyProp(p.PropertyType);
+        		var d = CreateMyProp(p.PropertyType, p.Name);
         		d.CanWrite = p.CanWrite;
         		d.setter = CreateSetMethod(p);
                 if (d.setter == null) continue;
         		d.getter = CreateGetMethod(p);
         		sd.Add(p.Name, d);
+                if (ignoreCase) sd.TryAdd(p.Name.ToLowerInvariant(), d);
         	}
 
             if (type.GetGenericArguments().Length < 1) {
@@ -1004,11 +1012,11 @@ namespace SkinnyJson
         /// <summary>
         /// Read reflection data for a type
         /// </summary>
-        static TypePropertyInfo CreateMyProp(Type t)
+        static TypePropertyInfo CreateMyProp(Type t, string name)
         {
-        	var d = new TypePropertyInfo {filled = true, CanWrite = true, parameterType = t, isDictionary = t.Name.Contains("Dictionary")};
+        	var d = new TypePropertyInfo {filled = true, Name = name, CanWrite = true, parameterType = t, isDictionary = t.Name.Contains("Dictionary")};
         	if (d.isDictionary) d.GenericTypes = t.GetGenericArguments();
-
+            
             d.isValueType = t.IsValueType;
             d.isGenericType = t.IsGenericType;
             d.isArray = t.IsArray;
@@ -1464,6 +1472,28 @@ namespace SkinnyJson
             }
 
             return dt;
+        }
+
+        /// <summary>
+        /// Reset to defaults and clear caches.
+        /// </summary>
+        public static void Reset()
+        {
+            ClearCaches();
+            DefaultParameters.Reset();
+            Instance._jsonParameters = DefaultParameters.Clone();
+        }
+
+        /// <summary>
+        /// Clear all caches.
+        /// </summary>
+        public static void ClearCaches()
+        {
+            Instance._assemblyCache.Clear();
+            Instance._constructorCache.Clear();
+            Instance._getterCache.Clear();
+            Instance._propertyCache.Clear();
+            Instance._typeCache.Clear();
         }
     }
 }

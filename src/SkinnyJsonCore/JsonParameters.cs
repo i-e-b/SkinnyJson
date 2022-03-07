@@ -42,7 +42,14 @@
         /// <summary>
         /// Allow case insensitive matching on deserialise. Default false
         /// </summary>
-        public bool IgnoreCaseOnDeserialize = false;
+        public bool IgnoreCaseOnDeserialize
+        {
+            get => _ignoreCaseOnDeserialize;
+            set {
+                if (_ignoreCaseOnDeserialize != value) Json.ClearCaches(); // we cache case transformation results
+                _ignoreCaseOnDeserialize = value;
+            }
+        }
 
         /// <summary>
         /// Default true. If false, source type information will be included in serialised output.<para></para>
@@ -56,11 +63,13 @@
         /// Default true, but overridden by `EnableAnonymousTypes`
         /// </summary>
         public bool UseExtensions = true;
-// ReSharper restore RedundantDefaultFieldInitializer
+
+        private bool _ignoreCaseOnDeserialize = false;
+        // ReSharper restore RedundantDefaultFieldInitializer
 
         internal JsonParameters Clone()
         {
-            return new JsonParameters { 
+            return new JsonParameters {
                 EnableAnonymousTypes = EnableAnonymousTypes,
                 IgnoreCaseOnDeserialize = IgnoreCaseOnDeserialize,
                 SerializeNullValues = SerializeNullValues,
@@ -71,6 +80,22 @@
                 UseUtcDateTime = UseUtcDateTime,
                 UsingGlobalTypes = UsingGlobalTypes
             };
+        }
+
+        /// <summary>
+        /// Restore all settings to their defaults.
+        /// </summary>
+        public void Reset()
+        {
+            EnableAnonymousTypes = true;
+            IgnoreCaseOnDeserialize = false;
+            SerializeNullValues = true;
+            ShowReadOnlyProperties = false;
+            UseExtensions = true;
+            UseFastGuid = true;
+            UseOptimizedDatasetSchema = true;
+            UseUtcDateTime = true;
+            UsingGlobalTypes = true;
         }
     }
 }

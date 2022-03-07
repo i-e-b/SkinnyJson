@@ -87,6 +87,27 @@ namespace SkinnyJson.Unit.Tests
             result = Json.DefrostFromPath<string>("metrics.options[0].name", input).ToList();
             Assert.That(result, Is.EquivalentTo(new []{ "first option" }));
         }
+
+        [Test(Description = "DefrostFromPath is affected by case sensitivity in both the path walking, and the serialisation output")]
+        public void defrostFromPath_should_respect_case_sensitivity_settings()
+        {
+            var input = RepositoryType.CaseComplex();
+            
+            Json.Reset();
+            Json.DefaultParameters.EnableAnonymousTypes = true;
+            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
+            
+            var result = Json.DefrostFromPath<ISubtype>("Root.Options", input).ToList();
+            Assert.That(result.Count, Is.EqualTo(2), "found item");
+            
+            Assert.That(result[0]!.Name, Is.EqualTo("First Option"), "Item 1 name");
+            Assert.That(result[0]!.Value, Is.EqualTo("1"), "Item 1 value");
+            
+            Assert.That(result[1]!.Name, Is.EqualTo("Second Option"), "Item 2 name");
+            Assert.That(result[1]!.Value, Is.EqualTo("2"), "Item 2 value");
+            
+            Json.Reset();
+        }
     }
 
     public interface ISubtype {
@@ -143,7 +164,25 @@ namespace SkinnyJson.Unit.Tests
             );
         }
 
-        
+        public static string CaseComplex()
+        {
+            return @"
+{
+  'ROOT': {
+    'options': [
+        {
+            'Name':'First Option',
+            'value':'1'
+        },
+        {
+            'name':'Second Option',
+            'Value':'2'
+        }
+    ],
+  }
+}".Replace('\'', '"');
+        }
+
         public static string ForkedPath()
         {
             return Json.Freeze(

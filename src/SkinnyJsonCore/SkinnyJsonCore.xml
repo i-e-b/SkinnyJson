@@ -328,7 +328,7 @@
             Return a list of property/field access proxies for a type
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.CreateMyProp(System.Type)">
+        <member name="M:SkinnyJson.Json.CreateMyProp(System.Type,System.String)">
             <summary>
             Read reflection data for a type
             </summary>
@@ -361,6 +361,16 @@
         <member name="F:SkinnyJson.Json.DateFormatsInPreferenceOrder">
             <summary>
             Date formats we expect from JSON strings
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.Reset">
+            <summary>
+            Reset to defaults and clear caches.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.ClearCaches">
+            <summary>
+            Clear all caches.
             </summary>
         </member>
         <member name="T:SkinnyJson.Json.TypePropertyInfo">
@@ -406,7 +416,7 @@
             Default true, but overridden by `EnableAnonymousTypes`
             </summary>
         </member>
-        <member name="F:SkinnyJson.JsonParameters.IgnoreCaseOnDeserialize">
+        <member name="P:SkinnyJson.JsonParameters.IgnoreCaseOnDeserialize">
             <summary>
             Allow case insensitive matching on deserialise. Default false
             </summary>
@@ -422,6 +432,11 @@
             <summary>
             Add type and schema information to output JSON, using $type, $types, $schema and $map properties.
             Default true, but overridden by `EnableAnonymousTypes`
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.JsonParameters.Reset">
+            <summary>
+            Restore all settings to their defaults.
             </summary>
         </member>
         <member name="T:SkinnyJson.JsonParser">
@@ -491,6 +506,11 @@
         <member name="T:SkinnyJson.SafeDictionary`2">
             <summary>
             Dictionary with thread locks
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.SafeDictionary`2.TryAdd(`0,`1)">
+            <summary>
+            Add a key/value pair only if the key is not already present
             </summary>
         </member>
     </members>

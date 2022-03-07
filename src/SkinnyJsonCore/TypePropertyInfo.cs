@@ -36,6 +36,7 @@ namespace SkinnyJson
             public bool isStringDictionary;
 // ReSharper restore InconsistentNaming
             public bool CanWrite;
+            public string Name;
         }
     }
 }
