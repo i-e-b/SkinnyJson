@@ -405,7 +405,7 @@
             Force date times to UTC. Default true
             </summary>
         </member>
-        <member name="F:SkinnyJson.JsonParameters.ShowReadOnlyProperties">
+        <member name="P:SkinnyJson.JsonParameters.ShowReadOnlyProperties">
             <summary>
             Serialise properties that can't be written on deserialise. Default false
             </summary>

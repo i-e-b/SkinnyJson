@@ -31,7 +31,14 @@
         /// <summary>
         /// Serialise properties that can't be written on deserialise. Default false
         /// </summary>
-        public bool ShowReadOnlyProperties = false;
+        public bool ShowReadOnlyProperties
+        {
+            get => _showReadOnlyProperties;
+            set {
+                if (_showReadOnlyProperties != value) Json.ClearCaches(); // we cache type inspections
+                _showReadOnlyProperties = value;
+            }
+        }
 
         /// <summary>
         /// Declare types once at the start of a document. Otherwise declare in each object.
@@ -65,6 +72,8 @@
         public bool UseExtensions = true;
 
         private bool _ignoreCaseOnDeserialize = false;
+
+        private bool _showReadOnlyProperties = false;
         // ReSharper restore RedundantDefaultFieldInitializer
 
         internal JsonParameters Clone()

@@ -192,7 +192,7 @@ namespace SkinnyJson
         [NotNull] public static readonly JsonParameters DefaultParameters = new JsonParameters();
 
         [NotNull]
-    	internal static readonly Json Instance = new Json();
+    	internal static Json Instance = new Json();
         private Json(){
             _jsonParameters = DefaultParameters;
         }
@@ -1479,9 +1479,8 @@ namespace SkinnyJson
         /// </summary>
         public static void Reset()
         {
-            ClearCaches();
             DefaultParameters.Reset();
-            Instance._jsonParameters = DefaultParameters.Clone();
+            ClearCaches();
         }
 
         /// <summary>
@@ -1489,11 +1488,7 @@ namespace SkinnyJson
         /// </summary>
         public static void ClearCaches()
         {
-            Instance._assemblyCache.Clear();
-            Instance._constructorCache.Clear();
-            Instance._getterCache.Clear();
-            Instance._propertyCache.Clear();
-            Instance._typeCache.Clear();
+            Instance = new Json();
         }
     }
 }
