@@ -37,6 +37,33 @@ namespace SkinnyJson
         }
 
         /// <summary>
+        /// Output the static fields and properties of a .Net type
+        /// as a JSON string.
+        /// </summary>
+        public string ConvertStaticsToJson(Type type)
+        {
+            // Extract public static fields and properties of the type to a dictionary,
+            // and pass it through the normal type pathway
+            
+            var container = new Dictionary<string, object>();
+            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static);
+            foreach (var fieldInfo in fields)
+            {
+                var value = fieldInfo.GetValue(null!);
+                container.Add(fieldInfo.Name, value); // recursion should be handled by ConvertToJson()
+            }
+
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Static);
+            foreach (var propertyInfo in properties)
+            {
+                var value = propertyInfo.GetValue(null!);
+                container.Add(propertyInfo.Name, value);
+            }
+            
+            return ConvertToJson(container);
+        }
+
+        /// <summary>
         /// Output a .Net object as a JSON string.
         /// Supports global types
         /// </summary>
@@ -142,6 +169,9 @@ namespace SkinnyJson
 		                case Enum enumeration:
 		                    WriteEnum(enumeration);
 		                    break;
+                        case Type typeDef:
+                            WriteString(typeDef.FullName ?? typeDef.Name);
+                            break;
 		                default:
 		                    WriteObject(obj);
 		                    break;

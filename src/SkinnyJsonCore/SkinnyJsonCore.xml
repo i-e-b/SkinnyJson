@@ -220,12 +220,26 @@
             The input and output encodings can be the same or different.
             </summary>
         </member>
+        <member name="M:SkinnyJson.Json.DefrostInto(System.Object,System.String)">
+            <summary>Fill the members of an .Net object from a JSON object string</summary>
+            <remarks>Alias for <see cref="M:SkinnyJson.Json.FillObject(System.Object,System.String)"/></remarks>
+        </member>
         <member name="M:SkinnyJson.Json.FillObject(System.Object,System.String)">
             <summary>Fill the members of an .Net object from a JSON object string</summary>
         </member>
         <member name="F:SkinnyJson.Json.DefaultParameters">
             <summary>
             You can set these parameters globally for all calls
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.ToJsonStatics(System.Type,SkinnyJson.JsonParameters)">
+            <summary>
+            Read public static properties and fields from a type, output as JSON
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.FillStatics(System.Type,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            Fill public static properties and fields from a name=>value dictionary
             </summary>
         </member>
         <member name="M:SkinnyJson.Json.SelectObjects``1(System.Object,System.String,System.Text.Encoding)">
@@ -480,6 +494,12 @@
             <summary>
             Serialise a .Net object to a writable stream.
             Ignores the 'globalTypes' setting, will always either write types inline or elide them.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.JsonSerializer.ConvertStaticsToJson(System.Type)">
+            <summary>
+            Output the static fields and properties of a .Net type
+            as a JSON string.
             </summary>
         </member>
         <member name="M:SkinnyJson.JsonSerializer.ConvertToJson(System.Object)">

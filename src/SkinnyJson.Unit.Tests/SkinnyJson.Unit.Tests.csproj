@@ -54,6 +54,7 @@
     <Compile Include="CommentingTests.cs" />
     <Compile Include="DynamicTypeTests.cs" />
     <Compile Include="FileStreamTests.cs" />
+    <Compile Include="FillingObjectsTests.cs" />
     <Compile Include="Helpers\ChainedClass.cs" />
     <Compile Include="Helpers\ChainedInterface.cs" />
     <Compile Include="Helpers\ComplexTypes.cs" />
@@ -66,7 +67,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Helpers\SampleInterfaces.cs" />
     <Compile Include="SpecificTypeTests.cs" />
-    <Compile Include="Structs.cs" />
+    <Compile Include="StaticClassTests.cs" />
+    <Compile Include="FreezeAndDefrostStructs.cs" />
     <Compile Include="UnfreezeSubtypeTests.cs" />
   </ItemGroup>
   <ItemGroup>

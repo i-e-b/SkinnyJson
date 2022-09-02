@@ -31,6 +31,12 @@ namespace SkinnyJson
             if (obj is DynamicWrapper dyn) {
                 return Freeze(dyn.Parsed);
             }
+
+            if (obj is Type typeKind) // caller has `Json.Freeze(typeof(SomeClass));`
+            {
+                return Instance.ToJsonStatics(typeKind, DefaultParameters);
+            }
+
             if (!IsAnonymousTypedObject(obj)) return Instance.ToJson(obj, DefaultParameters);
             
             // If we are passed an anon type, turn off type information -- it will all be junk.
@@ -178,11 +184,22 @@ namespace SkinnyJson
         {
             Formatter.PrettyStream(input, inputEncoding, output, outputEncoding);
         }
+        
+        /// <summary>Fill the members of an .Net object from a JSON object string</summary>
+        /// <remarks>Alias for <see cref="FillObject"/></remarks>
+        public static object? DefrostInto(object input, string json) { return FillObject(input, json); }
 
 		/// <summary>Fill the members of an .Net object from a JSON object string</summary>
         public static object? FillObject(object input, string json)
         {
             var ht = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode() as Dictionary<string, object>;
+
+            if (input is Type type)
+            {
+                Instance.FillStatics(type, ht);
+                return null;
+            }
+
             return ht == null ? null : Instance.ParseDictionary(ht, null, input.GetType(), input);
         }
 
@@ -211,6 +228,63 @@ namespace SkinnyJson
 
         // ReSharper disable once FieldCanBeMadeReadOnly.Local
         private JsonParameters? _jsonParameters;
+        
+        /// <summary>
+        /// Read public static properties and fields from a type, output as JSON
+        /// </summary>
+        internal string ToJsonStatics(Type type, JsonParameters param)
+        {
+            _jsonParameters = param.Clone();
+            if (_jsonParameters.EnableAnonymousTypes) { _jsonParameters.UseExtensions = false; _jsonParameters.UsingGlobalTypes = false; }
+            return new JsonSerializer(_jsonParameters).ConvertStaticsToJson(type);
+        }
+
+        /// <summary>
+        /// Fill public static properties and fields from a name=>value dictionary
+        /// </summary>
+        private void FillStatics(Type type, Dictionary<string,object>? values)
+        {
+            if (values is null) return;
+            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static);
+            var tryDifferentCases = _jsonParameters?.IgnoreCaseOnDeserialize ?? false;
+            foreach (var fieldInfo in fields)
+            {
+                string? name = fieldInfo.Name;
+                if (!values.ContainsKey(name))
+                {
+                    if (!tryDifferentCases) continue;
+                    name = HuntForNameCaseInsensitive(name, values);
+                    if (name is null) continue;
+                }
+
+                try { fieldInfo.SetValue(null!, values[name]!); }
+                catch { /*ignore*/ }
+            }
+
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Static);
+            foreach (var propertyInfo in properties)
+            {
+                var name = propertyInfo.Name;
+                if (!values.ContainsKey(name))
+                {
+                    if (!tryDifferentCases) continue;
+                    name = HuntForNameCaseInsensitive(name, values);
+                    if (name is null) continue;
+                }
+
+                try { propertyInfo.SetValue(null!, values[name]!); }
+                catch { /*ignore*/ }
+            }
+        }
+
+        private string? HuntForNameCaseInsensitive(string name, Dictionary<string,object> values)
+        {
+            foreach (var key in values.Keys)
+            {
+                if (key.Equals(name, StringComparison.InvariantCultureIgnoreCase)) return key;
+            }
+            return null;
+        }
 
         internal string ToJson(object obj, JsonParameters param)
         {
