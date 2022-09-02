@@ -143,6 +143,9 @@ namespace SkinnyJson
 		                case DateTime time:
 		                    WriteDateTime(time);
 		                    break;
+                        case TimeSpan timeSpan:
+                            WriteTimeSpan(timeSpan);
+                            break;
 		                case IDictionary dictionary when dictionary.GetType().IsGenericType && dictionary.GetType().GetGenericArguments()[0] == typeof(string):
 		                    WriteStringDictionary(dictionary);
 		                    break;
@@ -217,6 +220,14 @@ namespace SkinnyJson
         	Append('\"');
 
         }
+
+        private void WriteTimeSpan(TimeSpan timespan)
+        {
+            Append('\"');
+            Append(timespan.ToString());
+            Append('\"');
+        }
+
         private static DatasetSchema? GetSchema(DataTable? ds)
         {
             if (ds == null) return null;

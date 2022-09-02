@@ -907,6 +907,9 @@ namespace SkinnyJson
 
     		else if (propertyInfo.isDateTime)
     			setObj = CreateDateTime((string) v);
+            
+            else if (propertyInfo.isTimeSpan)
+                setObj = CreateTimeSpan(v);
 
     		else if (propertyInfo.isClass && v is Dictionary<string, object> objects)
     			setObj = ParseDictionary(objects, globalTypes, propertyInfo.parameterType, null) ?? throw new Exception("Failed to map to class");
@@ -1105,6 +1108,7 @@ namespace SkinnyJson
             d.changeType = GetChangeType(t);
             d.isEnum = t.IsEnum;
             d.isDateTime = t == typeof(DateTime) || t == typeof(DateTime?);
+            d.isTimeSpan = t == typeof(TimeSpan) || t == typeof(TimeSpan?);
             d.isInt = t == typeof(int) || t == typeof(int?);
             d.isLong = t == typeof(long) || t == typeof(long?);
             d.isString = t == typeof(string);
@@ -1223,10 +1227,17 @@ namespace SkinnyJson
             }
         }
 
-        static long CreateLong(object obj){
+        static long CreateLong(object? obj){
+            if (obj is null) return 0;
             if (obj is string s) return ParseLong(s);
             if (obj is double d) return (long)d;
             throw new Exception("Unsupported int type: "+obj.GetType());
+        }
+        static double CreateDouble(object? obj){
+            if (obj is null) return 0;
+            if (obj is string s) return double.Parse(s);
+            if (obj is double d) return d;
+            throw new Exception("Unsupported numeric type: "+obj.GetType());
         }
 
         static long ParseLong(IEnumerable<char> s)
@@ -1289,6 +1300,59 @@ namespace SkinnyJson
             }
             // None of our prefered formats, so let .Net guess
             return DateTime.Parse(value);
+        }
+
+        private TimeSpan CreateTimeSpan(object? v)
+        {
+            if (v is null) return TimeSpan.Zero;
+            if (v is string str) return TimeSpan.Parse(str);
+
+            if (v is Dictionary<string, object> objects)
+            {
+                // TimeSpan is tricky, and can vary based on Framework version
+                // So we pick it apart manually.
+                if (objects.ContainsKey("Ticks")) return new TimeSpan(ticks: CreateLong(objects["Ticks"]));
+                if (objects.ContainsKey("ticks")) return new TimeSpan(ticks: CreateLong(objects["ticks"]));
+                
+                if (objects.ContainsKey("TotalSeconds")) return TimeSpan.FromSeconds(CreateDouble(objects["TotalSeconds"]));
+                if (objects.ContainsKey("total_seconds")) return TimeSpan.FromSeconds(CreateDouble(objects["total_seconds"]));
+                
+                var days = (int)TryGetDouble(objects, "Days");
+                var hours = (int)TryGetDouble(objects, "Hours");
+                var minutes = (int)TryGetDouble(objects, "Minutes");
+                var seconds = (int)TryGetDouble(objects, "Seconds");
+                var milliseconds = (int)TryGetDouble(objects, "Milliseconds");
+                return new TimeSpan(days, hours, minutes, seconds, milliseconds);
+            }
+            
+            throw new Exception("Failed to map to TimeSpan");
+        }
+
+        /// <summary>
+        /// Try to get a keyed value as a double, or return zero. 
+        /// </summary>
+        private double TryGetDouble(Dictionary<string,object> objects, string key)
+        {
+            if (objects.ContainsKey(key))
+            {
+                var obj = objects[key];
+                if (obj is double d) return d;
+                if (obj is string s && double.TryParse(s, out var dVal)) return dVal;
+                return 0.0;
+            }
+
+            if (_jsonParameters?.IgnoreCaseOnDeserialize != true) return 0.0;
+            
+            // do a case insensitive search
+            foreach (var objKey in objects.Keys)
+            {
+                if (!objKey.Equals(key, StringComparison.InvariantCultureIgnoreCase)) continue;
+                
+                var obj = objects[objKey];
+                if (obj is double d) return d;
+                if (obj is string s && double.TryParse(s, out var dVal)) return dVal;
+            }
+            return 0.0;
         }
 
         object CreateArray(IEnumerable data, Type? elementType, IDictionary<string, object>? globalTypes)

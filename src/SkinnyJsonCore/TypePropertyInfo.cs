@@ -26,6 +26,7 @@ namespace SkinnyJson
             public GenericSetter? setter;
             public bool isEnum;
             public bool isDateTime;
+            public bool isTimeSpan;
             public Type[] GenericTypes;
             public bool isInt;
             public bool isLong;

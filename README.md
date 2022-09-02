@@ -15,6 +15,13 @@ deal with situations where a common interface declaration is available, but the 
 
 To adjust settings globally, look in `SkinnyJson.Json.DefaultParameters`
 
+Things SkinnyJson can do that most .Net serialisers don't
+-----------------------------------------------------------
+
+- Decode directly to an interface: `IThing x = Json.Defrost<IThing>(...)`. You don't need to create a concrete container.
+- Serialise to and from static classes: `var jsonStr = Json.Freeze(typeof(MyStatic)); Json.DefrostTo(typeof(MyStatic), jsonStr);`
+- Reformat huge documents: `Json.BeautifyStream(fileStreamIn, Encoding.ASCII, fileStrealOutput, Encoding.UTF8);`
+
 Common use cases:
 ----------
 

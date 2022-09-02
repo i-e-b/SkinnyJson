@@ -53,6 +53,55 @@ namespace SkinnyJson.Unit.Tests
         }
 
         [Test]
+        public void Timespan_from_all_properties()
+        {
+            var defrosted = Json.Defrost<IHaveLotsOfTypes>(
+                "{\"timeSpan\":" +
+                "{\"Ticks\":100000000,\"Days\":0,\"Hours\":0,\"Milliseconds\":0,\"Minutes\":0,\"Seconds\":10," +
+                "\"TotalDays\":0.00011574074074074075,\"TotalHours\":0.002777777777777778,\"TotalMilliseconds\":10000,\"TotalMinutes\":0.16666666666666666,\"TotalSeconds\":10}}");
+            
+            Assert.That(defrosted.timeSpan.Ticks, Is.EqualTo(100000000), "TimeSpan was not interpreted correctly");
+        }
+        
+        [Test]
+        public void Timespan_from_basic_properties()
+        {
+            var defrosted = Json.Defrost<IHaveLotsOfTypes>(
+                "{\"timeSpan\":" +
+                "{\"Ticks\":100000000,\"Days\":0,\"Hours\":0,\"Milliseconds\":0,\"Minutes\":0,\"Seconds\":10}}");
+            
+            Assert.That(defrosted.timeSpan.Ticks, Is.EqualTo(100000000), "TimeSpan was not interpreted correctly");
+        }
+        
+        [Test]
+        public void Timespan_from_just_ticks()
+        {
+            var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"timeSpan\":{\"Ticks\":100000000}}");
+            
+            Assert.That(defrosted.timeSpan.Ticks, Is.EqualTo(100000000), "TimeSpan was not interpreted correctly");
+        }
+        
+        
+        [Test]
+        public void Timespan_serialises_to_compact_string()
+        {
+            Json.DefaultParameters.EnableAnonymousTypes = true;
+            var frozen = Json.Freeze(new TimespanContainer{Timespan = TimeSpan.FromMinutes(101.101)});
+            
+            Assert.That(frozen, Is.EqualTo("{\"Timespan\":\"01:41:06.0600000\"}"));
+        }
+        
+        [Test]
+        public void Timespan_deserialised_from_compact_string()
+        {
+            var defrosted = Json.Defrost<TimespanContainer>("{\"Timespan\":\"01:41:06.0600000\"}");
+            Assert.That(defrosted.Timespan.Ticks, Is.EqualTo(60660600000), "TimeSpan was not interpreted correctly");
+            
+            defrosted = Json.Defrost<TimespanContainer>("{\"Timespan\":\"01:41:05\"}");
+            Assert.That(defrosted.Timespan.Ticks, Is.EqualTo(60650000000), "TimeSpan was not interpreted correctly");
+        }
+
+        [Test]
         public void Can_map_bool_strings_to_bool_fields_and_properties()
         {
             var defrosted = Json.Defrost<ILikeBools>("{\"val1\":\"true\",\"val2\":\"false\",\"val3\":true,\"val4\":false}");
@@ -105,5 +154,11 @@ namespace SkinnyJson.Unit.Tests
     }
     public interface IHaveLotsOfTypes {
         DateTime date_time { get; set; }
+        TimeSpan timeSpan { get; set; }
+    }
+
+    public class TimespanContainer
+    {
+        public TimeSpan Timespan { get; set; }
     }
 }

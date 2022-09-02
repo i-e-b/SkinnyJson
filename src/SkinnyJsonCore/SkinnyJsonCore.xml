@@ -377,6 +377,11 @@
             Date formats we expect from JSON strings
             </summary>
         </member>
+        <member name="M:SkinnyJson.Json.TryGetDouble(System.Collections.Generic.Dictionary{System.String,System.Object},System.String)">
+            <summary>
+            Try to get a keyed value as a double, or return zero. 
+            </summary>
+        </member>
         <member name="M:SkinnyJson.Json.Reset">
             <summary>
             Reset to defaults and clear caches.
