@@ -156,7 +156,6 @@ namespace SkinnyJson.Unit.Tests
         DateTime date_time { get; set; }
         TimeSpan timeSpan { get; set; }
     }
-
     public class TimespanContainer
     {
         public TimeSpan Timespan { get; set; }

@@ -194,13 +194,15 @@ namespace SkinnyJson
         {
             var ht = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode() as Dictionary<string, object>;
 
+            if (ht == null) return null;
+            
             if (input is Type type)
             {
-                Instance.FillStatics(type, ht);
+                Instance.ParseDictionary(ht, null, type, null);
                 return null;
             }
 
-            return ht == null ? null : Instance.ParseDictionary(ht, null, input.GetType(), input);
+            return Instance.ParseDictionary(ht, null, input.GetType(), input);
         }
 
         /// <summary>
@@ -237,53 +239,6 @@ namespace SkinnyJson
             _jsonParameters = param.Clone();
             if (_jsonParameters.EnableAnonymousTypes) { _jsonParameters.UseExtensions = false; _jsonParameters.UsingGlobalTypes = false; }
             return new JsonSerializer(_jsonParameters).ConvertStaticsToJson(type);
-        }
-
-        /// <summary>
-        /// Fill public static properties and fields from a name=>value dictionary
-        /// </summary>
-        private void FillStatics(Type type, Dictionary<string,object>? values)
-        {
-            if (values is null) return;
-            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static);
-            var tryDifferentCases = _jsonParameters?.IgnoreCaseOnDeserialize ?? false;
-            foreach (var fieldInfo in fields)
-            {
-                string? name = fieldInfo.Name;
-                if (!values.ContainsKey(name))
-                {
-                    if (!tryDifferentCases) continue;
-                    name = HuntForNameCaseInsensitive(name, values);
-                    if (name is null) continue;
-                }
-
-                try { fieldInfo.SetValue(null!, values[name]!); }
-                catch { /*ignore*/ }
-            }
-
-            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Static);
-            foreach (var propertyInfo in properties)
-            {
-                var name = propertyInfo.Name;
-                if (!values.ContainsKey(name))
-                {
-                    if (!tryDifferentCases) continue;
-                    name = HuntForNameCaseInsensitive(name, values);
-                    if (name is null) continue;
-                }
-
-                try { propertyInfo.SetValue(null!, values[name]!); }
-                catch { /*ignore*/ }
-            }
-        }
-
-        private string? HuntForNameCaseInsensitive(string name, Dictionary<string,object> values)
-        {
-            foreach (var key in values.Keys)
-            {
-                if (key.Equals(name, StringComparison.InvariantCultureIgnoreCase)) return key;
-            }
-            return null;
         }
 
         internal string ToJson(object obj, JsonParameters param)
@@ -784,32 +739,27 @@ namespace SkinnyJson
         /// <param name="target">object instance to accept the value</param>
         /// <param name="value">value of property to set</param>
         /// <param name="key">optional key for dictionaries</param>
-        private delegate void GenericSetter(object target, object value, object? key);
+        private delegate void GenericSetter(object? target, object value, object? key);
 
         /// <summary>
         /// Read a weakly-typed dictionary tree into a strong type. If the keys do not match exactly,
         /// all matching field/properties will be filled.
         /// If *no* keys match the target type, this will return `null`
+        /// <p></p>
+        /// If the input object is null, but the input type is not,
+        /// this will attempt to fill static members of the given type.
         /// </summary>
         private object? ParseDictionary(IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes, Type? type, object? input)
         {
             _jsonParameters ??= DefaultParameters;
 
-            if (jsonValues.TryGetValue("$types", out var tn))
-            {
-                if (globalTypes != null)
-                {
-                    var dic = ((Dictionary<string, object>) tn!);
-                    foreach (var kvp in dic) { if (kvp.Value != null) globalTypes.Add((string) kvp.Value, kvp.Key); }
-                    _usingGlobals = true;
-                }
-            }
+            TryFillGlobalTypes(jsonValues, globalTypes);
 
-            var found = jsonValues.TryGetValue("$type", out tn);
+            var found = jsonValues.TryGetValue("$type", out var tn);
             if (found == false && type == typeof(object))
             {
                 var ds = CreateDataset(jsonValues, globalTypes);
-                return ds != null ? (object) ds : jsonValues;
+                return ds != null ? ds : jsonValues;
             }
             if (found)
             {
@@ -817,14 +767,15 @@ namespace SkinnyJson
                 {
                     if (globalTypes.TryGetValue((string)tn!, out object tName)) tn = tName;
                 }
-                if (type == null || !type.IsInterface) type = GetTypeFromCache((string)tn!);
+                if (type is null || !type.IsInterface) type = GetTypeFromCache((string)tn!);
             }
 
             var targetObject = input ?? FastCreateInstance(type);
 
-            if (targetObject == null) return jsonValues; // can't work out what object to fill, send back the raw values
+            if (targetObject is null && type is null) return jsonValues; // can't work out what object to fill, send back the raw values
 
-            var targetType = targetObject.GetType();
+            var targetType = targetObject?.GetType() ?? type;
+            if (targetType is null) throw new Exception("Unable to determine type of object");
 
 			var props = GetProperties(targetType, targetType.Name);
             if (!IsDictionary(targetType) && NoPropertiesMatch(props, jsonValues.Keys))
@@ -835,10 +786,27 @@ namespace SkinnyJson
 
             foreach (var key in jsonValues.Keys)
             {
-                MapJsonValueToObject(key, targetObject, jsonValues, globalTypes, props);
+                MapJsonValueToObject(key, targetType, targetObject, jsonValues, globalTypes, props);
             }
 
             return targetObject;
+        }
+
+        private void TryFillGlobalTypes(IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes)
+        {
+            if (jsonValues.TryGetValue("$types", out var tn))
+            {
+                if (globalTypes != null)
+                {
+                    var dic = ((Dictionary<string, object>)tn!);
+                    foreach (var kvp in dic)
+                    {
+                        if (kvp.Value != null) globalTypes.Add((string)kvp.Value, kvp.Key);
+                    }
+
+                    _usingGlobals = true;
+                }
+            }
         }
 
         private bool IsDictionary(Type targetType)
@@ -852,9 +820,10 @@ namespace SkinnyJson
         }
 
         /// <summary>
-        /// Map json value dictionary to the properties and fields of a target object instance
+        /// Map json value dictionary to the properties and fields of a target object instance.
         /// </summary>
-        void MapJsonValueToObject(string objectKey, object targetObject, IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes, SafeDictionary<string, TypePropertyInfo> props)
+        void MapJsonValueToObject(string objectKey, Type? targetType, object? targetObject, IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes,
+            SafeDictionary<string, TypePropertyInfo> props)
     	{
     		var name = objectKey;
     		if (_jsonParameters?.IgnoreCaseOnDeserialize == true) name = name.ToLower();
@@ -875,54 +844,66 @@ namespace SkinnyJson
     		var v = jsonValues[name];
 
     		if (v == null) return;
-    		object setObj;
-
-    		if (propertyInfo.isInt) setObj = (int) CreateLong(v);
-    		else if (propertyInfo.isLong) setObj = CreateLong(v);
-    		else if (propertyInfo.isString) setObj = v;
-    		else if (propertyInfo.isBool) setObj = InterpretBool(v);
-    		else if (propertyInfo.isGenericType && propertyInfo.isValueType == false && propertyInfo.isDictionary == false)
-    			setObj = CreateGenericList((ArrayList) v, propertyInfo.parameterType, propertyInfo.bt, globalTypes);
-    		else if (propertyInfo.isByteArray)
-    			setObj = Convert.FromBase64String((string) v);
-
-    		else if (propertyInfo.isArray && propertyInfo.isValueType == false)
-    			setObj = CreateArray((ArrayList) v, propertyInfo.bt, globalTypes);
-    		else if (propertyInfo.isGuid)
-    			setObj = CreateGuid((string) v);
-    		else if (propertyInfo.isDataSet)
-    			setObj = CreateDataset((Dictionary<string, object>) v, globalTypes) ?? throw new Exception("Failed to create dataset");
-
-    		else if (propertyInfo.isDataTable)
-    			setObj = CreateDataTable((Dictionary<string, object>) v, globalTypes);
-
-    		else if (propertyInfo.isStringDictionary)
-    			setObj = CreateStringKeyDictionary((Dictionary<string, object>) v, propertyInfo.parameterType, propertyInfo.GenericTypes, globalTypes);
-
-    		else if (propertyInfo.isDictionary || propertyInfo.isHashtable)
-    			setObj = CreateDictionary((ArrayList) v, propertyInfo.parameterType, propertyInfo.GenericTypes, globalTypes);
-
-    		else if (propertyInfo.isEnum)
-    			setObj = CreateEnum(propertyInfo.parameterType, (string) v);
-
-    		else if (propertyInfo.isDateTime)
-    			setObj = CreateDateTime((string) v);
             
-            else if (propertyInfo.isTimeSpan)
-                setObj = CreateTimeSpan(v);
+    		var setObj = MakeSettableObject(globalTypes, propertyInfo, v);
 
-    		else if (propertyInfo.isClass && v is Dictionary<string, object> objects)
-    			setObj = ParseDictionary(objects, globalTypes, propertyInfo.parameterType, null) ?? throw new Exception("Failed to map to class");
-
-    		else if (propertyInfo.isValueType)
-    			setObj = ChangeType(v, propertyInfo.changeType) ?? throw new Exception("Failed to create value type");
-    		else if (v is ArrayList list)
-    			setObj = CreateArray(list, typeof (object), globalTypes);
-    		else
-    			setObj = v;
-
-    		if (propertyInfo.CanWrite) WriteValueToTypeInstance(name, targetObject, propertyInfo, setObj);
+            if (propertyInfo.CanWrite) WriteValueToTypeInstance(name, targetType, targetObject, propertyInfo, setObj);
     	}
+
+        /// <summary>
+        /// Try to create an object instance that can be directly assigned to the property or field
+        /// defined by 'propertyInfo'.
+        /// The value will be the best interpretation of 'inputValue' that is available.
+        /// </summary>
+        private object MakeSettableObject(IDictionary<string, object>? globalTypes, TypePropertyInfo propertyInfo, object inputValue)
+        {
+            object setObj;
+
+            if (propertyInfo.isInt) setObj = (int)CreateLong(inputValue);
+            else if (propertyInfo.isLong) setObj = CreateLong(inputValue);
+            else if (propertyInfo.isString) setObj = inputValue;
+            else if (propertyInfo.isBool) setObj = InterpretBool(inputValue);
+            else if (propertyInfo.isGenericType && propertyInfo.isValueType == false && propertyInfo.isDictionary == false)
+                setObj = CreateGenericList((ArrayList)inputValue, propertyInfo.parameterType, propertyInfo.bt, globalTypes);
+            else if (propertyInfo.isByteArray)
+                setObj = Convert.FromBase64String((string)inputValue);
+
+            else if (propertyInfo.isArray && propertyInfo.isValueType == false)
+                setObj = CreateArray((ArrayList)inputValue, propertyInfo.bt, globalTypes);
+            else if (propertyInfo.isGuid)
+                setObj = CreateGuid((string)inputValue);
+            else if (propertyInfo.isDataSet)
+                setObj = CreateDataset((Dictionary<string, object>)inputValue, globalTypes) ?? throw new Exception("Failed to create dataset");
+
+            else if (propertyInfo.isDataTable)
+                setObj = CreateDataTable((Dictionary<string, object>)inputValue, globalTypes);
+
+            else if (propertyInfo.isStringDictionary)
+                setObj = CreateStringKeyDictionary((Dictionary<string, object>)inputValue, propertyInfo.parameterType, propertyInfo.GenericTypes, globalTypes);
+
+            else if (propertyInfo.isDictionary || propertyInfo.isHashtable)
+                setObj = CreateDictionary((ArrayList)inputValue, propertyInfo.parameterType, propertyInfo.GenericTypes, globalTypes);
+
+            else if (propertyInfo.isEnum)
+                setObj = CreateEnum(propertyInfo.parameterType, (string)inputValue);
+
+            else if (propertyInfo.isDateTime)
+                setObj = CreateDateTime((string)inputValue);
+
+            else if (propertyInfo.isTimeSpan)
+                setObj = CreateTimeSpan(inputValue);
+
+            else if (propertyInfo.isClass && inputValue is Dictionary<string, object> objects)
+                setObj = ParseDictionary(objects, globalTypes, propertyInfo.parameterType, null) ?? throw new Exception("Failed to map to class");
+
+            else if (propertyInfo.isValueType)
+                setObj = ChangeType(inputValue, propertyInfo.changeType) ?? throw new Exception("Failed to create value type");
+            else if (inputValue is ArrayList list)
+                setObj = CreateArray(list, typeof(object), globalTypes);
+            else
+                setObj = inputValue;
+            return setObj;
+        }
 
         private bool InterpretBool(object o)
         {
@@ -940,36 +921,38 @@ namespace SkinnyJson
         }
 
         /// <summary>
-        /// Inject a value into an object's property
+        /// Inject a value into an object's property.
+        /// If object is null, we will attempt to write to a static member.
         /// </summary>
-        static void WriteValueToTypeInstance(string name, object targetObject, TypePropertyInfo pi, object objSet) {
+        static void WriteValueToTypeInstance(string name, Type? type, object? targetObject, TypePropertyInfo pi, object objSet) {
             try
             {
-                var typ = targetObject.GetType();
+                var typ = targetObject?.GetType() ?? type;
+                if (typ is null) throw new Exception("No type information survived into WriteValueToTypeInstance");
 
                 if (typ.IsValueType)
                 {
                     var fi = typ.GetField(pi.Name);
                     if (fi != null)
                     {
-                        fi.SetValue(targetObject, objSet);
+                        fi.SetValue(targetObject!, objSet);
                         return;
                     }
                     var pr = typ.GetProperty(pi.Name, BindingFlags.Instance | BindingFlags.Public);
                     if (pr != null)
                     {
-                        pr.SetValue(targetObject, objSet, null!);
+                        pr.SetValue(targetObject!, objSet, null!);
                         return;
                     }
                 }
 
                 if (pi.isDictionary || pi.isHashtable) // use display name
                 {
-                    pi.setter?.Invoke(targetObject, objSet, name);
+                    pi.setter?.Invoke(targetObject!, objSet, name);
                 }
                 else // use reflection name
                 {
-                    pi.setter?.Invoke(targetObject, objSet, pi.Name);
+                    pi.setter?.Invoke(targetObject!, objSet, pi.Name);
                 }
 
             }
@@ -993,8 +976,10 @@ namespace SkinnyJson
 
 			var pr = new List<PropertyInfo>();
 
+            // Instance fields and static fields
 			var fi = new List<FieldInfo>();
         	fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Instance));
+            fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Static));
 
             if (usePrivateFields)
             {
@@ -1021,6 +1006,7 @@ namespace SkinnyJson
                 }
             }
 
+            // Instance properties
         	pr.AddRange(type.GetProperties(BindingFlags.Public | BindingFlags.Instance));
         	foreach (var prop in type.GetInterfaces()
 				.SelectMany(i => i.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -1038,6 +1024,18 @@ namespace SkinnyJson
         		sd.Add(p.Name, d);
                 if (ignoreCase) sd.TryAdd(p.Name.ToLowerInvariant(), d);
         	}
+            
+            // Static properties are special
+            var staticProps = type.GetProperties(BindingFlags.Public | BindingFlags.Static);
+            foreach (var sp in staticProps)
+            {
+                var d = CreateMyProp(sp.PropertyType, sp.Name);
+                d.CanWrite = sp.CanWrite;
+                d.setter = (_, value, _) => sp.SetValue(null!, value);
+                d.getter = _ => sp.GetValue(null!)!;
+                sd.Add(sp.Name, d);
+                if (ignoreCase) sd.TryAdd(sp.Name.ToLowerInvariant(), d);
+            }
 
             if (type.GetGenericArguments().Length < 1) {
         	    _propertyCache.Add(typename, sd);

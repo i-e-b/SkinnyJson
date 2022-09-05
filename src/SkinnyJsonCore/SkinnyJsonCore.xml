@@ -237,11 +237,6 @@
             Read public static properties and fields from a type, output as JSON
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.FillStatics(System.Type,System.Collections.Generic.Dictionary{System.String,System.Object})">
-            <summary>
-            Fill public static properties and fields from a name=>value dictionary
-            </summary>
-        </member>
         <member name="M:SkinnyJson.Json.SelectObjects``1(System.Object,System.String,System.Text.Encoding)">
             <summary>
             Pick items out of a parsed object using dotted string path
@@ -319,16 +314,27 @@
             Read a weakly-typed dictionary tree into a strong type. If the keys do not match exactly,
             all matching field/properties will be filled.
             If *no* keys match the target type, this will return `null`
+            <p></p>
+            If the input object is null, but the input type is not,
+            this will attempt to fill static members of the given type.
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.MapJsonValueToObject(System.String,System.Object,System.Collections.Generic.IDictionary{System.String,System.Object},System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.SafeDictionary{System.String,SkinnyJson.Json.TypePropertyInfo})">
+        <member name="M:SkinnyJson.Json.MapJsonValueToObject(System.String,System.Type,System.Object,System.Collections.Generic.IDictionary{System.String,System.Object},System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.SafeDictionary{System.String,SkinnyJson.Json.TypePropertyInfo})">
             <summary>
-            Map json value dictionary to the properties and fields of a target object instance
+            Map json value dictionary to the properties and fields of a target object instance.
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.WriteValueToTypeInstance(System.String,System.Object,SkinnyJson.Json.TypePropertyInfo,System.Object)">
+        <member name="M:SkinnyJson.Json.MakeSettableObject(System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.Json.TypePropertyInfo,System.Object)">
             <summary>
-            Inject a value into an object's property
+            Try to create an object instance that can be directly assigned to the property or field
+            defined by 'propertyInfo'.
+            The value will be the best interpretation of 'inputValue' that is available.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.WriteValueToTypeInstance(System.String,System.Type,System.Object,SkinnyJson.Json.TypePropertyInfo,System.Object)">
+            <summary>
+            Inject a value into an object's property.
+            If object is null, we will attempt to write to a static member.
             </summary>
         </member>
         <member name="M:SkinnyJson.Json.GetProperties(System.Type,System.String)">

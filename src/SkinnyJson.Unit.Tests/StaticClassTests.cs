@@ -11,6 +11,9 @@ namespace SkinnyJson.Unit.Tests
         {
             StaticClassExample.StringProperty = "property set";
             StaticClassExample.StringFieldValue = "I am field";
+            StaticClassExample.Span = TimeSpan.FromSeconds(255);
+            StaticClassExample.SubClass.Name = "frozen name";
+            StaticClassExample.SubClass.DateTime = new DateTime(1999, 12, 31);
             
             var json = Json.Freeze(typeof(StaticClassExample));
             
@@ -18,11 +21,17 @@ namespace SkinnyJson.Unit.Tests
             
             StaticClassExample.StringProperty = "property modified";
             StaticClassExample.StringFieldValue = "field modified";
+            StaticClassExample.Span = TimeSpan.Zero;
+            StaticClassExample.SubClass.Name = "wrong name";
+            StaticClassExample.SubClass.DateTime = new DateTime(2099, 1, 1);
             
             Json.DefrostInto(typeof(StaticClassExample), json);
             
             Assert.That(StaticClassExample.StringProperty, Is.EqualTo("property set"));
             Assert.That(StaticClassExample.StringFieldValue, Is.EqualTo("I am field"));
+            Assert.That(StaticClassExample.Span.Ticks, Is.EqualTo(TimeSpan.FromSeconds(255).Ticks));
+            Assert.That(StaticClassExample.SubClass.Name, Is.EqualTo("frozen name"));
+            Assert.That(StaticClassExample.SubClass.DateTime, Is.EqualTo(new DateTime(1999, 12, 31)));
         }
         
         [Test]
@@ -89,12 +98,43 @@ namespace SkinnyJson.Unit.Tests
             // restore default
             Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
         }
+        
+        
+        [Test]
+        public void Should_be_able_to_freeze_and_restore_the_properties_of_a_static_class_ignoring_extra_whitespace_in_json_string()
+        {
+            StaticClassExample.StringProperty = "property set";
+            StaticClassExample.StringFieldValue = "I am field";
+            
+            var json = Json.Freeze(typeof(StaticClassExample));
+            json = json.Replace(",","\n,\r\n"); // any kind of new line, tabs, spaces
+            
+            Console.WriteLine(json);
+            
+            StaticClassExample.StringProperty = "property modified";
+            StaticClassExample.StringFieldValue = "field modified";
+            
+            Json.DefrostInto(typeof(StaticClassExample), json);
+            
+            Assert.That(StaticClassExample.StringProperty, Is.EqualTo("property set"));
+            Assert.That(StaticClassExample.StringFieldValue, Is.EqualTo("I am field"));
+        }
 
         public static class StaticClassExample
         {
             public static string StringProperty { get; set; } = "I am property";
 			
             public static string StringFieldValue = "I am field";
+
+            public static TimeSpan Span { get; set; } = TimeSpan.FromDays(0.5);
+
+            public static SubClass SubClass { get; set; } = new();
         }
+    }
+
+    public class SubClass
+    {
+        public string Name { get; set; } = "Test";
+        public DateTime DateTime { get; set; } = DateTime.UtcNow;
     }
 }

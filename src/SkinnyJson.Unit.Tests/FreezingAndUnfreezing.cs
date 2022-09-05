@@ -27,6 +27,21 @@ namespace SkinnyJson.Unit.Tests {
 			Assert.That(defrosted.A, Is.EqualTo(original.A));
 			Assert.That(defrosted.B, Is.EqualTo(original.B));
 		}
+        
+        [Test]
+        public void Should_be_ignore_extra_whitespace_in_json_string()
+        {
+	        var original = ObjectWithoutAnInterface.Make();
+	        var frozen = Json.Freeze(original);
+	        
+	        frozen = frozen.Replace(":"," \r\n :   \t\t \n "); // any kind of new line, tabs, spaces
+	        
+	        Console.WriteLine(frozen);
+	        var defrosted = Json.Defrost<ObjectWithoutAnInterface>(frozen);
+
+	        Assert.That(defrosted.A, Is.EqualTo(original.A));
+	        Assert.That(defrosted.B, Is.EqualTo(original.B));
+        }
 
 		[Test]
 		public void Should_be_able_to_freeze_an_interface () {
