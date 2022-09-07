@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -7,6 +8,7 @@ using NUnit.Framework;
 // ReSharper disable PossibleNullReferenceException
 // ReSharper disable UnusedMember.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Global
+#pragma warning disable CS8602
 
 namespace SkinnyJson.Unit.Tests
 {
@@ -80,7 +82,6 @@ namespace SkinnyJson.Unit.Tests
             
             Assert.That(defrosted.timeSpan.Ticks, Is.EqualTo(100000000), "TimeSpan was not interpreted correctly");
         }
-        
         
         [Test]
         public void Timespan_serialises_to_compact_string()

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
@@ -6,6 +7,7 @@ using System.Linq;
 using NUnit.Framework;
 // ReSharper disable PossibleNullReferenceException
 // ReSharper disable AssignNullToNotNullAttribute
+#pragma warning disable CS8602
 
 // ReSharper disable InconsistentNaming
 namespace SkinnyJson.Unit.Tests {
@@ -140,6 +142,23 @@ namespace SkinnyJson.Unit.Tests {
 			Assert.That(final?.ToList().Count, Is.EqualTo(3), "Did not get expected list");
 		}
 
+		[Test]
+		public void Runtime_type_root_array_and_child_arrays_use_same_container()
+		{
+			var result = Json.Defrost(Quote("[{'child':[{'top':1}]},{'child':[{'top':2}]}]"));
+            
+			Assert.That(result, Is.InstanceOf<IList>(), "root type");
+            
+			var outer = result as IList;
+			Assert.That(outer, Is.Not.Null, "outer");
+            
+			var child = outer[0] as IDictionary<string,object>;
+			Assert.That(child, Is.Not.Null, "child");
+            
+			var inner = child["child"];
+			Assert.That(inner, Is.InstanceOf<IList>(), "child type");
+		}
+		
 		[Test]
 		public void Can_proxy_a_basic_interface () {
 			var px = DynamicProxy.GetInstanceFor<IHaveMethods>();
