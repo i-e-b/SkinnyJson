@@ -25,8 +25,8 @@ namespace SkinnyJson
         public static Encoding DefaultStreamEncoding { get; set; } = new UTF8Encoding(false);
 
         /// <summary> Turn an object into a JSON string </summary>
-		public static string Freeze(object? obj)
-		{
+        public static string Freeze(object? obj)
+        {
             if (obj == null) return "";
             if (obj is DynamicWrapper dyn) {
                 return Freeze(dyn.Parsed);
@@ -69,10 +69,10 @@ namespace SkinnyJson
         }
 
         /// <summary> Turn a JSON string into a detected object </summary>
-		public static object Defrost(string json)
-		{
-			return Instance.ToObject(json, null, null);
-		}
+        public static object Defrost(string json)
+        {
+            return Instance.ToObject(json, null, null);
+        }
 
         /// <summary> Turn a JSON byte array into a detected object </summary>
         public static object Defrost(byte[] json)
@@ -86,18 +86,18 @@ namespace SkinnyJson
             return Instance.ToObject(json, null, encoding ?? DefaultStreamEncoding);
         }
 
-		/// <summary> Return the type name that SkinnyJson will use for the serialising the object </summary>
-    	public static string WrapperType(object obj)
-    	{
-			if (obj is Type type) return Instance.GetTypeAssemblyName(type);
-    		return Instance.GetTypeAssemblyName(obj.GetType());
-    	}
+        /// <summary> Return the type name that SkinnyJson will use for the serialising the object </summary>
+        public static string WrapperType(object obj)
+        {
+            if (obj is Type type) return Instance.GetTypeAssemblyName(type);
+            return Instance.GetTypeAssemblyName(obj.GetType());
+        }
 
-		/// <summary> Turn a JSON string into a specific object </summary>
-		public static T Defrost<T>(string json)
-		{
-			return (T)Instance.ToObject(json, typeof(T), null);
-		}
+        /// <summary> Turn a JSON string into a specific object </summary>
+        public static T Defrost<T>(string json)
+        {
+            return (T)Instance.ToObject(json, typeof(T), null);
+        }
         
         /// <summary> Turn a JSON data stream into a specific object </summary>
         public static T Defrost<T>(Stream json, Encoding? encoding = null)
@@ -129,6 +129,12 @@ namespace SkinnyJson
             return new DynamicWrapper(Parse(json));
         }
         
+        /// <summary> Turn a JSON string into an object containing properties found </summary>
+        public static dynamic DefrostDynamic(Stream json, Encoding? encoding = null)
+        {
+            return new DynamicWrapper(Instance.ToObject(json, null, encoding));
+        }
+        
         /// <summary>
         /// Turn a sub-path of a JSON document into an enumeration of values, by specific type
         /// </summary>
@@ -153,7 +159,7 @@ namespace SkinnyJson
             return Defrost<T>(Freeze(obj));
         }
 
-		/// <summary>Read a JSON object into an anonymous .Net object</summary>
+        /// <summary>Read a JSON object into an anonymous .Net object</summary>
         public static object Parse(string json)
         {
             return (new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode()) ?? new {};
@@ -169,7 +175,7 @@ namespace SkinnyJson
             return Freeze(dyn);
         }
 
-		/// <summary>Pretty print a JSON string. This is done without value parsing.</summary>
+        /// <summary>Pretty print a JSON string. This is done without value parsing.</summary>
         public static string Beautify(string input)
         {
             return Formatter.PrettyPrint(input);
@@ -189,7 +195,7 @@ namespace SkinnyJson
         /// <remarks>Alias for <see cref="FillObject"/></remarks>
         public static object? DefrostInto(object input, string json) { return FillObject(input, json); }
 
-		/// <summary>Fill the members of an .Net object from a JSON object string</summary>
+        /// <summary>Fill the members of an .Net object from a JSON object string</summary>
         public static object? FillObject(object input, string json)
         {
             var ht = new JsonParser(json, DefaultParameters.IgnoreCaseOnDeserialize).Decode() as Dictionary<string, object>;
@@ -211,7 +217,7 @@ namespace SkinnyJson
         [NotNull] public static readonly JsonParameters DefaultParameters = new JsonParameters();
 
         [NotNull]
-    	internal static Json Instance = new Json();
+        internal static Json Instance = new Json();
         private Json(){
             _jsonParameters = DefaultParameters;
         }
@@ -266,7 +272,7 @@ namespace SkinnyJson
             var ignoreCase = _jsonParameters?.IgnoreCaseOnDeserialize ?? DefaultParameters.IgnoreCaseOnDeserialize;
             
             var rawObject = parser.Decode();
-            var pathParts = (ignoreCase ? path.ToLowerInvariant() : path).Split('.');
+            var pathParts = (ignoreCase ? NormaliseCase(path) : path).Split('.');
 
             return PathWalk<T>(rawObject, globalTypes, pathParts, 0, false);
         }
@@ -336,35 +342,35 @@ namespace SkinnyJson
             switch (rawObject)
             {
                 case Dictionary<string, object> objects:
-                    {
-                        if (!objects.ContainsKey(step)) yield break;
-                        var next = objects[step];
+                {
+                    if (!objects.ContainsKey(step)) yield break;
+                    var next = objects[step];
 
-                        if (isIndexed) // try to step into an array
+                    if (isIndexed) // try to step into an array
+                    {
+                        var arrayList = next as ArrayList;
+                        if (arrayList is null) yield break; // this path point isn't an array
+                        if (index < 0) // we used the '*' syntax
                         {
-                            var arrayList = next as ArrayList;
-                            if (arrayList is null) yield break; // this path point isn't an array
-                            if (index < 0) // we used the '*' syntax
+                            foreach (var item in arrayList)
                             {
-                                foreach (var item in arrayList)
-                                {
-                                    var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true);
-                                    foreach (var elem in indexElems) { yield return elem; }
-                                }
-                            }
-                            else // we want a single item here
-                            {
-                                if (index >= arrayList.Count) yield break; // not available on this path
-                                var item = arrayList[index];
                                 var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true);
                                 foreach (var elem in indexElems) { yield return elem; }
                             }
                         }
-
-                        var elems = PathWalk<T>(objects[step], globalTypes, pathParts, pathIndex + 1, false);
-                        foreach (var elem in elems) { yield return elem; }
-                        yield break;
+                        else // we want a single item here
+                        {
+                            if (index >= arrayList.Count) yield break; // not available on this path
+                            var item = arrayList[index];
+                            var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true);
+                            foreach (var elem in indexElems) { yield return elem; }
+                        }
                     }
+
+                    var elems = PathWalk<T>(objects[step], globalTypes, pathParts, pathIndex + 1, false);
+                    foreach (var elem in elems) { yield return elem; }
+                    yield break;
+                }
 
                 case ArrayList arrayList:
                 {
@@ -427,8 +433,8 @@ namespace SkinnyJson
         /// <param name="encoding">String encoding to use, if reading from a stream</param>
         internal object ToObject(object json, Type? type, Encoding? encoding)
         {
-			_jsonParameters ??= DefaultParameters;
-			var globalTypes = new Dictionary<string, object>();
+            _jsonParameters ??= DefaultParameters;
+            var globalTypes = new Dictionary<string, object>();
 			
             var parser = ParserFromStreamOrStringOrBytes(json, encoding);
 
@@ -547,11 +553,11 @@ namespace SkinnyJson
         /// </summary>
         [NotNull]
         private Type GenericListType(Type containedType)
-	    {
-			var d1 = typeof(List<>);
-			Type[] typeArgs = { containedType };
-			return d1.MakeGenericType(typeArgs);
-	    }
+        {
+            var d1 = typeof(List<>);
+            Type[] typeArgs = { containedType };
+            return d1.MakeGenericType(typeArgs);
+        }
         
         /// <summary>
         /// Make an ISet˂T˃() instance for a runtime type
@@ -575,7 +581,7 @@ namespace SkinnyJson
             return d1.MakeGenericType(typeArgs);
         }
 
-	    readonly SafeDictionary<Type, string> _typeNameMap = new SafeDictionary<Type, string>();
+        readonly SafeDictionary<Type, string> _typeNameMap = new SafeDictionary<Type, string>();
 
         /// <summary>
         /// Get a shortened string name for a type's containing assembly
@@ -584,30 +590,30 @@ namespace SkinnyJson
         {
             if (_typeNameMap.TryGetValue(t, out string val)) return val;
 
-        	string name;
-			if (t.BaseType == typeof(object)) {
-				// on Windows, this can be just "t.GetInterfaces()" but Mono doesn't return in order.
-				var interfaceType = t.GetInterfaces().FirstOrDefault(i => !t.GetInterfaces().Any(i2 => i2.GetInterfaces().Contains(i)));
-				name = ShortenName((interfaceType ?? t).AssemblyQualifiedName);
-			} else {
-				name = ShortenName(t.AssemblyQualifiedName ?? t.ToString()!);
-			}
+            string name;
+            if (t.BaseType == typeof(object)) {
+                // on Windows, this can be just "t.GetInterfaces()" but Mono doesn't return in order.
+                var interfaceType = t.GetInterfaces().FirstOrDefault(i => !t.GetInterfaces().Any(i2 => i2.GetInterfaces().Contains(i)));
+                name = ShortenName((interfaceType ?? t).AssemblyQualifiedName);
+            } else {
+                name = ShortenName(t.AssemblyQualifiedName ?? t.ToString()!);
+            }
 
-        	_typeNameMap.Add(t, name);
+            _typeNameMap.Add(t, name);
 
-        	return _typeNameMap[t];
+            return _typeNameMap[t];
         }
 
         /// <summary>
         /// Shorten an assembly qualified name
         /// </summary>
-    	static string ShortenName(string assemblyQualifiedName) {
-			var one = assemblyQualifiedName.IndexOf(',');
-			var two = assemblyQualifiedName.IndexOf(',', one+1);
-			return assemblyQualifiedName.Substring(0, two);
-    	}
+        static string ShortenName(string assemblyQualifiedName) {
+            var one = assemblyQualifiedName.IndexOf(',');
+            var two = assemblyQualifiedName.IndexOf(',', one+1);
+            return assemblyQualifiedName.Substring(0, two);
+        }
 
-    	readonly SafeDictionary<string, Type> _typeCache = new SafeDictionary<string, Type>();
+        readonly SafeDictionary<string, Type> _typeCache = new SafeDictionary<string, Type>();
         readonly List<Type> _assemblyCache = new List<Type>();
 
         /// <summary>
@@ -616,34 +622,34 @@ namespace SkinnyJson
         private Type? GetTypeFromCache(string typename) {
             if (_typeCache.TryGetValue(typename, out Type val)) return val;
 
-			var typeParts = typename.Split(',');
+            var typeParts = typename.Split(',');
 
-			Type? t;
-			if (typeParts.Length > 1) {
-				var assemblyName = typeParts[1];
-				var fullName = typeParts[0]!;
-				var available = Assembly.Load(assemblyName!)?.GetTypes();
-				t = available?.SingleOrDefault(type => type?.FullName?.Equals(fullName, StringComparison.OrdinalIgnoreCase) == true);
-			} else if (typeParts.Length == 1) {
+            Type? t;
+            if (typeParts.Length > 1) {
+                var assemblyName = typeParts[1];
+                var fullName = typeParts[0]!;
+                var available = Assembly.Load(assemblyName!)?.GetTypes();
+                t = available?.SingleOrDefault(type => type?.FullName?.Equals(fullName, StringComparison.OrdinalIgnoreCase) == true);
+            } else if (typeParts.Length == 1) {
                 // slow but robust way of finding a type fragment.
                 if (_assemblyCache.Count < 1) { _assemblyCache.AddRange(AppDomain.CurrentDomain.GetAssemblies().SelectMany(asm => asm.GetTypes())); }
-				t = _assemblyCache.SingleOrDefault(type => type.FullName?.StartsWith(typeParts[0]!, StringComparison.OrdinalIgnoreCase) ?? false);
-			} else throw new Exception("Invalid type description: "+typename);
+                t = _assemblyCache.SingleOrDefault(type => type.FullName?.StartsWith(typeParts[0]!, StringComparison.OrdinalIgnoreCase) ?? false);
+            } else throw new Exception("Invalid type description: "+typename);
             
-        	if (t != null) {
-				_typeCache.Add(typename, t);
-			}
-			return t;
-		}
+            if (t != null) {
+                _typeCache.Add(typename, t);
+            }
+            return t;
+        }
 
-    	readonly SafeDictionary<Type, CreateObject> _constructorCache = new SafeDictionary<Type, CreateObject>();
+        readonly SafeDictionary<Type, CreateObject> _constructorCache = new SafeDictionary<Type, CreateObject>();
         private delegate object CreateObject();
 
         /// <summary>
         /// Try to make a new instance of a type.
         /// Will drop down to 'SlowCreateInstance' in special cases
         /// </summary>
-		private object? FastCreateInstance(Type? objType)
+        private object? FastCreateInstance(Type? objType)
         {
             if (objType == null) return null;
             if (_constructorCache.TryGetValue(objType, out var cc)) return cc();
@@ -658,20 +664,20 @@ namespace SkinnyJson
             
             try
             {
-            	var constructorInfo = objType.GetConstructor(Type.EmptyTypes);
-				if (constructorInfo == null)
+                var constructorInfo = objType.GetConstructor(Type.EmptyTypes);
+                if (constructorInfo == null)
                 {
                     return SlowCreateInstance(objType);
                 }
 
                 var dynMethod = new DynamicMethod("_", objType, null);
-            	var ilGen = dynMethod.GetILGenerator();
+                var ilGen = dynMethod.GetILGenerator();
 
-            	ilGen.Emit(OpCodes.Newobj, constructorInfo);
-            	ilGen.Emit(OpCodes.Ret);
-            	var c = (CreateObject)dynMethod.CreateDelegate(typeof(CreateObject));
-            	_constructorCache.Add(objType, c);
-            	return c();
+                ilGen.Emit(OpCodes.Newobj, constructorInfo);
+                ilGen.Emit(OpCodes.Ret);
+                var c = (CreateObject)dynMethod.CreateDelegate(typeof(CreateObject));
+                _constructorCache.Add(objType, c);
+                return c();
             }
             catch (Exception)
             {
@@ -732,7 +738,7 @@ namespace SkinnyJson
         bool _usingGlobals;
 
         readonly SafeDictionary<Type, List<Getters>> _getterCache = new();
-    	readonly SafeDictionary<string, SafeDictionary<string, TypePropertyInfo>> _propertyCache = new();
+        readonly SafeDictionary<string, SafeDictionary<string, TypePropertyInfo>> _propertyCache = new();
         
         internal delegate object GenericGetter(object obj);
 
@@ -777,7 +783,7 @@ namespace SkinnyJson
             var targetType = targetObject?.GetType() ?? type;
             if (targetType is null) throw new Exception("Unable to determine type of object");
 
-			var props = GetProperties(targetType, targetType.Name);
+            var props = GetProperties(targetType, targetType.Name);
             if (!IsDictionary(targetType) && NoPropertiesMatch(props, jsonValues.Keys))
             {
                 if (jsonValues.Count > 0) // unless we were passed an empty object,
@@ -824,14 +830,14 @@ namespace SkinnyJson
         /// </summary>
         void MapJsonValueToObject(string objectKey, Type? targetType, object? targetObject, IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes,
             SafeDictionary<string, TypePropertyInfo> props)
-    	{
-    		var name = objectKey;
-    		if (_jsonParameters?.IgnoreCaseOnDeserialize == true) name = name.ToLower();
-    		if (name == "$map")
-    		{
-    			ProcessMap(targetObject, props, jsonValues[name] as Dictionary<string, object>);
-    			return;
-    		}
+        {
+            var name = objectKey;
+            if (_jsonParameters?.IgnoreCaseOnDeserialize == true) name = NormaliseCase(name);
+            if (name == "$map" && targetObject is not null)
+            {
+                ProcessMap(targetObject, props, jsonValues[name] as Dictionary<string, object>);
+                return;
+            }
 
             if (props.TryGetValue(name, out var propertyInfo) == false) {
                 if (targetObject is IDictionary) {
@@ -840,15 +846,23 @@ namespace SkinnyJson
                 }
                 else return;
             }
-    		if (!propertyInfo.filled) return;
-    		var v = jsonValues[name];
+            if (!propertyInfo.filled) return;
+            var v = jsonValues[name];
 
-    		if (v == null) return;
-            
-    		var setObj = MakeSettableObject(globalTypes, propertyInfo, v);
+            if (v == null) return;
+
+            object setObj;
+            try
+            {
+                setObj = MakeSettableObject(globalTypes, propertyInfo, v);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to convert json {v.GetType()} to target object {propertyInfo.changeType?.ToString() ?? "<unknown>"} on property {propertyInfo.Name}", ex);
+            }
 
             if (propertyInfo.CanWrite) WriteValueToTypeInstance(name, targetType, targetObject, propertyInfo, setObj);
-    	}
+        }
 
         /// <summary>
         /// Try to create an object instance that can be directly assigned to the property or field
@@ -888,7 +902,7 @@ namespace SkinnyJson
                 setObj = CreateEnum(propertyInfo.parameterType, (string)inputValue);
 
             else if (propertyInfo.isDateTime)
-                setObj = CreateDateTime((string)inputValue);
+                setObj = CreateDateTime(inputValue);
 
             else if (propertyInfo.isTimeSpan)
                 setObj = CreateTimeSpan(inputValue);
@@ -910,7 +924,7 @@ namespace SkinnyJson
             if (o is bool b) return b;
             if (o is string s)
             {
-                if (_jsonParameters?.IgnoreCaseOnDeserialize == true) s = s.ToLowerInvariant();
+                if (_jsonParameters?.IgnoreCaseOnDeserialize == true) s = NormaliseCase(s);
                 switch (s)
                 {
                     case "true": return true;
@@ -972,13 +986,13 @@ namespace SkinnyJson
             var ignoreCase = _jsonParameters?.IgnoreCaseOnDeserialize ?? DefaultParameters.IgnoreCaseOnDeserialize;
 
             if (_propertyCache.TryGetValue(typename, out SafeDictionary<string, TypePropertyInfo> sd)) return sd;
-        	sd = new SafeDictionary<string, TypePropertyInfo>();
+            sd = new SafeDictionary<string, TypePropertyInfo>();
 
-			var pr = new List<PropertyInfo>();
+            var pr = new List<PropertyInfo>();
 
             // Instance fields and static fields
-			var fi = new List<FieldInfo>();
-        	fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Instance));
+            var fi = new List<FieldInfo>();
+            fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Instance));
             fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Static));
 
             if (usePrivateFields)
@@ -987,43 +1001,43 @@ namespace SkinnyJson
             }
 
             foreach (var iface in type.GetInterfaces())
-        	{
-        		fi.AddRange(iface.GetFields(BindingFlags.Public | BindingFlags.Instance));
-        	}
+            {
+                fi.AddRange(iface.GetFields(BindingFlags.Public | BindingFlags.Instance));
+            }
 
-        	foreach (var f in fi)
-        	{
-        		var d = CreateMyProp(f.FieldType, f.Name);
-        		d.setter = CreateSetField(type, f);
-        		d.getter = CreateGetField(type, f);
+            foreach (var f in fi)
+            {
+                var d = CreateMyProp(f.FieldType, f.Name);
+                d.setter = CreateSetField(type, f);
+                d.getter = CreateGetField(type, f);
 
-	            sd.Add(f.Name, d);
-                if (ignoreCase) sd.TryAdd(f.Name.ToLowerInvariant(), d);
-	            if (usePrivateFields){
+                sd.Add(f.Name, d);
+                if (ignoreCase) sd.TryAdd(NormaliseCase(f.Name), d);
+                if (usePrivateFields){
                     var privateName = f.Name.Replace("m_", "");
                     sd.Add(AnonFieldFilter(privateName), d);
-                    if (ignoreCase) sd.TryAdd(privateName.ToLowerInvariant(), d);
+                    if (ignoreCase) sd.TryAdd(NormaliseCase(privateName), d);
                 }
             }
 
             // Instance properties
-        	pr.AddRange(type.GetProperties(BindingFlags.Public | BindingFlags.Instance));
-        	foreach (var prop in type.GetInterfaces()
-				.SelectMany(i => i.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-				.Where(prop => pr.All(p => p.Name != prop.Name)))) {
-        		pr.Add(prop);
-        	}
+            pr.AddRange(type.GetProperties(BindingFlags.Public | BindingFlags.Instance));
+            foreach (var prop in type.GetInterfaces()
+                         .SelectMany(i => i.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                             .Where(prop => pr.All(p => p.Name != prop.Name)))) {
+                pr.Add(prop);
+            }
 
-        	foreach (var p in pr)
-        	{
-        		var d = CreateMyProp(p.PropertyType, p.Name);
-        		d.CanWrite = p.CanWrite;
-        		d.setter = CreateSetMethod(p);
+            foreach (var p in pr)
+            {
+                var d = CreateMyProp(p.PropertyType, p.Name);
+                d.CanWrite = p.CanWrite;
+                d.setter = CreateSetMethod(p);
                 if (d.setter == null) continue;
-        		d.getter = CreateGetMethod(p);
-        		sd.Add(p.Name, d);
-                if (ignoreCase) sd.TryAdd(p.Name.ToLowerInvariant(), d);
-        	}
+                d.getter = CreateGetMethod(p);
+                sd.Add(p.Name, d);
+                if (ignoreCase) sd.TryAdd(NormaliseCase(p.Name), d);
+            }
             
             // Static properties are special
             var staticProps = type.GetProperties(BindingFlags.Public | BindingFlags.Static);
@@ -1034,13 +1048,35 @@ namespace SkinnyJson
                 d.setter = (_, value, _) => sp.SetValue(null!, value);
                 d.getter = _ => sp.GetValue(null!)!;
                 sd.Add(sp.Name, d);
-                if (ignoreCase) sd.TryAdd(sp.Name.ToLowerInvariant(), d);
+                if (ignoreCase) sd.TryAdd(NormaliseCase(sp.Name), d);
             }
 
             if (type.GetGenericArguments().Length < 1) {
-        	    _propertyCache.Add(typename, sd);
+                _propertyCache.Add(typename, sd);
             }
-        	return sd;
+            return sd;
+        }
+
+        /// <summary>
+        /// Convert a string to lower case, removing a set of joining and non-printing characters
+        /// </summary>
+        public static string NormaliseCase(string? src)
+        {
+            if (src is null || src.Length < 1) return "";
+            var sb = new StringBuilder();
+
+            foreach (var c in src)
+            {
+                if (c <= ' ') continue;
+                if (c == '_') continue;
+                if (c == '-') continue;
+                if (char.IsControl(c)) continue;
+                if (char.IsWhiteSpace(c)) continue;
+                if (char.IsSeparator(c)) continue;
+                sb.Append(char.ToLowerInvariant(c));
+            }
+
+            return sb.ToString();
         }
 
         // Anonymous fields like "A" will be named like "<A>i__Field" in the type def.
@@ -1063,12 +1099,12 @@ namespace SkinnyJson
 
             var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
             var getters = (from p in props where (p.CanWrite || _jsonParameters.ShowReadOnlyProperties || _jsonParameters.EnableAnonymousTypes)
-						   let att = p.GetCustomAttributes(typeof (System.Xml.Serialization.XmlIgnoreAttribute), false)
-						   where att.Length <= 0 let g = CreateGetMethod(p) where g != null 
+                let att = p.GetCustomAttributes(typeof (System.Xml.Serialization.XmlIgnoreAttribute), false)
+                where att.Length <= 0 let g = CreateGetMethod(p) where g != null 
 						   
-						   select new Getters {Name = p.Name, Getter = g, PropertyType = p.PropertyType}).ToList();
+                select new Getters {Name = p.Name, Getter = g, PropertyType = p.PropertyType}).ToList();
 
-        	var fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
+            var fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
             foreach (var f in fi)
             {
                 var att = f.GetCustomAttributes(typeof(System.Xml.Serialization.XmlIgnoreAttribute), false);
@@ -1076,8 +1112,8 @@ namespace SkinnyJson
                     continue;
 
                 var g = CreateGetField(type, f);
-            	var gg = new Getters {Name = f.Name, Getter = g, PropertyType = f.FieldType, FieldInfo = f};
-            	getters.Add(gg);
+                var gg = new Getters {Name = f.Name, Getter = g, PropertyType = f.FieldType, FieldInfo = f};
+                getters.Add(gg);
             }
 
             _getterCache.Add(type, getters);
@@ -1089,8 +1125,8 @@ namespace SkinnyJson
         /// </summary>
         static TypePropertyInfo CreateMyProp(Type t, string name)
         {
-        	var d = new TypePropertyInfo {filled = true, Name = name, CanWrite = true, parameterType = t, isDictionary = t.Name.Contains("Dictionary")};
-        	if (d.isDictionary) d.GenericTypes = t.GetGenericArguments();
+            var d = new TypePropertyInfo {filled = true, Name = name, CanWrite = true, parameterType = t, isDictionary = t.Name.Contains("Dictionary")};
+            if (d.isDictionary) d.GenericTypes = t.GetGenericArguments();
             
             d.isValueType = t.IsValueType;
             d.isGenericType = t.IsGenericType;
@@ -1184,8 +1220,8 @@ namespace SkinnyJson
             var getter = new DynamicMethod("_", typeof(object), arguments, true);
             var il = getter.GetILGenerator();
             il.Emit(OpCodes.Ldarg_0);
-        	il.Emit(OpCodes.Castclass, propertyInfo.DeclaringType);
-        	il.EmitCall(OpCodes.Callvirt, getMethod, null);
+            il.Emit(OpCodes.Castclass, propertyInfo.DeclaringType);
+            il.EmitCall(OpCodes.Callvirt, getMethod, null);
 
             if (!propertyInfo.PropertyType.IsClass)
                 il.Emit(OpCodes.Box, propertyInfo.PropertyType);
@@ -1202,19 +1238,19 @@ namespace SkinnyJson
         {
             if (value == null || conversionType == null) return null;
             if (conversionType == typeof(int)) return (int)CreateLong(value);
-        	if (conversionType == typeof(long)) return CreateLong(value);
-        	if (conversionType == typeof(string)) return value;
-        	if (conversionType == typeof(Guid)) return CreateGuid((string)value);
-        	if (conversionType.IsEnum) return CreateEnum(conversionType, (string)value);
-        	return Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
+            if (conversionType == typeof(long)) return CreateLong(value);
+            if (conversionType == typeof(string)) return value;
+            if (conversionType == typeof(Guid)) return CreateGuid((string)value);
+            if (conversionType.IsEnum) return CreateEnum(conversionType, (string)value);
+            return Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
         }
 
-    	static void ProcessMap(object obj, SafeDictionary<string, TypePropertyInfo> props, Dictionary<string, object>? dic)
+        static void ProcessMap(object obj, SafeDictionary<string, TypePropertyInfo> props, Dictionary<string, object>? dic)
         {
             if (dic == null) return;
             foreach (var kv in dic)
             {
-                if (kv.Value == null) continue;
+                if (kv.Value is null || kv.Key is null) continue;
                 var p = props[kv.Key];
                 var o = p.getter?.Invoke(obj);
                 var t = Type.GetType((string)kv.Value);
@@ -1246,16 +1282,16 @@ namespace SkinnyJson
             {
                 switch (cc)
                 {
-                	case '-':
-                		neg = true;
-                		break;
-                	case '+':
-                		neg = false;
-                		break;
-                	default:
-                		num *= 10;
-                		num += cc - '0';
-                		break;
+                    case '-':
+                        neg = true;
+                        break;
+                    case '+':
+                        neg = false;
+                        break;
+                    default:
+                        num *= 10;
+                        num += cc - '0';
+                        break;
                 }
             }
 
@@ -1270,7 +1306,7 @@ namespace SkinnyJson
 
         static Guid CreateGuid(string s)
         {
-        	return s.Length > 30 ? new Guid(s) : new Guid(Convert.FromBase64String(s));
+            return s.Length > 30 ? new Guid(s) : new Guid(Convert.FromBase64String(s));
         }
 
         /// <summary>
@@ -1288,16 +1324,38 @@ namespace SkinnyJson
             // ReSharper restore StringLiteralTypo
         };
 
-        static DateTime CreateDateTime(string value)
+        static DateTime CreateDateTime(object? value)
         {
+            if (value is null) return DateTime.MinValue;
+
+            if (value is long ticksLong) return InterpretNumberAsDate(ticksLong);
+            if (value is double ticksDouble) return InterpretNumberAsDate((long)ticksDouble);
+
+            var str = value.ToString();
+
             foreach (var format in DateFormatsInPreferenceOrder)
             {
-                if (DateTime.TryParseExact(value, format, null!, DateTimeStyles.AssumeLocal, out var dateVal)) {
+                if (DateTime.TryParseExact(str, format, null!, DateTimeStyles.AssumeLocal, out var dateVal))
+                {
                     return dateVal;
                 }
             }
-            // None of our prefered formats, so let .Net guess
-            return DateTime.Parse(value);
+
+            // None of our preferred formats, so let .Net guess
+            return DateTime.Parse(str);
+            
+        }
+
+        private static DateTime InterpretNumberAsDate(long value)
+        {
+            var asTicks = new DateTime(value);
+            if (asTicks.Year > 1900 && asTicks.Year < 3000) return asTicks;
+            
+            var asUnixMs = new DateTime(1970,1,1,0,0,0, DateTimeKind.Utc).AddMilliseconds(value);
+            if (asUnixMs.Year > 1980 && asUnixMs.Year < 3000) return asUnixMs;
+            
+            var asUnixSeconds = new DateTime(1970,1,1,0,0,0, DateTimeKind.Utc).AddSeconds(value);
+            return asUnixSeconds;
         }
 
         private TimeSpan CreateTimeSpan(object? v)
@@ -1344,13 +1402,20 @@ namespace SkinnyJson
             // do a case insensitive search
             foreach (var objKey in objects.Keys)
             {
-                if (!objKey.Equals(key, StringComparison.InvariantCultureIgnoreCase)) continue;
+                if (!EqualsInNormaliseCase(objKey,key)) continue;
                 
                 var obj = objects[objKey];
                 if (obj is double d) return d;
                 if (obj is string s && double.TryParse(s, out var dVal)) return dVal;
             }
             return 0.0;
+        }
+
+        private static bool EqualsInNormaliseCase(string a, string b)
+        {
+            if (a == b) return true;
+            if (a.Equals(b, StringComparison.InvariantCultureIgnoreCase)) return true;
+            return NormaliseCase(a) == NormaliseCase(b);
         }
 
         object CreateArray(IEnumerable data, Type? elementType, IDictionary<string, object>? globalTypes)
@@ -1391,7 +1456,7 @@ namespace SkinnyJson
             if (pt == null) throw new Exception("Target type was null");
             var col = FastCreateInstance(pt) as IDictionary;
             if (col == null) throw new Exception("Failed to create instance of " + pt);
-        	Type? t2 = null;
+            Type? t2 = null;
             if (types != null) t2 = types[1];
 
             foreach (var values in reader)
@@ -1458,8 +1523,8 @@ namespace SkinnyJson
 
         DataSet? CreateDataset(IDictionary<string, object> reader, IDictionary<string, object>? globalTypes)
         {
-        	var ds = new DataSet {EnforceConstraints = false};
-        	ds.BeginInit();
+            var ds = new DataSet {EnforceConstraints = false};
+            ds.BeginInit();
 
             // read dataset schema here
             if (!ReadSchema(reader, ds, globalTypes)) return null;
@@ -1507,10 +1572,10 @@ namespace SkinnyJson
                     var info1 = ms.Info[i + 1];
                     var info2 = ms.Info[i + 2];
                     if (info1 == null || info2 == null) continue;
-                	var type = Type.GetType(info2);
-					if (type == null) continue;
+                    var type = Type.GetType(info2);
+                    if (type == null) continue;
                     
-                	ds.Tables[info]?.Columns.Add(info1, type);
+                    ds.Tables[info]?.Columns.Add(info1, type);
                 }
             }
             return true;

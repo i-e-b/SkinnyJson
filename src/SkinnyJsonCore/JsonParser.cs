@@ -109,9 +109,8 @@ namespace SkinnyJson
                         {
 
                             // name
-                            string name = ParseString();
-                            if (_ignoreCase)
-                                name = name.ToLower();
+                            var name = ParseString();
+                            if (_ignoreCase) name = Json.NormaliseCase(name);
 
                             // :
                             if (NextToken() != Token.Colon)

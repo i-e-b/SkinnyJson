@@ -48,6 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BeautifyTests.cs" />
+    <Compile Include="CaseSensitivityTests.cs" />
     <Compile Include="ChangingSettings.cs" />
     <Compile Include="ClarityTests.cs" />
     <Compile Include="CloningTests.cs" />

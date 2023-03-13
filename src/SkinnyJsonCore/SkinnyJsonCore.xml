@@ -189,6 +189,9 @@
         <member name="M:SkinnyJson.Json.DefrostDynamic(System.String)">
             <summary> Turn a JSON string into an object containing properties found </summary>
         </member>
+        <member name="M:SkinnyJson.Json.DefrostDynamic(System.IO.Stream,System.Text.Encoding)">
+            <summary> Turn a JSON string into an object containing properties found </summary>
+        </member>
         <member name="M:SkinnyJson.Json.DefrostFromPath``1(System.String,System.String)">
             <summary>
             Turn a sub-path of a JSON document into an enumeration of values, by specific type
@@ -343,6 +346,11 @@
             In special cases, this will also read private fields
             </summary>
         </member>
+        <member name="M:SkinnyJson.Json.NormaliseCase(System.String)">
+            <summary>
+            Convert a string to lower case, removing a set of joining and non-printing characters
+            </summary>
+        </member>
         <member name="M:SkinnyJson.Json.GetGetters(System.Type)">
             <summary>
             Return a list of property/field access proxies for a type
@@ -443,8 +451,24 @@
         </member>
         <member name="P:SkinnyJson.JsonParameters.IgnoreCaseOnDeserialize">
             <summary>
-            Allow case insensitive matching on deserialise. Default false
+            <p>Default false.</p>
+            Allow case insensitive matching on deserialise. Also ignores underscores, dashes, and spaces in object keys.
             </summary>
+            <remarks>
+            If case insensitive matching is enabled, these are all considered equal keys:
+            <ul>
+            <li>CASE_INSENSITIVE</li>
+            <li>CASE-INSENSITIVE</li>
+            <li>CASEINSENSITIVE</li>
+            <li>case_insensitive</li>
+            <li>case-insensitive</li>
+            <li>Case Insensitive</li>
+            <li>case insensitive</li>
+            <li>CaseInsensitive</li>
+            <li>caseInsensitive</li>
+            <li>caseinsensitive</li>
+            </ul>
+            </remarks>
         </member>
         <member name="F:SkinnyJson.JsonParameters.EnableAnonymousTypes">
             <summary>

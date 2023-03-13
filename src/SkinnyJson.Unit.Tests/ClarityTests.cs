@@ -10,13 +10,14 @@ namespace SkinnyJson.Unit.Tests
         public void a_dictionary_of_dictionaries_should_freeze_to_a_tree_of_object_literals()
         {
             Json.DefaultParameters.EnableAnonymousTypes = true;
+            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
 
-			var original = ComplexTypes.DictionaryOfDictionary();
-			var frozen = Json.Freeze(original);
-			Console.WriteLine(frozen);
-			var defrosted = Json.Defrost(frozen);
+            var original = ComplexTypes.DictionaryOfDictionary();
+            var frozen = Json.Freeze(original);
+            Console.WriteLine(frozen);
+            var defrosted = Json.Defrost(frozen);
 
-			Assert.That(defrosted, Is.EqualTo(original));
+            Assert.That(defrosted, Is.EqualTo(original).AsCollection);
         }
 
         [Test]

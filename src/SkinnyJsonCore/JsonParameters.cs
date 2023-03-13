@@ -46,9 +46,27 @@
         /// </summary>
         public bool UsingGlobalTypes = true;
 
+        // ReSharper disable CommentTypo
         /// <summary>
-        /// Allow case insensitive matching on deserialise. Default false
+        /// <p>Default false.</p>
+        /// Allow case insensitive matching on deserialise. Also ignores underscores, dashes, and spaces in object keys.
         /// </summary>
+        /// <remarks>
+        /// If case insensitive matching is enabled, these are all considered equal keys:
+        /// <ul>
+        /// <li>CASE_INSENSITIVE</li>
+        /// <li>CASE-INSENSITIVE</li>
+        /// <li>CASEINSENSITIVE</li>
+        /// <li>case_insensitive</li>
+        /// <li>case-insensitive</li>
+        /// <li>Case Insensitive</li>
+        /// <li>case insensitive</li>
+        /// <li>CaseInsensitive</li>
+        /// <li>caseInsensitive</li>
+        /// <li>caseinsensitive</li>
+        /// </ul>
+        /// </remarks>
+        // ReSharper restore CommentTypo
         public bool IgnoreCaseOnDeserialize
         {
             get => _ignoreCaseOnDeserialize;

@@ -1,4 +1,6 @@
-﻿using NUnit.Framework;
+﻿using System.IO;
+using System.Text;
+using NUnit.Framework;
 // ReSharper disable AssignNullToNotNullAttribute
 
 namespace SkinnyJson.Unit.Tests
@@ -6,10 +8,56 @@ namespace SkinnyJson.Unit.Tests
     [TestFixture]
     public class DynamicTypeTests {
         [Test]
-        public void Can_defrost_into_a_dynamic_and_read_from_the_result()
+        public void Can_defrost_string_into_a_dynamic_and_read_from_the_result()
         {
             var original = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":\"What?\",\"Item3\":[10,20,30]}}}";
             dynamic subject = Json.DefrostDynamic(original);
+
+            // direct cast access:
+            Assert.That((int)subject.Hello.Bob.Item1, Is.EqualTo(1));
+            Assert.That((int)subject.Hello.Bob.Item3[1], Is.EqualTo(2));
+            Assert.That((string)subject.World.Sam.Item2, Is.EqualTo("What?"));
+
+            // 'invoke' style access:
+            Assert.That(subject.Hello.Bob.Item1(), Is.EqualTo(1));
+            Assert.That(subject.Hello.Bob.Item3[1](), Is.EqualTo(2));
+            Assert.That(subject.World.Sam.Item2(), Is.EqualTo("What?"));
+            
+            // using string indexes:
+            Assert.That(subject["Hello"].Bob.Item1(), Is.EqualTo(1));
+            Assert.That(subject.Hello["Bob"].Item3[1](), Is.EqualTo(2));
+            Assert.That(subject.World.Sam["Item2"](), Is.EqualTo("What?"));
+        }
+        
+        [Test]
+        public void Can_defrost_stream_into_a_dynamic_and_read_from_the_result()
+        {
+            var original = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":\"What?\",\"Item3\":[10,20,30]}}}";
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(original));
+            dynamic subject = Json.DefrostDynamic(stream);
+
+            // direct cast access:
+            Assert.That((int)subject.Hello.Bob.Item1, Is.EqualTo(1));
+            Assert.That((int)subject.Hello.Bob.Item3[1], Is.EqualTo(2));
+            Assert.That((string)subject.World.Sam.Item2, Is.EqualTo("What?"));
+
+            // 'invoke' style access:
+            Assert.That(subject.Hello.Bob.Item1(), Is.EqualTo(1));
+            Assert.That(subject.Hello.Bob.Item3[1](), Is.EqualTo(2));
+            Assert.That(subject.World.Sam.Item2(), Is.EqualTo("What?"));
+            
+            // using string indexes:
+            Assert.That(subject["Hello"].Bob.Item1(), Is.EqualTo(1));
+            Assert.That(subject.Hello["Bob"].Item3[1](), Is.EqualTo(2));
+            Assert.That(subject.World.Sam["Item2"](), Is.EqualTo("What?"));
+        }
+        
+        [Test]
+        public void Can_defrost_stream_into_a_dynamic_and_read_from_the_result_with_custom_encoding()
+        {
+            var original = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":\"What?\",\"Item3\":[10,20,30]}}}";
+            using var stream = new MemoryStream(Encoding.BigEndianUnicode.GetBytes(original));
+            dynamic subject = Json.DefrostDynamic(stream, Encoding.BigEndianUnicode);
 
             // direct cast access:
             Assert.That((int)subject.Hello.Bob.Item1, Is.EqualTo(1));
