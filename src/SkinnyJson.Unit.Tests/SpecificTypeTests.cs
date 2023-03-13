@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NUnit.Framework;
 // ReSharper disable AssignNullToNotNullAttribute
@@ -12,6 +11,9 @@ using NUnit.Framework;
 
 namespace SkinnyJson.Unit.Tests
 {
+    /// <summary>
+    /// Tests for real-world applications and bugs
+    /// </summary>
     [TestFixture]
     public class SpecificTypeTests
     {
@@ -155,7 +157,6 @@ namespace SkinnyJson.Unit.Tests
             var l2 = d.Prop2.ToList();
             Assert.That(l2.Count, Is.EqualTo(2), "Second enumerable was wrong length");
         }
-
 
         private string Quote(string src) => src.Replace('\'', '"');
 

@@ -861,7 +861,14 @@ namespace SkinnyJson
                 throw new Exception($"Failed to convert json {v.GetType()} to target object {propertyInfo.changeType?.ToString() ?? "<unknown>"} on property {propertyInfo.Name}", ex);
             }
 
-            if (propertyInfo.CanWrite) WriteValueToTypeInstance(name, targetType, targetObject, propertyInfo, setObj);
+            try
+            {
+                if (propertyInfo.CanWrite) WriteValueToTypeInstance(name, targetType, targetObject, propertyInfo, setObj);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to write value from json {v.GetType()} to target object {propertyInfo.changeType?.ToString() ?? "<unknown>"} on property {propertyInfo.Name}", ex);
+            }
         }
 
         /// <summary>
@@ -909,6 +916,9 @@ namespace SkinnyJson
 
             else if (propertyInfo.isClass && inputValue is Dictionary<string, object> objects)
                 setObj = ParseDictionary(objects, globalTypes, propertyInfo.parameterType, null) ?? throw new Exception("Failed to map to class");
+            
+            else if (propertyInfo.isInterface && inputValue is Dictionary<string, object> proxyObjects)
+                setObj = ParseDictionary(proxyObjects, globalTypes, propertyInfo.parameterType, null) ?? throw new Exception("Failed to map to proxy class of interface");
 
             else if (propertyInfo.isValueType)
                 setObj = ChangeType(inputValue, propertyInfo.changeType) ?? throw new Exception("Failed to create value type");
@@ -1125,9 +1135,10 @@ namespace SkinnyJson
         /// </summary>
         static TypePropertyInfo CreateMyProp(Type t, string name)
         {
-            var d = new TypePropertyInfo {filled = true, Name = name, CanWrite = true, parameterType = t, isDictionary = t.Name.Contains("Dictionary")};
+            var d = new TypePropertyInfo { filled = true, Name = name, CanWrite = true, parameterType = t, isDictionary = t.Name.Contains("Dictionary") };
             if (d.isDictionary) d.GenericTypes = t.GetGenericArguments();
             
+            d.isInterface = t.IsInterface;
             d.isValueType = t.IsValueType;
             d.isGenericType = t.IsGenericType;
             d.isArray = t.IsArray;

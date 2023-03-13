@@ -15,6 +15,7 @@ namespace SkinnyJson
             public Type? bt;
             public Type? changeType;
             public bool isDictionary;
+            public bool isInterface;
             public bool isValueType;
             public bool isGenericType;
             public bool isArray;

@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text;
 using NUnit.Framework;
 // ReSharper disable AssignNullToNotNullAttribute
@@ -125,5 +127,57 @@ namespace SkinnyJson.Unit.Tests
             var result = Json.WrapperType(obj);
             Assert.That(result, Contains.Substring("ISimpleObject"));
         }
+
+        [Test]
+        public void Can_next_interfaces_inside_each_other_and_get_nested_proxies_as_output()
+        {
+            var content = Quote(@"
+{
+'servers': [
+    {     
+      'id': 42,     
+      'labels': {},     
+      'public_net': {
+        'ipv4': {
+          'blocked': false,
+          'dns_ptr': 'server01.example.com',
+          'id': 42,
+          'ip': '1.2.3.4'
+        }
+      }   
     }
+]
+}
+");
+            Json.DefaultParameters.EnableAnonymousTypes = true;
+            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
+            
+            var result = Json.DefrostFromPath<IServerInfo>("servers", content).ToArray().First();
+            
+            Assert.That(result.Id, Is.EqualTo(42));
+            Assert.That(result.Labels.Count, Is.EqualTo(0));
+            Assert.That(result.PublicNet.Ipv4.DnsPtr, Is.EqualTo("server01.example.com"));
+            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
+        }
+
+        private string Quote(string src) => src.Replace('\'', '"');
+    }
+}
+    
+public interface IServerInfo
+{
+    public long Id { get; }
+    public Dictionary<string, object?> Labels { get; }
+    public IPublicNetInfo PublicNet { get; }
+}
+
+public interface IPublicNetInfo
+{
+    public IIPv4Info Ipv4 { get; }
+}
+
+public interface IIPv4Info
+{
+    // ReSharper disable once InconsistentNaming
+    public string DnsPtr { get; }
 }
