@@ -815,12 +815,12 @@ namespace SkinnyJson
             }
         }
 
-        private bool IsDictionary(Type targetType)
+        private static bool IsDictionary(Type? targetType)
         {
-            return targetType.GetInterface("IDictionary") != null;
+            return targetType?.GetInterface("IDictionary") != null;
         }
 
-        private bool NoPropertiesMatch(SafeDictionary<string, TypePropertyInfo> props, ICollection<string> jsonValuesKeys)
+        private static bool NoPropertiesMatch(SafeDictionary<string, TypePropertyInfo> props, ICollection<string> jsonValuesKeys)
         {
             return jsonValuesKeys.All(jsonKey => !props.HasKey(jsonKey));
         }
@@ -863,11 +863,48 @@ namespace SkinnyJson
 
             try
             {
-                if (propertyInfo.CanWrite) WriteValueToTypeInstance(name, targetType, targetObject, propertyInfo, setObj);
+                if (IsDictionary(targetType))
+                {
+                    // We want to add a key/value rather than setting a single value
+                    AddToDictionary(name, setObj, targetObject, propertyInfo);
+                }
+                else
+                {
+                    if (propertyInfo.CanWrite) WriteValueToTypeInstance(name, targetType, targetObject, propertyInfo, setObj);
+                }
             }
             catch (Exception ex)
             {
                 throw new Exception($"Failed to write value from json {v.GetType()} to target object {propertyInfo.changeType?.ToString() ?? "<unknown>"} on property {propertyInfo.Name}", ex);
+            }
+        }
+
+        private void AddToDictionary(string key, object value, object? target, TypePropertyInfo typePropertyInfo)
+        {
+            if (target is null) throw new Exception("Target dictionary was null");
+
+            if (target is Dictionary<string, object> simple)
+            {
+                simple.Add(key, value);
+            }
+            else if (target is Dictionary<string, string> shallow)
+            {
+                if (value is string str)
+                {
+                    shallow.Add(key, str);
+                }
+                else
+                {
+                    shallow.Add(key, ToJson(value, _jsonParameters ?? DefaultParameters));
+                }
+            }
+            else if (target is IDictionary other)
+            {
+                other.Add(key, value);
+            }
+            else
+            {
+                throw new Exception("Invalid dictionary target");
             }
         }
 
@@ -1232,14 +1269,28 @@ namespace SkinnyJson
             var il = getter.GetILGenerator();
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Castclass, propertyInfo.DeclaringType);
-            il.EmitCall(OpCodes.Callvirt, getMethod, null);
+            il.EmitCall(OpCodes.Callvirt, getMethod, null!);
 
             if (!propertyInfo.PropertyType.IsClass)
                 il.Emit(OpCodes.Box, propertyInfo.PropertyType);
 
             il.Emit(OpCodes.Ret);
 
-            return (GenericGetter)getter.CreateDelegate(typeof(GenericGetter));
+            try
+            {
+                return (GenericGetter)getter.CreateDelegate(typeof(GenericGetter));
+            }
+            catch (InvalidProgramException)
+            {
+                // This seems to happen with dotnet6 in some conditions.
+                // We fall back to some reflection work.
+                return obj => GetProperty(obj, propertyInfo);
+            }
+        }
+
+        private static object GetProperty(object src, PropertyInfo propertyInfo)
+        {
+            return propertyInfo.GetGetMethod()?.Invoke(src, new object[0]) ?? throw new System.Exception($"Could not get value for {propertyInfo.Name}");
         }
 
         /// <summary>

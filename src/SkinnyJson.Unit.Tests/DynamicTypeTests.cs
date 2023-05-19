@@ -160,6 +160,7 @@ namespace SkinnyJson.Unit.Tests
             Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
         }
 
+
         private string Quote(string src) => src.Replace('\'', '"');
     }
 }

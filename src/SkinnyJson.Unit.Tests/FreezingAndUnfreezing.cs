@@ -346,6 +346,44 @@ namespace SkinnyJson.Unit.Tests {
             Json.DefaultParameters.EnableAnonymousTypes = false;
         }
         
+        [Test]
+        public void Can_defrost_into_dictionary_object()
+        {
+	        Json.DefaultParameters.EnableAnonymousTypes = true;
+	        var expected = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":4,\"Item3\":[10,20,30]}}}";
+
+	        var defrosted = Json.DefrostInto(new Dictionary<string,object>(), expected);
+	        var interpreted = Json.Freeze(defrosted);
+
+	        Assert.That(defrosted, Is.Not.Null);
+	        Assert.That(interpreted, Is.EqualTo(expected));
+	        Json.DefaultParameters.EnableAnonymousTypes = false;
+        }
+        
+        [Test]
+        public void Can_read_a_json_object_as_a_shallow_dictionary_of_strings()
+        {
+	        var input = "{'Key1':'Val1', 'Key2':'Val2', 'Complex':{'Key3':'Val3'}}".Replace('\'', '"');
+	        var defrosted = Json.Defrost<Dictionary<string, string>>(input);
+	        
+	        Assert.That(defrosted["Key1"], Is.EqualTo("Val1"), "1");
+	        Assert.That(defrosted["Key2"], Is.EqualTo("Val2"), "2");
+	        Assert.That(defrosted["Complex"], Is.EqualTo("{\"Key3\":\"Val3\"}"), "3");
+        }
+        
+        [Test]
+        public void Can_read_a_json_object_as_a_deep_dictionary_of_objects()
+        {
+	        var input = "{'Key1':'Val1', 'Key2':'Val2', 'Complex':{'Key3':'Val3'}}".Replace('\'', '"');
+	        var defrosted = Json.Defrost<Dictionary<string, object>>(input);
+	        
+	        Assert.That(defrosted["Key1"], Is.EqualTo("Val1"), "1");
+	        Assert.That(defrosted["Key2"], Is.EqualTo("Val2"), "2");
+	        Assert.That(defrosted["Complex"] is Dictionary<string, object>);
+	        var complex = defrosted["Complex"] as Dictionary<string, object>;
+	        Assert.That(complex["Key3"], Is.EqualTo("Val3"), "3");
+	        
+        }
 
         private static string Quote(string str) => str.Replace('\'', '"');
     }
