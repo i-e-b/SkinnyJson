@@ -53,6 +53,7 @@
     <Compile Include="ClarityTests.cs" />
     <Compile Include="CloningTests.cs" />
     <Compile Include="CommentingTests.cs" />
+    <Compile Include="DateTimeTests.cs" />
     <Compile Include="DynamicTypeTests.cs" />
     <Compile Include="FileStreamTests.cs" />
     <Compile Include="FillingObjectsTests.cs" />

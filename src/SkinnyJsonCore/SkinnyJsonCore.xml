@@ -177,6 +177,9 @@
         <member name="M:SkinnyJson.Json.Defrost``1(System.IO.Stream,System.Text.Encoding)">
             <summary> Turn a JSON data stream into a specific object </summary>
         </member>
+        <member name="M:SkinnyJson.Json.Defrost``1(System.Byte[],System.Text.Encoding)">
+            <summary> Turn a JSON byte array into a specific object </summary>
+        </member>
         <member name="M:SkinnyJson.Json.Defrost(System.String,System.Type)">
             <summary> Turn a JSON string into a runtime type </summary>
         </member>
@@ -240,12 +243,12 @@
             Read public static properties and fields from a type, output as JSON
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.SelectObjects``1(System.Object,System.String,System.Text.Encoding)">
+        <member name="M:SkinnyJson.Json.SelectObjects``1(System.Object,System.String,System.Text.Encoding,SkinnyJson.WarningSet)">
             <summary>
             Pick items out of a parsed object using dotted string path
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.PathWalk``1(System.Object,System.Collections.Generic.Dictionary{System.String,System.Object},System.String[],System.Int32,System.Boolean)">
+        <member name="M:SkinnyJson.Json.PathWalk``1(System.Object,System.Collections.Generic.Dictionary{System.String,System.Object},System.String[],System.Int32,System.Boolean,SkinnyJson.WarningSet)">
             <summary>
             Recursive helper for SelectObjects˂T˃
             </summary>
@@ -258,13 +261,14 @@
             <param name="type">Target return type</param>
             <param name="encoding">String encoding to use, if reading from a stream</param>
         </member>
-        <member name="M:SkinnyJson.Json.StrengthenType(System.Type,System.Object,System.Collections.Generic.Dictionary{System.String,System.Object})">
+        <member name="M:SkinnyJson.Json.StrengthenType(System.Type,System.Object,System.Collections.Generic.Dictionary{System.String,System.Object},SkinnyJson.WarningSet)">
             <summary>
             Try to decode a parsed json object into a new type instance
             </summary>
             <param name="type">Target output type</param>
             <param name="decodedObject">raw memory map of json</param>
             <param name="globalTypes">cache of type matches</param>
+            <param name="warnings">Additional information will be added to this</param>
         </member>
         <member name="M:SkinnyJson.Json.ParserFromStreamOrStringOrBytes(System.Object,System.Text.Encoding)">
             <summary>
@@ -312,7 +316,7 @@
             <param name="value">value of property to set</param>
             <param name="key">optional key for dictionaries</param>
         </member>
-        <member name="M:SkinnyJson.Json.ParseDictionary(System.Collections.Generic.IDictionary{System.String,System.Object},System.Collections.Generic.IDictionary{System.String,System.Object},System.Type,System.Object)">
+        <member name="M:SkinnyJson.Json.ParseDictionary(System.Collections.Generic.IDictionary{System.String,System.Object},System.Collections.Generic.IDictionary{System.String,System.Object},System.Type,System.Object,SkinnyJson.WarningSet)">
             <summary>
             Read a weakly-typed dictionary tree into a strong type. If the keys do not match exactly,
             all matching field/properties will be filled.
@@ -322,12 +326,12 @@
             this will attempt to fill static members of the given type.
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.MapJsonValueToObject(System.String,System.Type,System.Object,System.Collections.Generic.IDictionary{System.String,System.Object},System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.SafeDictionary{System.String,SkinnyJson.Json.TypePropertyInfo})">
+        <member name="M:SkinnyJson.Json.MapJsonValueToObject(System.String,System.Type,System.Object,System.Collections.Generic.IDictionary{System.String,System.Object},System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.SafeDictionary{System.String,SkinnyJson.Json.TypePropertyInfo},SkinnyJson.WarningSet)">
             <summary>
             Map json value dictionary to the properties and fields of a target object instance.
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.MakeSettableObject(System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.Json.TypePropertyInfo,System.Object)">
+        <member name="M:SkinnyJson.Json.MakeSettableObject(System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.Json.TypePropertyInfo,System.Object,SkinnyJson.WarningSet)">
             <summary>
             Try to create an object instance that can be directly assigned to the property or field
             defined by 'propertyInfo'.

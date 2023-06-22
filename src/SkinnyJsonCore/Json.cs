@@ -105,6 +105,12 @@ namespace SkinnyJson
             return (T)Instance.ToObject(json, typeof(T), encoding ?? DefaultStreamEncoding);
         }
         
+        /// <summary> Turn a JSON byte array into a specific object </summary>
+        public static T Defrost<T>(byte[] json, Encoding? encoding = null)
+        {
+            return (T)Instance.ToObject(json, typeof(T), encoding ?? DefaultStreamEncoding);
+        }
+        
         /// <summary> Turn a JSON string into a runtime type </summary>
         public static object Defrost(string json, Type runtimeType)
         {
@@ -149,7 +155,7 @@ namespace SkinnyJson
                 return new[] { Defrost<T>(json) };
             }
             
-            return Instance.SelectObjects<T>(json, path, null);
+            return Instance.SelectObjects<T>(json, path, null, null);
         }
 
         /// <summary> Create a copy of an object through serialisation </summary>
@@ -204,11 +210,11 @@ namespace SkinnyJson
             
             if (input is Type type)
             {
-                Instance.ParseDictionary(ht, null, type, null);
+                Instance.ParseDictionary(ht, null, type, null, null);
                 return null;
             }
 
-            return Instance.ParseDictionary(ht, null, input.GetType(), input);
+            return Instance.ParseDictionary(ht, null, input.GetType(), input, null);
         }
 
         /// <summary>
@@ -264,7 +270,7 @@ namespace SkinnyJson
         /// <summary>
         /// Pick items out of a parsed object using dotted string path
         /// </summary>
-        private IEnumerable<T> SelectObjects<T>(object json, string path, Encoding? encoding)
+        private IEnumerable<T> SelectObjects<T>(object json, string path, Encoding? encoding, WarningSet? warnings)
         {
             var parser = ParserFromStreamOrStringOrBytes(json, encoding);
             var globalTypes = new Dictionary<string, object>();
@@ -274,19 +280,19 @@ namespace SkinnyJson
             var rawObject = parser.Decode();
             var pathParts = (ignoreCase ? NormaliseCase(path) : path).Split('.');
 
-            return PathWalk<T>(rawObject, globalTypes, pathParts, 0, false);
+            return PathWalk<T>(rawObject, globalTypes, pathParts, 0, false, warnings);
         }
 
         /// <summary>
         /// Recursive helper for SelectObjects˂T˃
         /// </summary>
-        private IEnumerable<T> PathWalk<T>(object? rawObject, Dictionary<string, object> globalTypes, string[] pathParts, int pathIndex, bool parentIsArray)
+        private IEnumerable<T> PathWalk<T>(object? rawObject, Dictionary<string, object> globalTypes, string[] pathParts, int pathIndex, bool parentIsArray, WarningSet? warnings)
         {
             if (rawObject == null) yield break;
             
             var type = typeof(T);
             if (pathIndex >= pathParts.Length) {
-                var container = StrengthenType(type, rawObject, globalTypes); // Really, convert the raw object to the target and output it
+                var container = StrengthenType(type, rawObject, globalTypes, warnings); // Really, convert the raw object to the target and output it
                 if (container is IList results) {
                     foreach (var result in results) { yield return (T)result; }
                 } else if (container is T result){
@@ -332,7 +338,7 @@ namespace SkinnyJson
                 {
                     if (parentIsArray) // we should enumerate the parent array on pick n-th elements from child
                     {
-                        var elems = PathWalk<T>(rawObject, globalTypes, pathParts, pathIndex, false);
+                        var elems = PathWalk<T>(rawObject, globalTypes, pathParts, pathIndex, false, warnings);
                         foreach (var elem in elems) { yield return elem; }
                         yield break;
                     }
@@ -354,7 +360,7 @@ namespace SkinnyJson
                         {
                             foreach (var item in arrayList)
                             {
-                                var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true);
+                                var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true, warnings);
                                 foreach (var elem in indexElems) { yield return elem; }
                             }
                         }
@@ -362,12 +368,12 @@ namespace SkinnyJson
                         {
                             if (index >= arrayList.Count) yield break; // not available on this path
                             var item = arrayList[index];
-                            var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true);
+                            var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true, warnings);
                             foreach (var elem in indexElems) { yield return elem; }
                         }
                     }
 
-                    var elems = PathWalk<T>(objects[step], globalTypes, pathParts, pathIndex + 1, false);
+                    var elems = PathWalk<T>(objects[step], globalTypes, pathParts, pathIndex + 1, false, warnings);
                     foreach (var elem in elems) { yield return elem; }
                     yield break;
                 }
@@ -382,14 +388,14 @@ namespace SkinnyJson
                         {
                             foreach (var item in arrayList)
                             {
-                                var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true);
+                                var indexElems = PathWalk<T>(item, globalTypes, pathParts, pathIndex+1, true, warnings);
                                 foreach (var elem in indexElems) { yield return elem; }
                             }
                         }
                         else // specific index
                         {
                             var item = arrayList[index];
-                            var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex + 1, true);
+                            var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex + 1, true, warnings);
                             foreach (var elem in elems)
                             {
                                 yield return elem;
@@ -401,7 +407,7 @@ namespace SkinnyJson
 
                     foreach (var item in arrayList) // return every child of this path
                     {
-                        var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex, true); // ignore arrays while walking path name elements
+                        var elems = PathWalk<T>(item, globalTypes, pathParts, pathIndex, true, warnings); // ignore arrays while walking path name elements
                         foreach (var elem in elems)
                         {
                             yield return elem;
@@ -414,7 +420,7 @@ namespace SkinnyJson
                 {
                     if (step != "") throw new Exception($"Don't understand this JSON at {step}");
 
-                    var elems = PathWalk<T>(rawObject, globalTypes, pathParts, pathIndex + 1, false);
+                    var elems = PathWalk<T>(rawObject, globalTypes, pathParts, pathIndex + 1, false, warnings);
                     foreach (var elem in elems)
                     {
                         yield return elem;
@@ -441,7 +447,11 @@ namespace SkinnyJson
             var decodedObject = parser.Decode();
             if (decodedObject == null) return new {};
 
-            return StrengthenType(type, decodedObject, globalTypes) ?? throw new Exception("Can't interpret json as type " + type);
+            var warnings = new WarningSet();
+            var result = StrengthenType(type, decodedObject, globalTypes, warnings);
+            if (result is null) throw new Exception("Can't interpret json as type " + type + warnings);
+            
+            return result;
         }
 
         /// <summary>
@@ -450,19 +460,20 @@ namespace SkinnyJson
         /// <param name="type">Target output type</param>
         /// <param name="decodedObject">raw memory map of json</param>
         /// <param name="globalTypes">cache of type matches</param>
-        private object? StrengthenType(Type? type, object decodedObject, Dictionary<string, object> globalTypes)
+        /// <param name="warnings">Additional information will be added to this</param>
+        private object? StrengthenType(Type? type, object decodedObject, Dictionary<string, object> globalTypes, WarningSet? warnings)
         {
             switch (decodedObject)
             {
                 // TODO: See if this can be integrated with `TryMakeStandardContainer()`
                 case Dictionary<string, object> objects:
-                    return ParseDictionary(objects, globalTypes, type, null);
+                    return ParseDictionary(objects, globalTypes, type, null, warnings);
 
                 case ArrayList arrayList:
                     if (type?.IsArray == true)
                     {
                         var elementType = type.GetElementType() ?? typeof(object);
-                        var list = ConvertToList(elementType, globalTypes, arrayList);
+                        var list = ConvertToList(elementType, globalTypes, arrayList, warnings);
                         return ListToArray(list, elementType);
                     }
                     else
@@ -470,12 +481,12 @@ namespace SkinnyJson
                         var containedType = (type?.GetGenericArguments().SingleOrDefault() ?? type) ?? typeof(object);
                         
                         var setType = GenericSetInterfaceType(containedType);
-                        if (type == setType) return ConvertToSet(containedType, globalTypes, arrayList);
-                        return ConvertToList(containedType, globalTypes, arrayList);
+                        if (type == setType) return ConvertToSet(containedType, globalTypes, arrayList, warnings);
+                        return ConvertToList(containedType, globalTypes, arrayList, warnings);
                     }
 
                 default:
-                    return type is null ? decodedObject : ConvertItem(type, globalTypes, decodedObject);
+                    return type is null ? decodedObject : ConvertItem(type, globalTypes, decodedObject, warnings);
             }
         }
 
@@ -485,18 +496,18 @@ namespace SkinnyJson
             return x.ToArray(elementType);
         }
 
-        private IList ConvertToList(Type elementType, Dictionary<string, object> globalTypes, ArrayList arrayList)
+        private IList ConvertToList(Type elementType, Dictionary<string, object> globalTypes, ArrayList arrayList, WarningSet? warnings)
         {
             var list = (IList) Activator.CreateInstance(GenericListType(elementType))!;
             foreach (var obj in arrayList)
             {
-                list.Add(ConvertItem(elementType, globalTypes, obj));
+                list.Add(ConvertItem(elementType, globalTypes, obj, warnings));
             }
 
             return list;
         }
 
-        private object? ConvertItem(Type elementType, Dictionary<string, object> globalTypes, object? obj)
+        private object? ConvertItem(Type elementType, Dictionary<string, object> globalTypes, object? obj, WarningSet? warnings)
         {
             if (obj == null) return obj;
             if (obj.GetType().IsAssignableFrom(elementType)) return obj;
@@ -504,11 +515,11 @@ namespace SkinnyJson
             // a complex type?
             var dict = obj as Dictionary<string, object>;
             if (dict == null) throw new Exception($"Element {obj.GetType().Name} not assignable to the array type {elementType.Name}");
-            var parsed = ParseDictionary(dict, globalTypes, elementType, null);
+            var parsed = ParseDictionary(dict, globalTypes, elementType, null, warnings);
             return parsed;
         }
 
-        private object ConvertToSet(Type elementType, Dictionary<string, object> globalTypes, [NotNull] ArrayList arrayList)
+        private object ConvertToSet(Type elementType, Dictionary<string, object> globalTypes, ArrayList arrayList, WarningSet? warnings)
         {
             var set = Activator.CreateInstance(GenericHashSetType(elementType));
             var adder = set?.GetType().GetMethod("Add", BindingFlags.Public|BindingFlags.Instance) ?? throw new Exception("Failed to find add method on set");
@@ -516,7 +527,7 @@ namespace SkinnyJson
             {
                 if (obj == null) continue;
                 
-                var toAdd = ConvertItem(elementType, globalTypes, obj);
+                var toAdd = ConvertItem(elementType, globalTypes, obj, warnings);
                 adder.Invoke(set, new []{toAdd});
             }
 
@@ -755,7 +766,7 @@ namespace SkinnyJson
         /// If the input object is null, but the input type is not,
         /// this will attempt to fill static members of the given type.
         /// </summary>
-        private object? ParseDictionary(IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes, Type? type, object? input)
+        private object? ParseDictionary(IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes, Type? type, object? input, WarningSet? warnings)
         {
             _jsonParameters ??= DefaultParameters;
 
@@ -786,16 +797,29 @@ namespace SkinnyJson
             var props = GetProperties(targetType, targetType.Name);
             if (!IsDictionary(targetType) && NoPropertiesMatch(props, jsonValues.Keys))
             {
+                if (!_jsonParameters.IgnoreCaseOnDeserialize &&
+                    warnings is not null &&
+                    PropertiesWouldMatchCaseInsensitive(props, jsonValues.Keys))
+                {
+                    warnings.Append($"; Properties would match if {nameof(DefaultParameters.IgnoreCaseOnDeserialize)} was set to true");
+                }
+
                 if (jsonValues.Count > 0) // unless we were passed an empty object,
                     return null;          // this type doesn't match
             }
 
             foreach (var key in jsonValues.Keys)
             {
-                MapJsonValueToObject(key, targetType, targetObject, jsonValues, globalTypes, props);
+                MapJsonValueToObject(key, targetType, targetObject, jsonValues, globalTypes, props, warnings);
             }
 
             return targetObject;
+        }
+
+        private bool PropertiesWouldMatchCaseInsensitive(SafeDictionary<string,TypePropertyInfo> props, ICollection<string> jsonValuesKeys)
+        {
+            var normalKeys = props.Keys.Select(NormaliseCase);
+            return jsonValuesKeys.Any(jsonKey => normalKeys.Contains(NormaliseCase(jsonKey)));
         }
 
         private void TryFillGlobalTypes(IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes)
@@ -829,7 +853,7 @@ namespace SkinnyJson
         /// Map json value dictionary to the properties and fields of a target object instance.
         /// </summary>
         void MapJsonValueToObject(string objectKey, Type? targetType, object? targetObject, IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes,
-            SafeDictionary<string, TypePropertyInfo> props)
+            SafeDictionary<string, TypePropertyInfo> props, WarningSet? warnings)
         {
             var name = objectKey;
             if (_jsonParameters?.IgnoreCaseOnDeserialize == true) name = NormaliseCase(name);
@@ -854,7 +878,7 @@ namespace SkinnyJson
             object setObj;
             try
             {
-                setObj = MakeSettableObject(globalTypes, propertyInfo, v);
+                setObj = MakeSettableObject(globalTypes, propertyInfo, v, warnings);
             }
             catch (Exception ex)
             {
@@ -913,7 +937,7 @@ namespace SkinnyJson
         /// defined by 'propertyInfo'.
         /// The value will be the best interpretation of 'inputValue' that is available.
         /// </summary>
-        private object MakeSettableObject(IDictionary<string, object>? globalTypes, TypePropertyInfo propertyInfo, object inputValue)
+        private object MakeSettableObject(IDictionary<string, object>? globalTypes, TypePropertyInfo propertyInfo, object inputValue, WarningSet? warnings)
         {
             object setObj;
 
@@ -952,10 +976,10 @@ namespace SkinnyJson
                 setObj = CreateTimeSpan(inputValue);
 
             else if (propertyInfo.isClass && inputValue is Dictionary<string, object> objects)
-                setObj = ParseDictionary(objects, globalTypes, propertyInfo.parameterType, null) ?? throw new Exception("Failed to map to class");
+                setObj = ParseDictionary(objects, globalTypes, propertyInfo.parameterType, null, warnings) ?? throw new Exception("Failed to map to class");
             
             else if (propertyInfo.isInterface && inputValue is Dictionary<string, object> proxyObjects)
-                setObj = ParseDictionary(proxyObjects, globalTypes, propertyInfo.parameterType, null) ?? throw new Exception("Failed to map to proxy class of interface");
+                setObj = ParseDictionary(proxyObjects, globalTypes, propertyInfo.parameterType, null, warnings) ?? throw new Exception("Failed to map to proxy class of interface");
 
             else if (propertyInfo.isValueType)
                 setObj = ChangeType(inputValue, propertyInfo.changeType) ?? throw new Exception("Failed to create value type");
@@ -1380,32 +1404,36 @@ namespace SkinnyJson
             "yyyy-MM-dd HH:mm:ss",  // our old output format
             "yyyy-MM-dd H:mm:ss",   // Erlang style
             "yyyy-MM-ddTH:mm:ss",   // Erlang style with a T
-            "yyyy-MM-ddTHH:mm:ssZ", // with zone specifier
-            "yyyy-MM-dd HH:mm:ssZ", // with zone specifier, but no T
+            "yyyy-MM-ddTHH:mm:ssK", // with zone specifier
+            "yyyy-MM-dd HH:mm:ssK", // with zone specifier, but no T
             "yyyy-MM-ddTHHmmss",    // ISO 8601 'basic'
             // ReSharper restore StringLiteralTypo
         };
 
-        static DateTime CreateDateTime(object? value)
+        private DateTime CreateDateTime(object? value)
         {
+            _jsonParameters ??= DefaultParameters;
             if (value is null) return DateTime.MinValue;
 
             if (value is long ticksLong) return InterpretNumberAsDate(ticksLong);
             if (value is double ticksDouble) return InterpretNumberAsDate((long)ticksDouble);
 
             var str = value.ToString();
+            if (str is null) return DateTime.MinValue;
+            
+            var style = _jsonParameters.UseUtcDateTime ? DateTimeStyles.AdjustToUniversal : DateTimeStyles.AssumeLocal;
+            if (str.EndsWith("Z")) style = DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal;
 
             foreach (var format in DateFormatsInPreferenceOrder)
             {
-                if (DateTime.TryParseExact(str, format, null!, DateTimeStyles.AssumeLocal, out var dateVal))
+                if (DateTime.TryParseExact(str, format, null!, style, out var dateVal))
                 {
                     return dateVal;
                 }
             }
 
             // None of our preferred formats, so let .Net guess
-            return DateTime.Parse(str);
-            
+            return DateTime.Parse(str, null!, style);
         }
 
         private static DateTime InterpretNumberAsDate(long value)
@@ -1488,7 +1516,7 @@ namespace SkinnyJson
             {
                 col.Add(
                     ob is IDictionary
-                        ? ParseDictionary((Dictionary<string, object>) ob, globalTypes, elementType, null)
+                        ? ParseDictionary((Dictionary<string, object>) ob, globalTypes, elementType, null, null)
                         : ChangeType(ob, elementType)
                 );
             }
@@ -1504,7 +1532,7 @@ namespace SkinnyJson
             foreach (var ob in data)
             {
                 if (ob is IDictionary)
-                    col.Add(ParseDictionary((Dictionary<string, object>)ob, globalTypes, bt, null));
+                    col.Add(ParseDictionary((Dictionary<string, object>)ob, globalTypes, bt, null, null));
                 else if (ob is ArrayList list)
                     col.Add(list.ToArray());
                 else
@@ -1528,7 +1556,7 @@ namespace SkinnyJson
                 object? val;
                 if (values.Value is Dictionary<string, object> objects)
                 {
-                    val = ParseDictionary(objects, globalTypes, t2, null);
+                    val = ParseDictionary(objects, globalTypes, t2, null, null);
                 }
                 else
                 {
@@ -1560,12 +1588,12 @@ namespace SkinnyJson
                 var val = values["v"];
 
                 if (key is Dictionary<string, object> objects)
-                    key = ParseDictionary(objects, globalTypes, t1, null);
+                    key = ParseDictionary(objects, globalTypes, t1, null, null);
                 else
                     key = ChangeType(key, t1);
 
                 if (val is Dictionary<string, object> dictionary)
-                    val = ParseDictionary(dictionary, globalTypes, t2, null);
+                    val = ParseDictionary(dictionary, globalTypes, t2, null, null);
                 else
                     val = ChangeType(val, t2);
 
@@ -1621,7 +1649,7 @@ namespace SkinnyJson
             }
             else
             {
-                var ms = ParseDictionary((Dictionary<string, object>)schema, globalTypes, typeof(DatasetSchema), null) as DatasetSchema;
+                var ms = ParseDictionary((Dictionary<string, object>)schema, globalTypes, typeof(DatasetSchema), null, null) as DatasetSchema;
                 if (ms?.Info == null) return false;
                 ds.DataSetName = ms.Name;
                 for (int i = 0; i < ms.Info.Count; i += 3)
@@ -1702,7 +1730,7 @@ namespace SkinnyJson
                 }
                 case Dictionary<string, object> dictSchema:
                 {
-                    if (ParseDictionary(dictSchema, globalTypes, typeof(DatasetSchema), null) is DatasetSchema ms && ms.Info != null)
+                    if (ParseDictionary(dictSchema, globalTypes, typeof(DatasetSchema), null, null) is DatasetSchema ms && ms.Info != null)
                     {
                         dt.TableName = ms.Info[0];
                         for (int i = 0; i < ms.Info.Count; i += 3)
@@ -1752,6 +1780,22 @@ namespace SkinnyJson
         public static void ClearCaches()
         {
             Instance = new Json();
+        }
+    }
+
+    internal class WarningSet
+    {
+        private readonly HashSet<string> _messages = new();
+        
+        public void Append(string msg)
+        {
+            _messages.Add(msg);
+        }
+
+        public override string ToString()
+        {
+            if (_messages.Count < 1) return "";
+            return string.Join("; ", _messages);
         }
     }
 }

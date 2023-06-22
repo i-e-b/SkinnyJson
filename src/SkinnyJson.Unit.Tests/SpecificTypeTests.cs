@@ -17,73 +17,6 @@ namespace SkinnyJson.Unit.Tests
     [TestFixture]
     public class SpecificTypeTests
     {
-        
-        [Test]
-        public void DateTime_from_tick_value()
-        {
-            var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":638065330559726240}");
-
-            Assert.That(SimilarDate(defrosted.date_time, new DateTime(2022,12,13,12,57,35)), "Date was not interpreted correctly");
-
-            var frozen = Json.Freeze(defrosted);
-            Assert.That(frozen, Contains.Substring("2022-12-13T12:57:35"), "Date was stored in an unexpected format");
-        }
-        
-        [Test]
-        public void DateTime_from_unix_timestamp()
-        {
-            var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":1670858820000}");
-
-            Assert.That(SimilarDate(defrosted.date_time, new DateTime(2022,12,12,15,27,00)), "Date was not interpreted correctly");
-
-            var frozen = Json.Freeze(defrosted);
-            Assert.That(frozen, Contains.Substring("2022-12-12T15:27:00"), "Date was stored in an unexpected format");
-        }
-        
-        [Test]
-        public void DateTime_No_leading_zero_without_T()
-        {
-            var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":\"2019-01-10 9:48:27\"}");
-
-            Assert.That(SimilarDate(defrosted.date_time, new DateTime(2019, 1, 10, 9, 48, 27)), "Date was not interpreted correctly");
-
-            var frozen = Json.Freeze(defrosted);
-            Assert.That(frozen, Contains.Substring("2019-01-10T09:48:27"), "Date was stored in an unexpected format");
-        }
-
-        [Test]
-        public void DateTime_No_leading_zero_with_T()
-        {
-            var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":\"2019-01-10T9:48:27\"}");
-
-            Assert.That(SimilarDate(defrosted.date_time, new DateTime(2019, 1, 10, 9, 48, 27)), "Date was not interpreted correctly");
-
-            var frozen = Json.Freeze(defrosted);
-            Assert.That(frozen, Contains.Substring("2019-01-10T09:48:27"), "Date was stored in an unexpected format");
-        }
-
-        [Test]
-        public void DateTime_With_leading_zero_without_T()
-        {
-            var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":\"2019-01-10 09:48:27\"}");
-
-            Assert.That(SimilarDate(defrosted.date_time, new DateTime(2019, 1, 10, 9, 48, 27)), "Date was not interpreted correctly");
-
-            var frozen = Json.Freeze(defrosted);
-            Assert.That(frozen, Contains.Substring("2019-01-10T09:48:27"), "Date was stored in an unexpected format");
-        }
-
-        [Test]
-        public void DateTime_With_leading_zero_and_T()
-        {
-            var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":\"2019-01-10T09:48:27\"}");
-
-            Assert.That(SimilarDate(defrosted.date_time, new DateTime(2019, 1, 10, 9, 48, 27)), "Date was not interpreted correctly");
-
-            var frozen = Json.Freeze(defrosted);
-            Assert.That(frozen, Contains.Substring("2019-01-10T09:48:27"), "Date was stored in an unexpected format");
-        }
-
         [Test]
         public void Timespan_from_all_properties()
         {
@@ -160,11 +93,24 @@ namespace SkinnyJson.Unit.Tests
 
         private string Quote(string src) => src.Replace('\'', '"');
 
-        private bool SimilarDate(DateTime? defrostedDateTime, DateTime dateTime)
+        [Test]
+        public void quickTest()
         {
-            if (defrostedDateTime == null) return false;
-            var diff = dateTime - defrostedDateTime.Value;
-            return (diff.TotalSeconds * diff.TotalSeconds) < 2;
+            var input = @"{
+  ""success"": false,
+  ""errorMessage"": ""Failed to publish command message to queue""
+}";
+            
+            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
+            var output = Json.Defrost<BaseResponse>(input);
+            
+            Assert.That(output.Success, Is.False);
+            Assert.That(output.ErrorMessage, Is.EqualTo("Failed to publish command message to queue"));
+            
+            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
+            var exception = Assert.Throws<Exception>(()=>Json.Defrost<BaseResponse>(input));
+            
+            Assert.That(exception.Message, Contains.Substring("Properties would match if IgnoreCaseOnDeserialize was set to true"));
         }
     }
 
@@ -190,5 +136,11 @@ namespace SkinnyJson.Unit.Tests
     public class TimespanContainer
     {
         public TimeSpan Timespan { get; set; }
+    }
+    
+    public class BaseResponse
+    {
+        public bool Success { get; set; }
+        public string? ErrorMessage { get; set; }
     }
 }

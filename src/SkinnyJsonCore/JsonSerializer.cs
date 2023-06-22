@@ -213,10 +213,18 @@ namespace SkinnyJson
         private void WriteDateTime(DateTime dateTime)
         {
             Append('\"');
-        	Append(
-				_jsonParameters.UseUtcDateTime
-					? dateTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-					: dateTime.ToString("yyyy-MM-ddTHH:mm:ss"));
+            if (dateTime.Kind == DateTimeKind.Utc)
+            {
+                Append(dateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+            }
+            else if (_jsonParameters.UseUtcDateTime)
+            {
+                Append(dateTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"));
+            }
+            else
+            {
+                Append(dateTime.ToString("yyyy-MM-ddTHH:mm:ss"));
+            }
         	Append('\"');
 
         }
