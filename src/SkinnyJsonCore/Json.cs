@@ -448,10 +448,18 @@ namespace SkinnyJson
             if (decodedObject == null) return new {};
 
             var warnings = new WarningSet();
-            var result = StrengthenType(type, decodedObject, globalTypes, warnings);
-            if (result is null) throw new Exception("Can't interpret json as type " + type + warnings);
-            
-            return result;
+            try
+            {
+                var result = StrengthenType(type, decodedObject, globalTypes, warnings);
+                if (result is null) throw new Exception("Can't interpret json as type " + type + warnings);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                if (warnings.Any) throw new Exception(ex.Message + warnings, ex);
+                throw;
+            }
         }
 
         /// <summary>
@@ -804,8 +812,18 @@ namespace SkinnyJson
                     warnings.Append($"; Properties would match if {nameof(DefaultParameters.IgnoreCaseOnDeserialize)} was set to true");
                 }
 
-                if (jsonValues.Count > 0) // unless we were passed an empty object,
-                    return null;          // this type doesn't match
+                if (jsonValues.Count > 0)
+                {
+                    // unless we were passed an empty object, this type doesn't match
+                    if (_jsonParameters.StrictMatching)
+                    {
+                        // if we are doing strict matching (the default), then reject the mapping
+                        // (otherwise we will continue and return whatever container we made)
+                        warnings?.Append($"; Expected to match at least one of [{string.Join(", ", jsonValues.Keys)}]");
+                        return null;
+                    }
+                    
+                }
             }
 
             foreach (var key in jsonValues.Keys)
@@ -976,10 +994,13 @@ namespace SkinnyJson
                 setObj = CreateTimeSpan(inputValue);
 
             else if (propertyInfo.isClass && inputValue is Dictionary<string, object> objects)
-                setObj = ParseDictionary(objects, globalTypes, propertyInfo.parameterType, null, warnings) ?? throw new Exception("Failed to map to class");
-            
+            {
+                setObj = ParseDictionary(objects, globalTypes, propertyInfo.parameterType, null, warnings)
+                         ?? throw new Exception($"Failed to map to class '{propertyInfo.parameterType?.Name ?? "<null>"}'");
+            }
             else if (propertyInfo.isInterface && inputValue is Dictionary<string, object> proxyObjects)
-                setObj = ParseDictionary(proxyObjects, globalTypes, propertyInfo.parameterType, null, warnings) ?? throw new Exception("Failed to map to proxy class of interface");
+                setObj = ParseDictionary(proxyObjects, globalTypes, propertyInfo.parameterType, null, warnings)
+                         ?? throw new Exception("Failed to map to proxy class of interface");
 
             else if (propertyInfo.isValueType)
                 setObj = ChangeType(inputValue, propertyInfo.changeType) ?? throw new Exception("Failed to create value type");
@@ -1786,7 +1807,8 @@ namespace SkinnyJson
     internal class WarningSet
     {
         private readonly HashSet<string> _messages = new();
-        
+        public bool Any => _messages.Count > 0;
+
         public void Append(string msg)
         {
             _messages.Add(msg);

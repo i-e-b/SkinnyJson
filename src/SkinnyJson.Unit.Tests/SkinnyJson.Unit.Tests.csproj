@@ -55,6 +55,7 @@
     <Compile Include="CommentingTests.cs" />
     <Compile Include="DateTimeTests.cs" />
     <Compile Include="DynamicTypeTests.cs" />
+    <Compile Include="ExampleData\RabbitMqClasses.cs" />
     <Compile Include="FileStreamTests.cs" />
     <Compile Include="FillingObjectsTests.cs" />
     <Compile Include="Helpers\ChainedClass.cs" />
@@ -81,6 +82,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ExampleData\RabbitMq.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

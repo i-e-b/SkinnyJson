@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using SkinnyJson.Unit.Tests.ExampleData;
+
 // ReSharper disable AssignNullToNotNullAttribute
 // ReSharper disable InconsistentNaming
 // ReSharper disable PossibleNullReferenceException
@@ -111,6 +114,26 @@ namespace SkinnyJson.Unit.Tests
             var exception = Assert.Throws<Exception>(()=>Json.Defrost<BaseResponse>(input));
             
             Assert.That(exception.Message, Contains.Substring("Properties would match if IgnoreCaseOnDeserialize was set to true"));
+        }
+
+        [Test]
+        public void complex_rabbitmq_api_example()
+        {
+            var text = File.ReadAllText("ExampleData/RabbitMq.txt");
+            
+            Json.DefaultParameters.EnableAnonymousTypes = true;
+            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
+            
+            Json.DefaultParameters.StrictMatching = true;
+            Assert.Throws<Exception>(()=>Json.Defrost<List<RabbitMqStatistic>>(text));
+            
+            Json.DefaultParameters.StrictMatching = false;
+            var objects = Json.Defrost<List<RabbitMqStatistic>>(text);
+            
+            Json.DefaultParameters.StrictMatching = true;
+            
+            Assert.That(objects, Is.Not.Null);
+            Assert.That(objects[0].Name, Is.Not.Null);
         }
     }
 

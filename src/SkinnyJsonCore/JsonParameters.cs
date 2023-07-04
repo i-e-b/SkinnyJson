@@ -77,7 +77,19 @@
         }
 
         /// <summary>
-        /// Default true. If false, source type information will be included in serialised output.<para></para>
+        /// Default true.
+        /// <p/>
+        /// When true, and an object is deserialised which has values in the JSON side, but none of them match
+        /// the class definition, then deserialisation fails.
+        /// <p/>
+        /// When false, an object with mismatching data is allowed to pass, and may result in empty objects
+        /// in the class model returned.
+        /// </summary>
+        public bool StrictMatching = true;
+
+        /// <summary>
+        /// Default true. If false, source type information will be included in serialised output.
+        /// <p/>
         /// Sets `UseExtensions` and `UsingGlobalTypes` to false.
         /// Directly serialising an anonymous type will use these settings for that call, without needing a global setting.
         /// </summary>
