@@ -966,7 +966,7 @@ namespace SkinnyJson
             else if (propertyInfo.isGenericType && propertyInfo.isValueType == false && propertyInfo.isDictionary == false)
                 setObj = CreateGenericList((ArrayList)inputValue, propertyInfo.parameterType, propertyInfo.bt, globalTypes);
             else if (propertyInfo.isByteArray)
-                setObj = Convert.FromBase64String((string)inputValue);
+                setObj = ConvertBytes(inputValue);
 
             else if (propertyInfo.isArray && propertyInfo.isValueType == false)
                 setObj = CreateArray((ArrayList)inputValue, propertyInfo.bt, globalTypes);
@@ -1009,6 +1009,55 @@ namespace SkinnyJson
             else
                 setObj = inputValue;
             return setObj;
+        }
+
+        /// <summary>
+        /// Our default is Base64, but we will fall back on hex if it's input
+        /// </summary>
+        private static byte[] ConvertBytes(object inputValue)
+        {
+            try
+            {
+                return Convert.FromBase64String((string)inputValue);
+            }
+            catch
+            {
+                return HexToByteArray((string)inputValue) ?? throw new Exception("Input to byte array was not valid Base64 or hex string");
+            }
+        }
+        
+        /// <summary>
+        /// Convert a hex string to a byte array.
+        /// <p/>
+        /// Use <c>Convert.FromHexString</c> where available
+        /// </summary>
+        public static byte[]? HexToByteArray(string? hex)
+        {
+            if (hex is null || string.IsNullOrWhiteSpace(hex)) return null;
+            
+            var temp = new List<byte>(hex.Length / 2);
+            var shift = 4; // byte position
+            var v = 0;
+            
+            for (var i = 0; i < hex.Length; i++)
+            {
+                var c = hex[i];
+                switch (c)
+                {
+                    case >= '0' and <= '9': v |= (c - '0') << shift; break;
+                    case >= 'A' and <= 'F': v |= (c - 'A' + 10) << shift; break;
+                    case >= 'a' and <= 'f': v |= (c - 'a' + 10) << shift; break;
+                    case '-': case ' ': continue; // accept spaces and hyphens as separators
+                    default: return null; // invalid character
+                }
+                
+                shift = 4 - shift;
+                if (shift != 4) continue;
+                temp.Add((byte)v);
+                v = 0;
+            }
+            if (shift != 4) return null; // did not complete final byte
+            return temp.ToArray();
         }
 
         private bool InterpretBool(object o)

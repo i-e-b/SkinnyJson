@@ -338,6 +338,18 @@
             The value will be the best interpretation of 'inputValue' that is available.
             </summary>
         </member>
+        <member name="M:SkinnyJson.Json.ConvertBytes(System.Object)">
+            <summary>
+            Our default is Base64, but we will fall back on hex if it's input
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.HexToByteArray(System.String)">
+            <summary>
+            Convert a hex string to a byte array.
+            <p/>
+            Use <c>Convert.FromHexString</c> where available
+            </summary>
+        </member>
         <member name="M:SkinnyJson.Json.WriteValueToTypeInstance(System.String,System.Type,System.Object,SkinnyJson.Json.TypePropertyInfo,System.Object)">
             <summary>
             Inject a value into an object's property.

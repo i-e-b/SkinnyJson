@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using NUnit.Framework;
 using SkinnyJson.Unit.Tests.ExampleData;
 
@@ -94,10 +95,8 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(l2.Count, Is.EqualTo(2), "Second enumerable was wrong length");
         }
 
-        private string Quote(string src) => src.Replace('\'', '"');
-
         [Test]
-        public void quickTest()
+        public void warnings_if_property_case_doesnt_match()
         {
             var input = @"{
   ""success"": false,
@@ -135,6 +134,23 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(objects, Is.Not.Null);
             Assert.That(objects[0].Name, Is.Not.Null);
         }
+
+        [Test]
+        public void byte_array_should_fall_back_to_hex_string_if_input_is_not_base64()
+        {
+            var resultBase64 = Json.Defrost<ByteArrayContainer>(Quote("{'Bytes':'Y29udmVydA=='}"));
+            var resultHexStr = Json.Defrost<ByteArrayContainer>(Quote("{'Bytes':'636F6E76657274'}"));
+
+            Assert.That(Encoding.UTF8.GetString(resultBase64.Bytes), Is.EqualTo("convert"), "base64 should be converted");
+            Assert.That(Encoding.UTF8.GetString(resultHexStr.Bytes), Is.EqualTo("convert"), "hex string should be converted");
+        }
+
+        private string Quote(string src) => src.Replace('\'', '"');
+    }
+
+    public class ByteArrayContainer
+    {
+        public byte[] Bytes { get; set; }
     }
 
     public class ContainerOfEnumerators
