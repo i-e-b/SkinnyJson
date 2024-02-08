@@ -76,6 +76,12 @@ namespace SkinnyJson
         }
 
         /// <summary>
+        /// If set to true, numeric values will be parsed as high-precision types.
+        /// Otherwise, numeric values are parsed as double-precision floats.
+        /// </summary>
+        public bool UseWideNumbers { get; set; }
+
+        /// <summary>
         /// Decode the provided JSON into an object representation
         /// </summary>
         public object? Decode()
@@ -316,7 +322,7 @@ namespace SkinnyJson
             return p1 + p2 + p3 + p4;
         }
 
-        private double ParseNumber()
+        private object ParseNumber()
         {
             _sb.Length = 0; // reset string builder
             _sb.Append(_lookAheadChar); // include first character
@@ -339,7 +345,14 @@ namespace SkinnyJson
                 break;
             } while (true);
 
-            if (double.TryParse(_sb.ToString(), out var result)) return result;
+            if (UseWideNumbers)
+            {
+                if (WideNumber.TryParse(_sb.ToString(), out var result)) return result;
+            }
+            else
+            {
+                if (double.TryParse(_sb.ToString(), out var result)) return result;
+            }
 
             throw new Exception("Incorrect number format at "+_index+": '"+_sb+"'");
         }

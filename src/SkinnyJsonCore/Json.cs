@@ -443,6 +443,7 @@ namespace SkinnyJson
             var globalTypes = new Dictionary<string, object>();
 			
             var parser = ParserFromStreamOrStringOrBytes(json, encoding);
+            parser.UseWideNumbers = type is not null;
 
             var decodedObject = parser.Decode();
             if (decodedObject == null) return new {};
@@ -519,6 +520,7 @@ namespace SkinnyJson
         {
             if (obj == null) return obj;
             if (obj.GetType().IsAssignableFrom(elementType)) return obj;
+            if (obj is WideNumber wide) return wide.CastTo(elementType, out _);
             
             // a complex type?
             var dict = obj as Dictionary<string, object>;
@@ -958,9 +960,12 @@ namespace SkinnyJson
         private object MakeSettableObject(IDictionary<string, object>? globalTypes, TypePropertyInfo propertyInfo, object inputValue, WarningSet? warnings)
         {
             object setObj;
+            var precisionLoss = false;
 
-            if (propertyInfo.isInt) setObj = (int)CreateLong(inputValue);
-            else if (propertyInfo.isLong) setObj = CreateLong(inputValue);
+            if (propertyInfo.isNumeric)
+                setObj = CastNumericType(inputValue, propertyInfo, out precisionLoss)
+                         ?? throw new Exception($"Failed to map input type '{inputValue.GetType().Name}' to target '{propertyInfo.parameterType?.Name ?? "<null>"}'");
+
             else if (propertyInfo.isString) setObj = inputValue;
             else if (propertyInfo.isBool) setObj = InterpretBool(inputValue);
             else if (propertyInfo.isGenericType && propertyInfo.isValueType == false && propertyInfo.isDictionary == false)
@@ -1008,7 +1013,34 @@ namespace SkinnyJson
                 setObj = CreateArray(list, typeof(object), globalTypes);
             else
                 setObj = inputValue;
+
+
+            if (precisionLoss)
+            {
+                warnings?.Append($"{propertyInfo.Name} may have lost precision");
+            }
+
+
             return setObj;
+        }
+
+        private static object? CastNumericType(object inputValue, TypePropertyInfo p, out bool precisionLost)
+        {
+            if (inputValue is WideNumber w)
+            {
+                var result = w.CastTo(p.parameterType, out var loss);
+                precisionLost = loss;
+                return result;
+            }
+
+            if (inputValue is double)
+            {
+                precisionLost = false; // could be...?
+                return ChangeType(inputValue, p.parameterType);
+            }
+
+            precisionLost = false;
+            return null;
         }
 
         /// <summary>
@@ -1267,32 +1299,42 @@ namespace SkinnyJson
         static TypePropertyInfo CreateMyProp(Type t, string name)
         {
             var d = new TypePropertyInfo { filled = true, Name = name, CanWrite = true, parameterType = t, isDictionary = t.Name.Contains("Dictionary") };
-            if (d.isDictionary) d.GenericTypes = t.GetGenericArguments();
             
+            if (d.isDictionary) d.GenericTypes = t.GetGenericArguments();
+            if (d.isDictionary && d.GenericTypes?.Length > 0 && d.GenericTypes[0] == typeof(string))
+                d.isStringDictionary = true;
+
             d.isInterface = t.IsInterface;
             d.isValueType = t.IsValueType;
+            
             d.isGenericType = t.IsGenericType;
+            if (d.isGenericType) d.bt = t.GetGenericArguments().FirstOrDefault();
+            
             d.isArray = t.IsArray;
             if (d.isArray) d.bt = t.GetElementType();
-            if (d.isGenericType) d.bt = t.GetGenericArguments()[0];
+            
             d.isByteArray = t == typeof(byte[]);
-            d.isGuid = (t == typeof(Guid) || t == typeof(Guid?));
             d.isHashtable = t == typeof(Hashtable);
             d.isDataSet = t == typeof(DataSet);
             d.isDataTable = t == typeof(DataTable);
-
             d.changeType = GetChangeType(t);
+            
             d.isEnum = t.IsEnum;
-            d.isDateTime = t == typeof(DateTime) || t == typeof(DateTime?);
-            d.isTimeSpan = t == typeof(TimeSpan) || t == typeof(TimeSpan?);
-            d.isInt = t == typeof(int) || t == typeof(int?);
-            d.isLong = t == typeof(long) || t == typeof(long?);
-            d.isString = t == typeof(string);
-            d.isBool = t == typeof(bool) || t == typeof(bool?);
             d.isClass = t.IsClass;
+            
+            if (IsNullableWrapper(t)) t = t.GetGenericArguments().FirstOrDefault() ?? t; // IEB: experimental, check all tests
+            
+            d.isGuid = t == typeof(Guid);
+            d.isDateTime = t == typeof(DateTime);
+            d.isTimeSpan = t == typeof(TimeSpan);
+            d.isString = t == typeof(string);
+            d.isBool = t == typeof(bool);
+            
+            // Check for number types
+            d.isNumeric = t == typeof(sbyte)   || t == typeof(short)  || t == typeof(int)  || t == typeof(long)
+                       || t == typeof(byte)    || t == typeof(ushort) || t == typeof(uint) || t == typeof(ulong)
+                       || t == typeof(decimal) || t == typeof(float)  || t == typeof(double);
 
-            if (d.isDictionary && d.GenericTypes?.Length > 0 && d.GenericTypes[0] == typeof(string))
-                d.isStringDictionary = true;
             return d;
         }
 
@@ -1421,12 +1463,14 @@ namespace SkinnyJson
             if (obj is null) return 0;
             if (obj is string s) return ParseLong(s);
             if (obj is double d) return (long)d;
+            if (obj is WideNumber w) return w.ToLong();
             throw new Exception("Unsupported int type: "+obj.GetType());
         }
         static double CreateDouble(object? obj){
             if (obj is null) return 0;
             if (obj is string s) return double.Parse(s);
             if (obj is double d) return d;
+            if (obj is WideNumber w) return w.ToDouble();
             throw new Exception("Unsupported numeric type: "+obj.GetType());
         }
 
@@ -1485,6 +1529,7 @@ namespace SkinnyJson
             _jsonParameters ??= DefaultParameters;
             if (value is null) return DateTime.MinValue;
 
+            if (value is WideNumber wide) return InterpretNumberAsDate(wide.ToLong());
             if (value is long ticksLong) return InterpretNumberAsDate(ticksLong);
             if (value is double ticksDouble) return InterpretNumberAsDate((long)ticksDouble);
 
@@ -1673,9 +1718,14 @@ namespace SkinnyJson
             return col;
         }
 
+        private static bool IsNullableWrapper(Type t)
+        {
+            return t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>);
+        }
+
         static Type GetChangeType(Type conversionType)
         {
-            if (conversionType.IsGenericType && conversionType.GetGenericTypeDefinition() == typeof(Nullable<>))
+            if (IsNullableWrapper(conversionType))
                 return conversionType.GetGenericArguments()[0] ?? throw new Exception("Invalid generic arguments");
 
             return conversionType;

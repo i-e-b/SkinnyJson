@@ -145,7 +145,39 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(Encoding.UTF8.GetString(resultHexStr.Bytes), Is.EqualTo("convert"), "hex string should be converted");
         }
 
+        [Test]
+        public void decimal_type_can_carry_large_values()
+        {
+            var original = new LargeNumericValues
+            {
+                NullableMoney = null,
+                DecMoney = 9414880748822855695599764289m, // too much precision for 64 bit types
+                SignedLong = 941488074882285569L, // loses value when cast to double
+                UnsignedLong = 0xFFFFFFFFFFFFFFFEUL // would go negative if cast to signed long (as -2)
+            };
+            
+            var frozen = Json.Freeze(original);
+            Console.WriteLine(frozen);
+            
+            var defrosted = Json.Defrost<LargeNumericValues>(frozen);
+
+            Assert.That(defrosted.DecMoney, Is.EqualTo(original.DecMoney), "decimal type lost precision");
+            Assert.That(defrosted.SignedLong, Is.EqualTo(original.SignedLong), "long type lost precision");
+            Assert.That(defrosted.UnsignedLong, Is.EqualTo(original.UnsignedLong), "ulong type lost precision");
+        }
+
         private string Quote(string src) => src.Replace('\'', '"');
+    }
+
+    public class LargeNumericValues
+    {
+        public decimal? NullableMoney { get; set; }
+        
+        public decimal DecMoney { get; set; }
+
+        public ulong UnsignedLong { get; set; }
+
+        public long SignedLong { get; set; }
     }
 
     public class ByteArrayContainer

@@ -548,6 +548,12 @@
             <param name="ignoreCase">If `true`, all property names will be lowercased</param>
             <param name="encoding">Encoding of the bytes. Defaults to UTF8</param>
         </member>
+        <member name="P:SkinnyJson.JsonParser.UseWideNumbers">
+            <summary>
+            If set to true, numeric values will be parsed as high-precision types.
+            Otherwise, numeric values are parsed as double-precision floats.
+            </summary>
+        </member>
         <member name="M:SkinnyJson.JsonParser.Decode">
             <summary>
             Decode the provided JSON into an object representation
@@ -595,6 +601,21 @@
             <summary>
             Add a key/value pair only if the key is not already present
             </summary>
+        </member>
+        <member name="T:SkinnyJson.WideNumber">
+            <summary>
+            Holds a representation of various numeric types.
+            Handles casting to target types
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.WideNumber.CastTo(System.Type,System.Boolean@)">
+            <summary>
+            Try to cast this WideNumber type to a primitive value.
+            Returns null if the cast is not supported.
+            </summary>
+            <param name="type">Target type</param>
+            <param name="precisionLoss">Set to true if the cast is from a floating point to a fixed point or integer value; or from a fixed point to integer value</param>
+            <returns></returns>
         </member>
     </members>
 </doc>

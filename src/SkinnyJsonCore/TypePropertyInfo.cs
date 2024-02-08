@@ -29,8 +29,7 @@ namespace SkinnyJson
             public bool isDateTime;
             public bool isTimeSpan;
             public Type[] GenericTypes;
-            public bool isInt;
-            public bool isLong;
+            public bool isNumeric;
             public bool isString;
             public bool isBool;
             public bool isClass;

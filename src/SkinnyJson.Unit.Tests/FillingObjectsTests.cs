@@ -33,6 +33,7 @@ namespace SkinnyJson.Unit.Tests
         [Test]
         public void can_set_the_values_of_an_implicitly_typed_object_from_a_json_string ()
         {
+            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
             var target = new { A = "old", B = "old" };
             var source = "{\"A\":\"master\",\r\n \"B\": \"blaster\"}";
 

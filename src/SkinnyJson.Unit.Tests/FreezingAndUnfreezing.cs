@@ -298,6 +298,7 @@ namespace SkinnyJson.Unit.Tests {
         public void Can_defrost_from_a_stream ()
         {
             Json.DefaultParameters.EnableAnonymousTypes = true;
+            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
             var input = StreamData.StreamOfJson();
             var expected = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":4,\"Item3\":[10,20,30]}}}";
 
@@ -334,6 +335,7 @@ namespace SkinnyJson.Unit.Tests {
         public void Can_defrost_from_a_byte_array()
         {
             Json.DefaultParameters.EnableAnonymousTypes = true;
+            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
             var input = ByteData.ByteArrayOfJson();
             var expected = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":4,\"Item3\":[10,20,30]}}}";
 
@@ -350,6 +352,7 @@ namespace SkinnyJson.Unit.Tests {
         public void Can_defrost_into_dictionary_object()
         {
 	        Json.DefaultParameters.EnableAnonymousTypes = true;
+	        Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
 	        var expected = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":4,\"Item3\":[10,20,30]}}}";
 
 	        var defrosted = Json.DefrostInto(new Dictionary<string,object>(), expected);
@@ -363,6 +366,7 @@ namespace SkinnyJson.Unit.Tests {
         [Test]
         public void Can_read_a_json_object_as_a_shallow_dictionary_of_strings()
         {
+	        Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
 	        var input = "{'Key1':'Val1', 'Key2':'Val2', 'Complex':{'Key3':'Val3'}}".Replace('\'', '"');
 	        var defrosted = Json.Defrost<Dictionary<string, string>>(input);
 	        
@@ -374,6 +378,7 @@ namespace SkinnyJson.Unit.Tests {
         [Test]
         public void Can_read_a_json_object_as_a_deep_dictionary_of_objects()
         {
+	        Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
 	        var input = "{'Key1':'Val1', 'Key2':'Val2', 'Complex':{'Key3':'Val3'}}".Replace('\'', '"');
 	        var defrosted = Json.Defrost<Dictionary<string, object>>(input);
 	        
