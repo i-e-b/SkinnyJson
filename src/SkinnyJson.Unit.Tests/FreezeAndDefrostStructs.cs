@@ -1,4 +1,5 @@
-﻿using System; // ReSharper disable InconsistentNaming
+﻿using System;
+using System.Text; // ReSharper disable InconsistentNaming
 using System.Collections.Generic;
 using NUnit.Framework;
 // ReSharper disable AssignNullToNotNullAttribute
@@ -53,6 +54,20 @@ namespace SkinnyJson.Unit.Tests {
 			Assert.That(defrosted.dummy, Is.EqualTo(original.dummy));
 			Assert.That(defrosted.array[0], Is.EqualTo(original.array[0]));
 			Assert.That(defrosted.array[1], Is.EqualTo(original.array[1]));
+		}
+		
+		[Test]
+		public void Can_defrost_from_byte_array_with_encoding()
+		{
+			var original = new ABasicStruct { aField = "value", aProp = "different!" };
+			var frozen = Json.Freeze(original);
+			var frozenBytes = Encoding.UTF8.GetBytes(frozen);
+
+			Console.WriteLine(frozen);
+
+			var defrosted = Json.Defrost<ABasicStruct>(frozenBytes, new UTF8Encoding());
+
+			Assert.That(original, Is.EqualTo(defrosted));
 		}
 	}
 
