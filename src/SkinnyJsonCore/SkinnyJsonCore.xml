@@ -608,6 +608,12 @@
             Handles casting to target types
             </summary>
         </member>
+        <member name="M:SkinnyJson.WideNumber.TryParse(System.String,SkinnyJson.WideNumber@)">
+            <summary>
+            Try to parse a string as a range of wide number types.
+            Returns true if at least one type parsed successfully.
+            </summary>
+        </member>
         <member name="M:SkinnyJson.WideNumber.CastTo(System.Type,System.Boolean@)">
             <summary>
             Try to cast this WideNumber type to a primitive value.

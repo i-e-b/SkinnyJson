@@ -21,7 +21,13 @@ namespace SkinnyJson
         
         private readonly long _longValue;
         private readonly bool _longOk;
+        
+        private readonly string _original;
 
+        /// <summary>
+        /// Try to parse a string as a range of wide number types.
+        /// Returns true if at least one type parsed successfully.
+        /// </summary>
         public static bool TryParse(string str, out WideNumber result)
         {
             result = new WideNumber(str);
@@ -30,6 +36,7 @@ namespace SkinnyJson
         
         private WideNumber(string str)
         {
+            _original = str;
             _doubleOk = double.TryParse(str, out _doubleValue);
             _decimalOk = decimal.TryParse(str, out _decimalValue);
             _ulongOk = ulong.TryParse(str, out _ulongValue);
@@ -129,6 +136,16 @@ namespace SkinnyJson
             
             return null;
         }
+        
+        public static implicit operator long(WideNumber src) {
+            return src.ToLong();
+        }
+        
+        public static implicit operator double(WideNumber src) {
+            return src.ToDouble();
+        }
+
+        public override string ToString() => _original;
 
         public long ToLong()
         {
