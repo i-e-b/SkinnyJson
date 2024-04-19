@@ -968,8 +968,10 @@ namespace SkinnyJson
 
             else if (propertyInfo.isString) setObj = inputValue;
             else if (propertyInfo.isBool) setObj = InterpretBool(inputValue);
-            else if (propertyInfo.isGenericType && propertyInfo.isValueType == false && propertyInfo.isDictionary == false)
+            else if (propertyInfo.isGenericType && propertyInfo.isValueType == false && propertyInfo.isDictionary == false 
+                     && propertyInfo.isEnumerable && inputValue is IEnumerable)
                 setObj = CreateGenericList((ArrayList)inputValue, propertyInfo.parameterType, propertyInfo.bt, globalTypes);
+            
             else if (propertyInfo.isByteArray)
                 setObj = ConvertBytes(inputValue);
 
@@ -990,7 +992,12 @@ namespace SkinnyJson
                 setObj = CreateDictionary((ArrayList)inputValue, propertyInfo.parameterType, propertyInfo.GenericTypes, globalTypes);
 
             else if (propertyInfo.isEnum)
-                setObj = CreateEnum(propertyInfo.parameterType, (string)inputValue);
+            {
+                if (inputValue is string valStr) setObj = CreateEnum(propertyInfo.parameterType, valStr);
+                else if (inputValue is WideNumber wn)
+                    setObj = NumberToEnum(propertyInfo.parameterType, wn) ?? throw new Exception($"Failed to convert number ({wn}) to enum {propertyInfo.parameterType?.Name ?? "<null>"}");
+                else throw new Exception($"Failed to convert value of type {inputValue.GetType().Name} to enum {propertyInfo.parameterType?.Name ?? "<null>"}");
+            }
 
             else if (propertyInfo.isDateTime)
                 setObj = CreateDateTime(inputValue);
@@ -1296,9 +1303,15 @@ namespace SkinnyJson
         /// <summary>
         /// Read reflection data for a type
         /// </summary>
-        static TypePropertyInfo CreateMyProp(Type t, string name)
+        private static TypePropertyInfo CreateMyProp(Type t, string name)
         {
-            var d = new TypePropertyInfo { filled = true, Name = name, CanWrite = true, parameterType = t, isDictionary = t.Name.Contains("Dictionary") };
+            var d = new TypePropertyInfo { 
+                filled = true,
+                Name = name,
+                CanWrite = true,
+                parameterType = t,
+                isDictionary = t.Name.Contains("Dictionary")
+            };
             
             if (d.isDictionary) d.GenericTypes = t.GetGenericArguments();
             if (d.isDictionary && d.GenericTypes?.Length > 0 && d.GenericTypes[0] == typeof(string))
@@ -1306,6 +1319,7 @@ namespace SkinnyJson
 
             d.isInterface = t.IsInterface;
             d.isValueType = t.IsValueType;
+            d.isEnumerable = t.GetInterfaces().Contains(typeof(IEnumerable));
             
             d.isGenericType = t.IsGenericType;
             if (d.isGenericType) d.bt = t.GetGenericArguments().FirstOrDefault();
@@ -1322,7 +1336,7 @@ namespace SkinnyJson
             d.isEnum = t.IsEnum;
             d.isClass = t.IsClass;
             
-            if (IsNullableWrapper(t)) t = t.GetGenericArguments().FirstOrDefault() ?? t; // IEB: experimental, check all tests
+            if (IsNullableWrapper(t)) t = t.GetGenericArguments().FirstOrDefault() ?? t;
             
             d.isGuid = t == typeof(Guid);
             d.isDateTime = t == typeof(DateTime);
@@ -1439,7 +1453,12 @@ namespace SkinnyJson
             if (conversionType == typeof(long)) return CreateLong(value);
             if (conversionType == typeof(string)) return value;
             if (conversionType == typeof(Guid)) return CreateGuid((string)value);
-            if (conversionType.IsEnum) return CreateEnum(conversionType, (string)value);
+            if (conversionType.IsEnum)
+            {
+                if (value is string str) return CreateEnum(conversionType, str);
+                if (value is WideNumber wn) return NumberToEnum(conversionType, wn);
+            }
+
             return Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
         }
 
@@ -1503,6 +1522,14 @@ namespace SkinnyJson
             if (pt == null) throw new Exception("Invalid property type");
             return Enum.Parse(pt, v);
         }
+        
+
+        private static object? NumberToEnum(Type? pt, WideNumber wn)
+        {
+            if (pt == null) throw new Exception("Invalid property type");
+            
+            return Enum.ToObject(pt, wn.ToLong());
+        }
 
         static Guid CreateGuid(string s)
         {
@@ -1521,6 +1548,7 @@ namespace SkinnyJson
             "yyyy-MM-ddTHH:mm:ssK", // with zone specifier
             "yyyy-MM-dd HH:mm:ssK", // with zone specifier, but no T
             "yyyy-MM-ddTHHmmss",    // ISO 8601 'basic'
+            "yyyy-MM-dd",           // ISO 8601, just the date
             // ReSharper restore StringLiteralTypo
         };
 

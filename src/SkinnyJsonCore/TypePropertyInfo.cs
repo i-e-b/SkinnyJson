@@ -35,9 +35,10 @@ namespace SkinnyJson
             public bool isClass;
             public GenericGetter? getter;
             public bool isStringDictionary;
-// ReSharper restore InconsistentNaming
             public bool CanWrite;
             public string Name;
+            public bool isEnumerable;
+// ReSharper restore InconsistentNaming
         }
     }
 }
