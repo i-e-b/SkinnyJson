@@ -11,7 +11,7 @@ using NUnit.Framework;
 
 // ReSharper disable InconsistentNaming
 namespace SkinnyJson.Unit.Tests {
-    [TestFixture]
+	[TestFixture]
 	public class FreezingAndUnfreezing {
         [SetUp]
         public void setup() {

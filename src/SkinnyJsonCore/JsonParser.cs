@@ -15,7 +15,7 @@ namespace SkinnyJson
     /// </summary>
     public class JsonParser
     {
-        enum Token
+        private enum Token
         {
             None = -1,           // Used to denote no Lookahead available
             CurlyOpen,
@@ -32,12 +32,12 @@ namespace SkinnyJson
             Comment
         }
 
-        readonly TextReader _json;
-        readonly StringBuilder _sb = new StringBuilder(); // common builder for building partials
-    	readonly bool _ignoreCase;
-        Token _lookAheadToken = Token.None;
-        char _lookAheadChar = '\0';
-        int _index; // string index. Only used for reporting back error positions
+        private readonly ContextTextReader _json;
+        private readonly StringBuilder _sb = new(); // common builder for building partials
+        private readonly bool _ignoreCase;
+        private Token _lookAheadToken = Token.None;
+        private char _lookAheadChar = '\0';
+        private int _index; // string index. Only used for reporting back error positions
 
         /// <summary>
         /// Create a parser for an JSON string loaded in memory
@@ -46,8 +46,8 @@ namespace SkinnyJson
         /// <param name="ignoreCase">If `true`, all property names will be lowercased</param>
         public JsonParser(string json, bool ignoreCase)
         {
-            this._json = new StringReader(json);
-            this._ignoreCase = ignoreCase;
+            _json = new ContextTextReader(json);
+            _ignoreCase = ignoreCase;
         }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace SkinnyJson
         /// <param name="encoding">String encoding to use</param>
         public JsonParser(Stream json, bool ignoreCase, Encoding? encoding)
         {
-            _json = new StreamReader(json, encoding ?? Json.DefaultStreamEncoding);
+            _json = new ContextTextReader(json, encoding ?? Json.DefaultStreamEncoding);
             _ignoreCase = ignoreCase;
         }
 
@@ -71,7 +71,7 @@ namespace SkinnyJson
         public JsonParser(byte[] json, bool ignoreCase, Encoding? encoding)
         {
             var jsonBytesString = (encoding ?? Encoding.UTF8).GetString(json);
-            _json = new StringReader(jsonBytesString);
+            _json = new ContextTextReader(jsonBytesString);
             _ignoreCase = ignoreCase;
         }
 
@@ -121,7 +121,7 @@ namespace SkinnyJson
                             // :
                             if (NextToken() != Token.Colon)
                             {
-                                throw new Exception("Expected colon at index " + _index);
+                                throw new Exception($"Expected colon at index {_index}; {_json.GetContext()}");
                             }
 
                             // value
@@ -155,7 +155,7 @@ namespace SkinnyJson
                         return array;
 
                     case Token.CurlyClose:
-                        throw new Exception("Parser state exception at " + _index + ": advanced too far in an array.");
+                        throw new Exception($"Parser state exception at {_index}: advanced too far in an array; {_json.GetContext()}");
 
                     default:
                         {
@@ -206,7 +206,7 @@ namespace SkinnyJson
                     throw new ArgumentOutOfRangeException();
             }
 
-            throw new Exception("Unrecognized token '" + _lookAheadChar + "' at index " + _index + " while looking for a value");
+            throw new Exception($"Unrecognized token '{_lookAheadChar}' at index {_index} while looking for a value; {_json.GetContext()}");
         }
 
         private string ParseString()
@@ -297,7 +297,7 @@ namespace SkinnyJson
                 }
             }
 
-            throw new Exception("Unexpectedly reached end of string value");
+            throw new Exception($"Unexpectedly reached end of string value; {_json.GetContext()}");
         }
 
         private static uint ParseSingleChar(int c1, uint multiplier)
@@ -331,7 +331,7 @@ namespace SkinnyJson
             do
             {
                 var next = _json.Peek();
-                if (next <= 0) throw new Exception("Unexpected end of string whilst parsing number");
+                if (next <= 0) throw new Exception($"Unexpected end of string whilst parsing number; {_json.GetContext()}");
                 var c = (char)next;
                 _lookAheadChar = c;
 
@@ -354,7 +354,7 @@ namespace SkinnyJson
                 if (double.TryParse(_sb.ToString(), out var result)) return result;
             }
 
-            throw new Exception("Incorrect number format at "+_index+": '"+_sb+"'");
+            throw new Exception($"Incorrect number format at {_index}: '{_sb}'; {_json.GetContext()}");
         }
 
         private Token LookAhead()
@@ -415,7 +415,7 @@ namespace SkinnyJson
                 if (c != ' ' && c != '\t' && c != '\n' && c != '\r') break;
             }
             
-            if (next <= 0) throw new Exception("Reached end of input unexpectedly");
+            if (next <= 0) throw new Exception($"Reached end of input unexpectedly; {_json.GetContext()}");
 
             switch (_lookAheadChar)
             {
@@ -479,7 +479,7 @@ namespace SkinnyJson
 
             }
 
-            throw new Exception("Could not find token at index " + --_index + "; Got '" + _lookAheadChar + "' "+((int)_lookAheadChar).ToString("X2"));
+            throw new Exception($"Could not find token at index {--_index}; Got '{_lookAheadChar}' (0x{(int)_lookAheadChar:X2}); {_json.GetContext()}");
         }
 
         private bool NextCharsAre(params char[] cs)

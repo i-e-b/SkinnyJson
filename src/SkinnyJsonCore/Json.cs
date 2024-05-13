@@ -94,19 +94,19 @@ namespace SkinnyJson
         }
 
         /// <summary> Turn a JSON string into a specific object </summary>
-        public static T Defrost<T>(string json)
+        public static T Defrost<[MeansImplicitUse]T>(string json)
         {
             return (T)Instance.ToObject(json, typeof(T), null);
         }
         
         /// <summary> Turn a JSON data stream into a specific object </summary>
-        public static T Defrost<T>(Stream json, Encoding? encoding = null)
+        public static T Defrost<[MeansImplicitUse]T>(Stream json, Encoding? encoding = null)
         {
             return (T)Instance.ToObject(json, typeof(T), encoding ?? DefaultStreamEncoding);
         }
         
         /// <summary> Turn a JSON byte array into a specific object </summary>
-        public static T Defrost<T>(byte[] json, Encoding? encoding = null)
+        public static T Defrost<[MeansImplicitUse]T>(byte[] json, Encoding? encoding = null)
         {
             return (T)Instance.ToObject(json, typeof(T), encoding ?? DefaultStreamEncoding);
         }
@@ -149,7 +149,7 @@ namespace SkinnyJson
         /// <param name="path">Dotted path through document. If the path can't be found, an empty enumeration will be returned.
         /// An empty path is equivalent to `Defrost&lt;T&gt;`</param>
         /// <param name="json">The JSON document string to read</param>
-        public static IEnumerable<T> DefrostFromPath<T>(string path, string json)
+        public static IEnumerable<T> DefrostFromPath<[MeansImplicitUse]T>(string path, string json)
         {
             if (string.IsNullOrWhiteSpace(path)) {
                 return new[] { Defrost<T>(json) };
@@ -159,7 +159,7 @@ namespace SkinnyJson
         }
 
         /// <summary> Create a copy of an object through serialisation </summary>
-        public static T Clone<T>(T obj)
+        public static T Clone<[MeansImplicitUse]T>(T obj)
         {
             if (obj == null) return obj;
             return Defrost<T>(Freeze(obj));
@@ -181,7 +181,11 @@ namespace SkinnyJson
             return Freeze(dyn);
         }
 
-        /// <summary>Pretty print a JSON string. This is done without value parsing.</summary>
+        /// <summary>
+        /// Pretty print a JSON string. This is done without value parsing.
+        /// <p/>
+        /// Note that any JS comments in the input are removed in the output.
+        /// </summary>
         public static string Beautify(string input)
         {
             return Formatter.PrettyPrint(input);
@@ -191,6 +195,8 @@ namespace SkinnyJson
         /// Pretty print a JSON data stream to another stream.
         /// This is done without value parsing or buffering, so very large streams can be processed.
         /// The input and output encodings can be the same or different.
+        /// <p/>
+        /// Note that any JS comments in the input are removed in the output.
         /// </summary>
         public static void BeautifyStream(Stream input, Encoding inputEncoding, Stream output, Encoding outputEncoding)
         {

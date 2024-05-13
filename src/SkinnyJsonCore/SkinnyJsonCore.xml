@@ -4,18 +4,6 @@
         <name>SkinnyJsonCore</name>
     </assembly>
     <members>
-        <member name="T:JetBrains.Annotations.CanBeNullAttribute">
-            <summary>Marked element could be <c>null</c></summary>
-        </member>
-        <member name="T:JetBrains.Annotations.NotNullAttribute">
-            <summary>Marked element could never be <c>null</c></summary>
-        </member>
-        <member name="T:JetBrains.Annotations.ItemNotNullAttribute">
-            <summary>IEnumerable, Task.Result, or Lazy.Value property can never be null.</summary>
-        </member>
-        <member name="T:JetBrains.Annotations.ItemCanBeNullAttribute">
-            <summary>IEnumerable, Task.Result, or Lazy.Value property can be null.</summary>
-        </member>
         <member name="T:SkinnyJson.ChainStep">
             <summary>
             Represents a step in a dynamic call chain
@@ -44,6 +32,12 @@
         <member name="M:SkinnyJson.ChainStep.IndexStep(System.Int32)">
             <summary>
             Make an indexed lookup
+            </summary>
+        </member>
+        <member name="T:SkinnyJson.ContextTextReader">
+            <summary>
+            Text reader that keeps a small buffer of the start and end of data that has been read.
+            This is used to improve error messages
             </summary>
         </member>
         <member name="T:SkinnyJson.DynamicProxy">
@@ -217,13 +211,19 @@
             </summary>
         </member>
         <member name="M:SkinnyJson.Json.Beautify(System.String)">
-            <summary>Pretty print a JSON string. This is done without value parsing.</summary>
+            <summary>
+            Pretty print a JSON string. This is done without value parsing.
+            <p/>
+            Note that any JS comments in the input are removed in the output.
+            </summary>
         </member>
         <member name="M:SkinnyJson.Json.BeautifyStream(System.IO.Stream,System.Text.Encoding,System.IO.Stream,System.Text.Encoding)">
             <summary>
             Pretty print a JSON data stream to another stream.
             This is done without value parsing or buffering, so very large streams can be processed.
             The input and output encodings can be the same or different.
+            <p/>
+            Note that any JS comments in the input are removed in the output.
             </summary>
         </member>
         <member name="M:SkinnyJson.Json.DefrostInto(System.Object,System.String)">
