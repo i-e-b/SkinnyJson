@@ -49,6 +49,7 @@
   <ItemGroup>
     <Compile Include="BeautifyTests.cs" />
     <Compile Include="CaseSensitivityTests.cs" />
+    <Compile Include="SpecificNamingTests.cs" />
     <Compile Include="ChangingSettings.cs" />
     <Compile Include="ClarityTests.cs" />
     <Compile Include="CloningTests.cs" />

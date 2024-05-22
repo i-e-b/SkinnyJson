@@ -1204,6 +1204,8 @@ namespace SkinnyJson
                     sd.Add(AnonFieldFilter(privateName), d);
                     if (ignoreCase) sd.TryAdd(NormaliseCase(privateName), d);
                 }
+                
+                foreach (var alt in GetAlternativeNames(f)) sd.TryAdd(alt, d);
             }
 
             // Instance properties
@@ -1223,6 +1225,7 @@ namespace SkinnyJson
                 d.getter = CreateGetMethod(p);
                 sd.Add(p.Name, d);
                 if (ignoreCase) sd.TryAdd(NormaliseCase(p.Name), d);
+                foreach (var alt in GetAlternativeNames(p)) sd.TryAdd(alt, d);
             }
             
             // Static properties are special
@@ -1233,14 +1236,52 @@ namespace SkinnyJson
                 d.CanWrite = sp.CanWrite;
                 d.setter = (_, value, _) => sp.SetValue(null!, value);
                 d.getter = _ => sp.GetValue(null!)!;
+                
                 sd.Add(sp.Name, d);
                 if (ignoreCase) sd.TryAdd(NormaliseCase(sp.Name), d);
+                foreach (var alt in GetAlternativeNames(sp)) sd.TryAdd(alt, d);
             }
 
             if (type.GetGenericArguments().Length < 1) {
                 _propertyCache.Add(typename, sd);
             }
             return sd;
+        }
+
+        /// <summary>
+        /// Returns alternative names for a field, based on various other libraries' code attributes
+        /// </summary>
+        private static IEnumerable<string> GetAlternativeNames(MemberInfo info)
+        {
+            foreach (var attr in info.GetCustomAttributes())
+            {
+                var type = attr.GetType();
+                switch (type.Name)
+                {
+                    case "JsonPropertyNameAttribute":
+                    {
+                        if (type.Namespace != "System.Text.Json.Serialization") continue;
+                        var name = type.GetProperty("Name")?.GetValue(attr).ToString();
+                        if (!string.IsNullOrWhiteSpace(name)) yield return name!;
+                        break;
+                    }
+                    case "DataMemberAttribute":
+                    {
+                        if (type.Namespace != "System.Runtime.Serialization") continue;
+                        var name = type.GetProperty("Name")?.GetValue(attr).ToString();
+                        if (!string.IsNullOrWhiteSpace(name)) yield return name!;
+                        break;
+                    }
+                    case "JsonPropertyAttribute":
+                    {
+                        if (type.Namespace != "Newtonsoft.Json") continue;
+                        var name = type.GetProperty("PropertyName")?.GetValue(attr).ToString();
+                        if (!string.IsNullOrWhiteSpace(name)) yield return name!;
+                        break;
+                    }
+                    default: continue;
+                }
+            }
         }
 
         /// <summary>
@@ -1267,7 +1308,7 @@ namespace SkinnyJson
 
         // Anonymous fields like "A" will be named like "<A>i__Field" in the type def.
         // so we filter them here:
-        private string AnonFieldFilter(string name)
+        private static string AnonFieldFilter(string name)
         {
             if (name[0] != '<') return name;
             var idx = name.IndexOf('>', 2);
@@ -1276,34 +1317,60 @@ namespace SkinnyJson
         }
 
         /// <summary>
-        /// Return a list of property/field access proxies for a type
+        /// Return a list of property/field access proxies for a type.
+        /// This is cached after first access for each type.
         /// </summary>
         internal List<Getters> GetGetters(Type type)
         {
-            if (_getterCache.TryGetValue(type, out List<Getters> val)) return val;
+            if (_getterCache.TryGetValue(type, out var val)) return val;
             _jsonParameters ??= DefaultParameters;
 
-            var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            var getters = (from p in props where (p.CanWrite || _jsonParameters.ShowReadOnlyProperties || _jsonParameters.EnableAnonymousTypes)
-                let att = p.GetCustomAttributes(typeof (System.Xml.Serialization.XmlIgnoreAttribute), false)
-                where att.Length <= 0 let g = CreateGetMethod(p) where g != null 
-						   
-                select new Getters {Name = p.Name, Getter = g, PropertyType = p.PropertyType}).ToList();
-
-            var fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
-            foreach (var f in fi)
+            var publicProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            
+            var getters = new List<Getters>();
+            foreach (var property in publicProperties)
             {
-                var att = f.GetCustomAttributes(typeof(System.Xml.Serialization.XmlIgnoreAttribute), false);
-                if (att.Length > 0)
-                    continue;
+                if (!property.CanWrite && _jsonParameters is { ShowReadOnlyProperties: false, EnableAnonymousTypes: false }) continue;
+                if (property.GetCustomAttributes(typeof(System.Xml.Serialization.XmlIgnoreAttribute), false).Any()) continue;
+                
+                var getMethod = CreateGetMethod(property);
+                if (getMethod == null) continue;
+                
+                getters.Add(MakePropertyGetterWithPreferredName(property, getMethod));
+            }
 
-                var g = CreateGetField(type, f);
-                var gg = new Getters {Name = f.Name, Getter = g, PropertyType = f.FieldType, FieldInfo = f};
-                getters.Add(gg);
+            var publicFields = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
+            foreach (var fieldInfo in publicFields)
+            {
+                if (fieldInfo.GetCustomAttributes(typeof(System.Xml.Serialization.XmlIgnoreAttribute), false).Any()) continue;
+                var getMethod = CreateGetField(type, fieldInfo);
+                getters.Add(MakeFieldGetterWithPreferredName(fieldInfo, getMethod));
             }
 
             _getterCache.Add(type, getters);
             return getters;
+        }
+
+        /// <summary>
+        /// Build a 'getter', used for serialisation.
+        /// This will use the first name from any name-overriding attribute,
+        /// or the name of the member directly if not overridden.
+        /// </summary>
+        private static Getters MakeFieldGetterWithPreferredName(FieldInfo field, GenericGetter getMethod)
+        {
+            var name = GetAlternativeNames(field).FirstOrDefault() ?? field.Name;
+            return new Getters { Name = name, Getter = getMethod, PropertyType = field.FieldType, FieldInfo = field};
+        }
+        
+        /// <summary>
+        /// Build a 'getter', used for serialisation.
+        /// This will use the first name from any name-overriding attribute,
+        /// or the name of the member directly if not overridden.
+        /// </summary>
+        private static Getters MakePropertyGetterWithPreferredName(PropertyInfo property, GenericGetter getMethod)
+        {
+            var name = GetAlternativeNames(property).FirstOrDefault() ?? property.Name;
+            return new Getters { Name = name, Getter = getMethod, PropertyType = property.PropertyType };
         }
 
         /// <summary>

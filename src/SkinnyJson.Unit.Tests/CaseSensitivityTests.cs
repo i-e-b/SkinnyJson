@@ -1,13 +1,8 @@
-﻿using NUnit.Framework;
-// ReSharper disable AssignNullToNotNullAttribute
-// ReSharper disable InconsistentNaming
-// ReSharper disable PossibleNullReferenceException
-// ReSharper disable UnusedMember.Global
-// ReSharper disable UnusedAutoPropertyAccessor.Global
-#pragma warning disable CS8602
+using NUnit.Framework;
 
 namespace SkinnyJson.Unit.Tests
 {
+#pragma warning disable CS8602
     [TestFixture]
     public class CaseSensitivityTests
     {

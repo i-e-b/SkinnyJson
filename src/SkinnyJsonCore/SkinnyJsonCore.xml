@@ -362,6 +362,11 @@
             In special cases, this will also read private fields
             </summary>
         </member>
+        <member name="M:SkinnyJson.Json.GetAlternativeNames(System.Reflection.MemberInfo)">
+            <summary>
+            Returns alternative names for a field, based on various other libraries' code attributes
+            </summary>
+        </member>
         <member name="M:SkinnyJson.Json.NormaliseCase(System.String)">
             <summary>
             Convert a string to lower case, removing a set of joining and non-printing characters
@@ -369,7 +374,22 @@
         </member>
         <member name="M:SkinnyJson.Json.GetGetters(System.Type)">
             <summary>
-            Return a list of property/field access proxies for a type
+            Return a list of property/field access proxies for a type.
+            This is cached after first access for each type.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.MakeFieldGetterWithPreferredName(System.Reflection.FieldInfo,SkinnyJson.Json.GenericGetter)">
+            <summary>
+            Build a 'getter', used for serialisation.
+            This will use the first name from any name-overriding attribute,
+            or the name of the member directly if not overridden.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.MakePropertyGetterWithPreferredName(System.Reflection.PropertyInfo,SkinnyJson.Json.GenericGetter)">
+            <summary>
+            Build a 'getter', used for serialisation.
+            This will use the first name from any name-overriding attribute,
+            or the name of the member directly if not overridden.
             </summary>
         </member>
         <member name="M:SkinnyJson.Json.CreateMyProp(System.Type,System.String)">
