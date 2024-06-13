@@ -54,7 +54,6 @@ namespace SkinnyJson.Unit.Tests
         [Test]
         public void Timespan_serialises_to_compact_string()
         {
-            Json.DefaultParameters.EnableAnonymousTypes = true;
             var frozen = Json.Freeze(new TimespanContainer { Timespan = TimeSpan.FromMinutes(101.101) });
 
             Assert.That(frozen, Is.EqualTo("{\"Timespan\":\"01:41:06.0600000\"}"));
@@ -104,14 +103,12 @@ namespace SkinnyJson.Unit.Tests
   ""errorMessage"": ""Failed to publish command message to queue""
 }";
             
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
             var output = Json.Defrost<BaseResponse>(input);
             
             Assert.That(output.Success, Is.False);
             Assert.That(output.ErrorMessage, Is.EqualTo("Failed to publish command message to queue"));
             
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
-            var exception = Assert.Throws<Exception>(()=>Json.Defrost<BaseResponse>(input));
+            var exception = Assert.Throws<Exception>(()=>Json.Defrost<BaseResponse>(input, JsonParameters.Compatible));
             
             Assert.That(exception.Message, Contains.Substring("Properties would match if IgnoreCaseOnDeserialize was set to true"));
         }
@@ -120,17 +117,12 @@ namespace SkinnyJson.Unit.Tests
         public void complex_rabbitmq_api_example()
         {
             var text = File.ReadAllText("ExampleData/RabbitMq.txt");
+
+            var set1 = new JsonParameters {EnableAnonymousTypes = true, IgnoreCaseOnDeserialize = true, StrictMatching = true};
+            Assert.Throws<Exception>(()=>Json.Defrost<List<RabbitMqStatistic>>(text, set1));
             
-            Json.DefaultParameters.EnableAnonymousTypes = true;
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
-            
-            Json.DefaultParameters.StrictMatching = true;
-            Assert.Throws<Exception>(()=>Json.Defrost<List<RabbitMqStatistic>>(text));
-            
-            Json.DefaultParameters.StrictMatching = false;
-            var objects = Json.Defrost<List<RabbitMqStatistic>>(text);
-            
-            Json.DefaultParameters.StrictMatching = true;
+            var set2 = new JsonParameters {EnableAnonymousTypes = true, IgnoreCaseOnDeserialize = true, StrictMatching = false};
+            var objects = Json.Defrost<List<RabbitMqStatistic>>(text, set2);
             
             Assert.That(objects, Is.Not.Null);
             Assert.That(objects[0].Name, Is.Not.Null);
@@ -214,7 +206,6 @@ namespace SkinnyJson.Unit.Tests
   }
 }");
             
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
             var defrosted = Json.Defrost<ResponseWithAge<EwcStatusValues>>(reply);
             
             Assert.That(defrosted, Is.Not.Null);
@@ -227,8 +218,6 @@ namespace SkinnyJson.Unit.Tests
         {
             var reply = Quote("[{'assetId':1020,'supertapSlot':1,'commandCorrelationId':null,'commandPhase':8,'desiredTagId':1800556754,'desiredCreditMits':0,'commandDate':null,'lastKnownTagId':null,'lastKnownCreditMits':null,'lastKnownDate':'2024-04-19T03:54:45','lastKnownValueComplete':false},{'assetId':1020,'supertapSlot':2,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':0,'desiredCreditMits':0,'commandDate':'2023-12-19T05:24:02','lastKnownTagId':4086724336,'lastKnownCreditMits':293333,'lastKnownDate':'2024-04-18T23:12:37','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':3,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':0,'desiredCreditMits':0,'commandDate':'2024-02-21T12:27:37','lastKnownTagId':1267026642,'lastKnownCreditMits':703999,'lastKnownDate':'2024-04-19T10:26:34','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':4,'commandCorrelationId':null,'commandPhase':8,'desiredTagId':730745554,'desiredCreditMits':0,'commandDate':null,'lastKnownTagId':null,'lastKnownCreditMits':null,'lastKnownDate':'2024-04-19T11:03:48','lastKnownValueComplete':false},{'assetId':1020,'supertapSlot':5,'commandCorrelationId':null,'commandPhase':8,'desiredTagId':3687535058,'desiredCreditMits':0,'commandDate':null,'lastKnownTagId':null,'lastKnownCreditMits':null,'lastKnownDate':'2024-04-19T04:09:45','lastKnownValueComplete':false},{'assetId':1020,'supertapSlot':6,'commandCorrelationId':null,'commandPhase':8,'desiredTagId':3005571824,'desiredCreditMits':0,'commandDate':null,'lastKnownTagId':null,'lastKnownCreditMits':null,'lastKnownDate':'2024-04-18T12:05:40','lastKnownValueComplete':false},{'assetId':1020,'supertapSlot':7,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':0,'desiredCreditMits':0,'commandDate':'2024-02-24T07:39:22','lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-18T14:33:01','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':8,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':0,'desiredCreditMits':0,'commandDate':'2024-02-05T09:34:29','lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T01:42:47','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':9,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':0,'desiredCreditMits':0,'commandDate':'2023-11-15T13:19:54','lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T07:10:02','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':10,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':0,'desiredCreditMits':0,'commandDate':'2023-11-15T09:21:21','lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T01:16:47','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':11,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':0,'desiredCreditMits':0,'commandDate':'2023-11-19T11:17:41','lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T07:14:03','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':12,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T07:14:21','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':13,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T07:14:40','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':14,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T07:10:20','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':15,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T07:10:38','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':16,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T07:14:58','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':17,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T07:13:03','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':18,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T01:45:50','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':19,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T07:15:16','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':20,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-18T19:19:22','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':21,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T01:43:09','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':22,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-18T21:47:30','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':23,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-18T19:19:45','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':24,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T01:19:46','lastKnownValueComplete':true},{'assetId':1020,'supertapSlot':25,'commandCorrelationId':null,'commandPhase':0,'desiredTagId':null,'desiredCreditMits':null,'commandDate':null,'lastKnownTagId':0,'lastKnownCreditMits':0,'lastKnownDate':'2024-04-19T03:47:50','lastKnownValueComplete':true}]");
             
-            
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
             var defrosted = Json.Defrost<IEnumerable<EwcSupertapSlot>>(reply);
             
             Assert.That(defrosted, Is.Not.Null);

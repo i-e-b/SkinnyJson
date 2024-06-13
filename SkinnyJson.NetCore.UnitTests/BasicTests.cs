@@ -1,4 +1,6 @@
 ﻿using NUnit.Framework;
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+// ReSharper disable UnusedParameter.Local
 
 namespace SkinnyJson.NetCore.UnitTests
 {
@@ -9,7 +11,6 @@ namespace SkinnyJson.NetCore.UnitTests
         [Test]
         public void incompatible_nullable_types_are_handled()
         {
-            Json.DefaultParameters.EnableAnonymousTypes = true;
             var result = Json.Defrost<AnnotatedCoreType>("{}");
             
             Assert.That(result, Is.Not.Null, "Outer type");
@@ -20,7 +21,6 @@ namespace SkinnyJson.NetCore.UnitTests
         [Test]
         public void null_value_nullable_types_are_handled()
         {
-            Json.DefaultParameters.EnableAnonymousTypes = true;
             var result = Json.Defrost<AnnotatedCoreType>("{\"NullableString\":null, \"NonNullString\":\"\"}");
             
             Assert.That(result, Is.Not.Null, "Outer type");
@@ -31,7 +31,6 @@ namespace SkinnyJson.NetCore.UnitTests
         [Test]
         public void handling_missing_constructor()
         {
-            Json.DefaultParameters.EnableAnonymousTypes = true;
             var result = Json.Defrost<BadConstructor>("{\"StringValue\":\"Hello, World\"}");
             
             Assert.That(result, Is.Not.Null, "Outer type");

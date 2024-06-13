@@ -13,10 +13,6 @@ using NUnit.Framework;
 namespace SkinnyJson.Unit.Tests {
 	[TestFixture]
 	public class FreezingAndUnfreezing {
-        [SetUp]
-        public void setup() {
-            Json.DefaultParameters.EnableAnonymousTypes = false;
-        }
 
 		[Test]
         public void Should_be_able_to_freeze_and_unfreeze_objects()
@@ -57,10 +53,9 @@ namespace SkinnyJson.Unit.Tests {
 
 		[Test]
 		public void Should_be_able_to_assert_type_on_boxed_defrost () {
-            Json.DefaultParameters.EnableAnonymousTypes = false;
-			var frozen = Json.Freeze(SimpleObjectUnderInterface.Make());
+			var frozen = Json.Freeze(SimpleObjectUnderInterface.Make(), JsonParameters.TypeConstrained);
 			Console.WriteLine(frozen);
-			object defrosted = Json.Defrost(frozen);
+			object defrosted = Json.Defrost(frozen, JsonParameters.TypeConstrained);
 
 			Assert.That(defrosted is ISimpleObject, Is.True);
 		}
@@ -68,15 +63,15 @@ namespace SkinnyJson.Unit.Tests {
 		[Test]
 		public void Should_be_able_to_filter_boxed_objects_on_type () {
 			var frozen = new List<string>{
-				Json.Freeze(SimpleObjectUnderInterface.Make()),
-				Json.Freeze(SimpleObjectUnderInterface.Make()),
-				Json.Freeze(ObjectWithoutAnInterface.Make()),
-				Json.Freeze(ObjectWithoutAnInterface.Make()),
-				Json.Freeze(SimpleObjectUnderInterface.Make()),
+				Json.Freeze(SimpleObjectUnderInterface.Make(), JsonParameters.TypeConstrained),
+				Json.Freeze(SimpleObjectUnderInterface.Make(), JsonParameters.TypeConstrained),
+				Json.Freeze(ObjectWithoutAnInterface.Make(), JsonParameters.TypeConstrained),
+				Json.Freeze(ObjectWithoutAnInterface.Make(), JsonParameters.TypeConstrained),
+				Json.Freeze(SimpleObjectUnderInterface.Make(), JsonParameters.TypeConstrained),
 			};
 
 			var defrosted = frozen
-				.Select(Json.Defrost)
+				.Select(s => Json.Defrost(s, JsonParameters.TypeConstrained))
 				.Where(o => o is ISimpleObject);
 
 			Assert.That(defrosted.Count(), Is.EqualTo(3));
@@ -119,8 +114,9 @@ namespace SkinnyJson.Unit.Tests {
 		[Test]
 		public void Can_deserialise_bytes_to_a_runtime_type()
 		{
+			var settings = new JsonParameters { StreamEncoding = Encoding.Unicode };
 			var bytes = Encoding.Unicode.GetBytes(Quote("['a','b','c']"));
-			var result = Json.Defrost(bytes, typeof(IEnumerable<string>), Encoding.Unicode);
+			var result = Json.Defrost(bytes, typeof(IEnumerable<string>), settings);
 			
 			Assert.That(result, Is.Not.Null);
 			
@@ -131,10 +127,11 @@ namespace SkinnyJson.Unit.Tests {
 		[Test]
 		public void Can_deserialise_a_stream_to_a_runtime_type()
 		{
+			var settings = new JsonParameters { StreamEncoding = Encoding.Unicode };
 			var bytes = Encoding.Unicode.GetBytes(Quote("['a','b','c']"));
 			var stream = new MemoryStream(bytes);
 			stream.Seek(0, SeekOrigin.Begin);
-			var result = Json.Defrost(stream, typeof(IEnumerable<string>), Encoding.Unicode);
+			var result = Json.Defrost(stream, typeof(IEnumerable<string>), settings);
 			
 			Assert.That(result, Is.Not.Null);
 			
@@ -207,11 +204,12 @@ namespace SkinnyJson.Unit.Tests {
 		[Test]
 		public void Should_be_able_to_defrost_to_type_name_by_namespace_alone () {
 			var original = SimpleObjectUnderInterface.Make();
-			var frozen = Json.Freeze(original)
+			var settings = JsonParameters.TypeConstrained;
+			var frozen = Json.Freeze(original, settings)
 				.Replace(", SkinnyJson.Unit.Tests", "");
 
 			Console.WriteLine(frozen);
-			var defrosted = Json.Defrost(frozen);
+			var defrosted = Json.Defrost(frozen, settings);
 
 			Assert.That(defrosted, Is.InstanceOf<ISimpleObject>());
 		}
@@ -219,7 +217,7 @@ namespace SkinnyJson.Unit.Tests {
 		[Test]
 		public void Should_be_able_to_freeze_to_an_interface_where_available () {
 			var original = SimpleObjectUnderInterface.Make();
-			var frozen = Json.Freeze(original);
+			var frozen = Json.Freeze(original, JsonParameters.TypeConstrained);
 
 			Assert.That(frozen, Contains.Substring("SkinnyJson.Unit.Tests.ISimpleObject"));
 		}
@@ -227,8 +225,8 @@ namespace SkinnyJson.Unit.Tests {
 		[Test]
 		public void Should_be_able_to_handle_chain_of_interfaces () {
 			var original = ChainedInterface.Make();
-			var frozen = Json.Freeze(original);
-			var defrosted = Json.Defrost<ITopLevel>(frozen);
+			var frozen = Json.Freeze(original, JsonParameters.TypeConstrained);
+			var defrosted = Json.Defrost<ITopLevel>(frozen, JsonParameters.TypeConstrained);
 
 			Assert.That(frozen, Contains.Substring("SkinnyJson.Unit.Tests.ITopLevel"));
 
@@ -252,10 +250,10 @@ namespace SkinnyJson.Unit.Tests {
 		[Test]
 		public void Should_be_able_to_handler_marker_interfaces () {
 			var original = new UsesMarker { AnId = Guid.NewGuid(), AnotherThing = "hello" };
-			var frozen = Json.Freeze(original);
-			var defrosted_marker = Json.Defrost<IMarkerInterface>(frozen);
+			var frozen = Json.Freeze(original, JsonParameters.TypeConstrained);
+			var defrosted_marker = Json.Defrost<IMarkerInterface>(frozen, JsonParameters.TypeConstrained);
 			Console.WriteLine(frozen);
-			var defrosted_anon = Json.Defrost(frozen);
+			var defrosted_anon = Json.Defrost(frozen, JsonParameters.TypeConstrained);
 
 			Assert.That(defrosted_marker.AnId, Is.EqualTo(original.AnId));
 			Assert.That(defrosted_anon, Is.InstanceOf<IMarkerInterface>());
@@ -275,10 +273,10 @@ namespace SkinnyJson.Unit.Tests {
 		public void Should_not_strip_interface_levels ()
 		{
 			ITopLevel original = ChainedInterface.Make();
-			var frozen = Json.Freeze(original);
-			var defrosted = Json.Defrost(frozen);
-			var refrozen = Json.Freeze(defrosted);
-			var double_defrosted = Json.Defrost(refrozen);
+			var frozen = Json.Freeze(original, JsonParameters.TypeConstrained);
+			var defrosted = Json.Defrost(frozen, JsonParameters.TypeConstrained);
+			var refrozen = Json.Freeze(defrosted, JsonParameters.TypeConstrained);
+			var double_defrosted = Json.Defrost(refrozen, JsonParameters.TypeConstrained);
 			Console.WriteLine(refrozen);
 
 			Assert.That(double_defrosted, Is.InstanceOf<ITopLevel>());
@@ -297,25 +295,20 @@ namespace SkinnyJson.Unit.Tests {
         [Test]
         public void Can_defrost_from_a_stream ()
         {
-            Json.DefaultParameters.EnableAnonymousTypes = true;
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
+	        var settings = JsonParameters.Default.WithCaseSensitivity();
             var input = StreamData.StreamOfJson();
             var expected = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":4,\"Item3\":[10,20,30]}}}";
 
-            var defrosted = Json.Defrost(input) as Dictionary<string, object>;
-            var interpreted = Json.Freeze(defrosted);
+            var defrosted = Json.Defrost(input, settings) as Dictionary<string, object>;
+            var interpreted = Json.Freeze(defrosted, settings);
 
             Assert.That(defrosted, Is.Not.Null);
             Assert.That(interpreted, Is.EqualTo(expected));
-            Json.DefaultParameters.EnableAnonymousTypes = false;
         }
 
         [Test]
         public void Can_serialise_to_a_stream ()
         {
-            
-            Json.DefaultParameters.EnableAnonymousTypes = true;
-            Json.DefaultStreamEncoding = Encoding.UTF8;
             var input = ComplexTypes.DictionaryOfDictionaryOfTupleWithList();
             var expected = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":4,\"Item3\":[10,20,30]}}}";
 
@@ -328,47 +321,44 @@ namespace SkinnyJson.Unit.Tests {
             var actual = Encoding.UTF8.GetString(ms.ToArray());
 
             Assert.That(actual, Is.EqualTo(expected));
-            Json.DefaultParameters.EnableAnonymousTypes = false;
         }
 
         [Test]
         public void Can_defrost_from_a_byte_array()
         {
-            Json.DefaultParameters.EnableAnonymousTypes = true;
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
+	        var settings = JsonParameters.Default.WithCaseSensitivity();
+			
             var input = ByteData.ByteArrayOfJson();
             var expected = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":4,\"Item3\":[10,20,30]}}}";
 
             
-            var defrosted = Json.Defrost(input) as Dictionary<string, object>;
-            var interpreted = Json.Freeze(defrosted);
+            var defrosted = Json.Defrost(input, settings) as Dictionary<string, object>;
+            var interpreted = Json.Freeze(defrosted, settings);
 
             Assert.That(defrosted, Is.Not.Null);
             Assert.That(interpreted, Is.EqualTo(expected));
-            Json.DefaultParameters.EnableAnonymousTypes = false;
         }
         
         [Test]
         public void Can_defrost_into_dictionary_object()
         {
-	        Json.DefaultParameters.EnableAnonymousTypes = true;
-	        Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
+	        var settings = JsonParameters.Default.WithCaseSensitivity();
+	        
 	        var expected = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":4,\"Item3\":[10,20,30]}}}";
 
-	        var defrosted = Json.DefrostInto(new Dictionary<string,object>(), expected);
-	        var interpreted = Json.Freeze(defrosted);
+	        var defrosted = Json.DefrostInto(new Dictionary<string,object>(), expected, settings);
+	        var interpreted = Json.Freeze(defrosted, settings);
 
 	        Assert.That(defrosted, Is.Not.Null);
 	        Assert.That(interpreted, Is.EqualTo(expected));
-	        Json.DefaultParameters.EnableAnonymousTypes = false;
         }
         
         [Test]
         public void Can_read_a_json_object_as_a_shallow_dictionary_of_strings()
         {
-	        Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
+	        var settings = JsonParameters.Default.WithCaseSensitivity();
 	        var input = "{'Key1':'Val1', 'Key2':'Val2', 'Complex':{'Key3':'Val3'}}".Replace('\'', '"');
-	        var defrosted = Json.Defrost<Dictionary<string, string>>(input);
+	        var defrosted = Json.Defrost<Dictionary<string, string>>(input, settings);
 	        
 	        Assert.That(defrosted["Key1"], Is.EqualTo("Val1"), "1");
 	        Assert.That(defrosted["Key2"], Is.EqualTo("Val2"), "2");
@@ -378,9 +368,9 @@ namespace SkinnyJson.Unit.Tests {
         [Test]
         public void Can_read_a_json_object_as_a_deep_dictionary_of_objects()
         {
-	        Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
+	        var settings = JsonParameters.Default.WithCaseSensitivity();
 	        var input = "{'Key1':'Val1', 'Key2':'Val2', 'Complex':{'Key3':'Val3'}}".Replace('\'', '"');
-	        var defrosted = Json.Defrost<Dictionary<string, object>>(input);
+	        var defrosted = Json.Defrost<Dictionary<string, object>>(input, settings);
 	        
 	        Assert.That(defrosted["Key1"], Is.EqualTo("Val1"), "1");
 	        Assert.That(defrosted["Key2"], Is.EqualTo("Val2"), "2");

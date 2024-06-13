@@ -68,10 +68,11 @@ namespace SkinnyJson.Unit.Tests
             json = json.ToLowerInvariant();
             
             // Should not match if IgnoreCaseOnDeserialize not set
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
+            var setOff = JsonParameters.Default.WithCaseSensitivity();
+            
             StaticClassExample.StringProperty = "property modified";
             StaticClassExample.StringFieldValue = "field modified";
-            Json.DefrostInto(typeof(StaticClassExample), json);
+            Json.DefrostInto(typeof(StaticClassExample), json, setOff);
             
             Assert.That(StaticClassExample.StringProperty, Is.EqualTo("property modified"));
             Assert.That(StaticClassExample.StringFieldValue, Is.EqualTo("field modified"));
@@ -80,7 +81,6 @@ namespace SkinnyJson.Unit.Tests
             // Should match lower cased if IgnoreCaseOnDeserialize set
             StaticClassExample.StringProperty = "property modified";
             StaticClassExample.StringFieldValue = "field modified";
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
             Json.DefrostInto(typeof(StaticClassExample), json);
             
             Assert.That(StaticClassExample.StringProperty, Is.EqualTo("property set"));
@@ -94,9 +94,6 @@ namespace SkinnyJson.Unit.Tests
             
             Assert.That(StaticClassExample.StringProperty, Is.EqualTo("PROPERTY SET"));
             Assert.That(StaticClassExample.StringFieldValue, Is.EqualTo("I AM FIELD"));
-            
-            // restore default
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
         }
         
         

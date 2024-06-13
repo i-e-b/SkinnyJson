@@ -34,7 +34,7 @@ namespace SkinnyJson
 
         private readonly ContextTextReader _json;
         private readonly StringBuilder _sb = new(); // common builder for building partials
-        private readonly bool _ignoreCase;
+        private readonly JsonParameters _settings;
         private Token _lookAheadToken = Token.None;
         private char _lookAheadChar = '\0';
         private int _index; // string index. Only used for reporting back error positions
@@ -43,43 +43,36 @@ namespace SkinnyJson
         /// Create a parser for an JSON string loaded in memory
         /// </summary>
         /// <param name="json">The input JSON string</param>
-        /// <param name="ignoreCase">If `true`, all property names will be lowercased</param>
-        public JsonParser(string json, bool ignoreCase)
+        /// <param name="settings">Json interpretation settings</param>
+        public JsonParser(string json, JsonParameters? settings)
         {
+            _settings = settings ?? JsonParameters.Default;
             _json = new ContextTextReader(json);
-            _ignoreCase = ignoreCase;
         }
 
         /// <summary>
         /// Create a parser for an JSON string accessible as a stream
         /// </summary>
         /// <param name="json">The input JSON stream</param>
-        /// <param name="ignoreCase">If `true`, all property names will be lowercased</param>
-        /// <param name="encoding">String encoding to use</param>
-        public JsonParser(Stream json, bool ignoreCase, Encoding? encoding)
+        /// <param name="settings">Json interpretation settings</param>
+        public JsonParser(Stream json, JsonParameters? settings)
         {
-            _json = new ContextTextReader(json, encoding ?? Json.DefaultStreamEncoding);
-            _ignoreCase = ignoreCase;
+            _settings = settings ?? JsonParameters.Default;
+            _json = new ContextTextReader(json, _settings.StreamEncoding);
         }
 
         /// <summary>
         /// Create a parser for an JSON byte array loaded in memory
         /// </summary>
         /// <param name="json">The input JSON byte array</param>
-        /// <param name="ignoreCase">If `true`, all property names will be lowercased</param>
-        /// <param name="encoding">Encoding of the bytes. Defaults to UTF8</param>
-        public JsonParser(byte[] json, bool ignoreCase, Encoding? encoding)
+        /// <param name="settings">Json interpretation settings</param>
+        public JsonParser(byte[] json, JsonParameters? settings)
         {
-            var jsonBytesString = (encoding ?? Encoding.UTF8).GetString(json);
+            _settings = settings ?? JsonParameters.Default;
+            
+            var jsonBytesString = _settings.StreamEncoding.GetString(json);
             _json = new ContextTextReader(jsonBytesString);
-            _ignoreCase = ignoreCase;
         }
-
-        /// <summary>
-        /// If set to true, numeric values will be parsed as high-precision types.
-        /// Otherwise, numeric values are parsed as double-precision floats.
-        /// </summary>
-        public bool UseWideNumbers { get; set; }
 
         /// <summary>
         /// Decode the provided JSON into an object representation
@@ -116,7 +109,6 @@ namespace SkinnyJson
 
                             // name
                             var name = ParseString();
-                            if (_ignoreCase) name = Json.NormaliseCase(name);
 
                             // :
                             if (NextToken() != Token.Colon)
@@ -303,16 +295,16 @@ namespace SkinnyJson
         private static uint ParseSingleChar(int c1, uint multiplier)
         {
             uint p1 = 0;
-            if (c1 >= '0' && c1 <= '9')
+            if (c1 is >= '0' and <= '9')
                 p1 = (uint)(c1 - '0') * multiplier;
-            else if (c1 >= 'A' && c1 <= 'F')
+            else if (c1 is >= 'A' and <= 'F')
                 p1 = (uint)((c1 - 'A') + 10) * multiplier;
-            else if (c1 >= 'a' && c1 <= 'f')
+            else if (c1 is >= 'a' and <= 'f')
                 p1 = (uint)((c1 - 'a') + 10) * multiplier;
             return p1;
         }
 
-        private uint ParseUnicode(int c1, int c2, int c3, int c4)
+        private static uint ParseUnicode(int c1, int c2, int c3, int c4)
         {
             uint p1 = ParseSingleChar(c1, 0x1000);
             uint p2 = ParseSingleChar(c2, 0x100);
@@ -335,7 +327,7 @@ namespace SkinnyJson
                 var c = (char)next;
                 _lookAheadChar = c;
 
-                if ((c >= '0' && c <= '9') || c == '.' || c == '-' || c == '+' || c == 'e' || c == 'E')
+                if (c is >= '0' and <= '9' or '.' or '-' or '+' or 'e' or 'E')
                 {
                     _sb.Append(c);
                     _json.Read();
@@ -345,7 +337,7 @@ namespace SkinnyJson
                 break;
             } while (true);
 
-            if (UseWideNumbers)
+            if (_settings.UseWideNumbers)
             {
                 if (WideNumber.TryParse(_sb.ToString(), out var result)) return result;
             }

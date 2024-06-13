@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -45,8 +46,8 @@ namespace SkinnyJson.Unit.Tests
 
             // 'invoke' style access:
             Assert.That(subject.Hello.Bob.Item1(), Is.EqualTo(1));
-            Assert.That(subject.Hello.Bob.Item3[1](), Is.EqualTo(2));
             Assert.That(subject.World.Sam.Item2(), Is.EqualTo("What?"));
+            Assert.That(subject.Hello.Bob.Item3[1](), Is.EqualTo(2));
             
             // using string indexes:
             Assert.That(subject["Hello"].Bob.Item1(), Is.EqualTo(1));
@@ -57,9 +58,10 @@ namespace SkinnyJson.Unit.Tests
         [Test]
         public void Can_defrost_stream_into_a_dynamic_and_read_from_the_result_with_custom_encoding()
         {
+            var setBeu = JsonParameters.Default.WithEncoding(Encoding.BigEndianUnicode);
             var original = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":\"What?\",\"Item3\":[10,20,30]}}}";
             using var stream = new MemoryStream(Encoding.BigEndianUnicode.GetBytes(original));
-            dynamic subject = Json.DefrostDynamic(stream, Encoding.BigEndianUnicode);
+            dynamic subject = Json.DefrostDynamic(stream, setBeu);
 
             // direct cast access:
             Assert.That((int)subject.Hello.Bob.Item1, Is.EqualTo(1));
@@ -149,15 +151,12 @@ namespace SkinnyJson.Unit.Tests
 ]
 }
 ");
-            Json.DefaultParameters.EnableAnonymousTypes = true;
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
             
             var result = Json.DefrostFromPath<IServerInfo>("servers", content).ToArray().First();
             
             Assert.That(result.Id, Is.EqualTo(42));
             Assert.That(result.Labels.Count, Is.EqualTo(0));
             Assert.That(result.PublicNet.Ipv4.DnsPtr, Is.EqualTo("server01.example.com"));
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
         }
 
 

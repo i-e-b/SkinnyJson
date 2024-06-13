@@ -23,7 +23,6 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(defrosted.OriginalNameThree, Is.EqualTo("Value three"));
             Assert.That(defrosted.OriginalNameFour, Is.EqualTo("Value four"));
 
-            Json.DefaultParameters.EnableAnonymousTypes = true;
             var frozen = Json.Freeze(defrosted);
             Console.WriteLine(frozen);
 

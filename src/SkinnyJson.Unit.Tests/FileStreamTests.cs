@@ -18,7 +18,6 @@ namespace SkinnyJson.Unit.Tests
         [Test]
         public void Can_read_and_write_file_streams()
         {
-            Json.DefaultStreamEncoding = Encoding.UTF8;
             ISimpleObject original = SimpleObjectUnderInterface.Make();
 
             // Write:

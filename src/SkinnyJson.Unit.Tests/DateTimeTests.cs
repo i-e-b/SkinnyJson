@@ -89,30 +89,28 @@ namespace SkinnyJson.Unit.Tests
         [Test]
         public void Universal_time_dates_have_Z_on_the_end_even_if_UseUtc_is_off()
         {
-            Json.DefaultParameters.UseUtcDateTime = false;
-            var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":\"2019-01-10T09:48:27Z\"}");
+            var setOff = new JsonParameters { UseUtcDateTime = false};
+            var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":\"2019-01-10T09:48:27Z\"}", setOff);
 
             Assert.That(defrosted.date_time.Kind, Is.EqualTo(DateTimeKind.Utc), "Date was not interpreted correctly");
 
             defrosted.date_time = new DateTime(2019, 1, 10, 9, 48, 27, DateTimeKind.Utc);
-            var frozen = Json.Freeze(defrosted);
+            var frozen = Json.Freeze(defrosted, setOff);
             Assert.That(frozen, Contains.Substring("2019-01-10T09:48:27Z"), "Date was stored in an unexpected format");
-            Json.DefaultParameters.UseUtcDateTime = true;
         }
         
 
         [Test]
         public void Non_universal_times_are_left_unspecified_if_UseUtc_is_off()
         {
-            Json.DefaultParameters.UseUtcDateTime = false;
-            var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":\"2019-01-10T09:48:27\"}");
+            var setOff = new JsonParameters { UseUtcDateTime = false};
+            var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":\"2019-01-10T09:48:27\"}", setOff);
 
             Assert.That(defrosted.date_time.Kind, Is.EqualTo(DateTimeKind.Unspecified), "Date was not interpreted correctly");
 
             defrosted.date_time = new DateTime(2019, 1, 10, 9, 48, 27, DateTimeKind.Local);
-            var frozen = Json.Freeze(defrosted);
+            var frozen = Json.Freeze(defrosted, setOff);
             Assert.That(frozen, Contains.Substring("2019-01-10T09:48:27\""), "Date was stored in an unexpected format");
-            Json.DefaultParameters.UseUtcDateTime = true;
         }
 
         private bool SimilarDate(DateTime? defrostedDateTime, DateTime dateTime)

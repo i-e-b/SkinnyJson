@@ -27,7 +27,7 @@ namespace SkinnyJson
         /// <summary>
         /// Wrap parser output object in a dynamic object with a query path chain
         /// </summary>
-        public DynamicWrapper(object parsed, List<ChainStep> oldChain, ChainStep nextStep)
+        private DynamicWrapper(object parsed, List<ChainStep> oldChain, ChainStep nextStep)
         {
             Parsed = parsed;
             _chain = new List<ChainStep>(oldChain) { nextStep };
@@ -48,6 +48,7 @@ namespace SkinnyJson
                 case 0: // Get value
                     // walk the chain, walking the parsed object. On missing or mismatch, short-circuit and return null
                     result = Walk(Parsed, _chain);
+                    CollapseWideNumber(ref result);
                     break;
                 case 1: // Set value? Throw?
                     throw new Exception("Can't set value");
@@ -69,6 +70,7 @@ namespace SkinnyJson
                 case 0: // Get value
                     // walk the chain, walking the parsed object. On missing or mismatch, short-circuit and return null
                     result = Walk(Parsed, _chain);
+                    CollapseWideNumber(ref result);
                     break;
                 case 1: // Set value? Throw?
                     throw new Exception("Can't set value");
@@ -76,6 +78,16 @@ namespace SkinnyJson
                     throw new ArgumentException("Multiple arguments not allowed (at " + GetChainString() + ")");
             }
             return true;
+        }
+
+        private static void CollapseWideNumber(ref object? result)
+        {
+            if (result is WideNumber wn)
+            {
+                var dbl = wn.CastTo(typeof(double), out var loss);
+                if (!loss) result = dbl;
+                else result = wn.CastTo(typeof(decimal), out _);
+            }
         }
 
         /// <summary>
@@ -125,7 +137,8 @@ namespace SkinnyJson
                     arr[i] = value;
                     return true;
                 case string s:
-                    if (!(target is Dictionary<string, object> dict)) return false;
+                    if (target is not Dictionary<string, object> dict) return false;
+                    // ReSharper disable once RedundantDictionaryContainsKeyBeforeAdding
                     if (dict.ContainsKey(s)) dict[s] = value;
                     else dict.Add(s, value);
                     return true;
@@ -144,6 +157,7 @@ namespace SkinnyJson
             var target = Walk(Parsed, _chain);
             
             if (target is Dictionary<string, object> dict) {
+                // ReSharper disable once RedundantDictionaryContainsKeyBeforeAdding
                 if (dict.ContainsKey(binder.Name)) dict[binder.Name] = value;
                 else dict.Add(binder.Name, value);
                 return true;
@@ -205,8 +219,8 @@ namespace SkinnyJson
 
                 // expecting a property name now
                 if ( ! (target is Dictionary<string, object> dict)) return null;
-                if (step.Name == null || !dict.ContainsKey(step.Name)) return null;
-                target = dict[step.Name];
+                if (step.Name == null || !dict.TryGetValue(step.Name, out var value)) return null;
+                target = value;
             }
 
             return target;

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using NUnit.Framework;
 
 namespace SkinnyJson.Unit.Tests
@@ -10,8 +11,10 @@ namespace SkinnyJson.Unit.Tests
         public void with_ignore_case_off_properties_must_exactly_match()
         {
             // Only one of these matches
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = false;
-            var defrosted = Json.Defrost<CasedTypes>("{\"word gap\":\"OK\", \"LOWER_CASE\":\"OK\", \"uppercase\":\"OK\", \"pascal_case\":\"OK\", \"camelCase\":\"OK\", \"SnakeCase\":\"OK\"}");
+            var settings = JsonParameters.Compatible;
+            var defrosted = Json.Defrost<CasedTypes>(
+                "{\"word gap\":\"OK\", \"LOWER_CASE\":\"OK\", \"uppercase\":\"OK\", \"pascal_case\":\"OK\", \"camelCase\":\"OK\", \"SnakeCase\":\"OK\"}",
+                settings);
             
             Assert.That(defrosted.PascalCase, Is.Null, "snake to pascal copied, but should not have");
             Assert.That(defrosted.camelCase, Is.EqualTo("OK"), "camel to camel should have copied, but did not");
@@ -20,7 +23,9 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(defrosted.lowercase, Is.Null, "upper to lower copied, but should not have");
             Assert.That(defrosted.WordGap, Is.Null, "word gap copied, but should not have");
             
-            defrosted = Json.Defrost<CasedTypes>("{\"Word Gap\":\"OK\", \"UPPER_CASE\":\"OK\", \"PASCALCASE\":\"OK\", \"camelcase\":\"OK\", \"lowerCase\":\"OK\", \"SNAKE_case\":\"OK\"}");
+            defrosted = Json.Defrost<CasedTypes>(
+                "{\"Word Gap\":\"OK\", \"UPPER_CASE\":\"OK\", \"PASCALCASE\":\"OK\", \"camelcase\":\"OK\", \"lowerCase\":\"OK\", \"SNAKE_case\":\"OK\"}",
+                settings);
             
             Assert.That(defrosted.PascalCase, Is.Null, "pascal copied, but should not have");
             Assert.That(defrosted.camelCase, Is.Null, "camel copied, but should not have");
@@ -34,8 +39,9 @@ namespace SkinnyJson.Unit.Tests
         public void with_ignore_case_on_property_need_just_the_same_letters_and_numbers()
         {
             // everything should have a match
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
-            var defrosted = Json.Defrost<CasedTypes>("{\"LOWER_CASE\":\"1\", \"uppercase\":\"2\", \"pascal_case\":\"3\", \"camelCase\":\"4\", \"SnakeCase\":\"5\"}");
+            var settings = JsonParameters.Default;
+            var defrosted = Json.Defrost<CasedTypes>("{\"LOWER_CASE\":\"1\", \"uppercase\":\"2\", \"pascal_case\":\"3\", \"camelCase\":\"4\", \"SnakeCase\":\"5\"}",
+                settings);
             
             Assert.That(defrosted.lowercase, Is.EqualTo("1"));
             Assert.That(defrosted.UPPER_CASE, Is.EqualTo("2"));
@@ -43,7 +49,8 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(defrosted.camelCase, Is.EqualTo("4"));
             Assert.That(defrosted.snake_case, Is.EqualTo("5"));
             
-            defrosted = Json.Defrost<CasedTypes>("{\"UPPER-CASE\":\"1\", \"1 is a number\":\"2\", \"camel-case\":\"3\", \"lowerCase\":\"4\", \"SNAKE_case\":\"5\"}");
+            defrosted = Json.Defrost<CasedTypes>("{\"UPPER-CASE\":\"1\", \"1 is a number\":\"2\", \"camel-case\":\"3\", \"lowerCase\":\"4\", \"SNAKE_case\":\"5\"}",
+                settings);
             
             Assert.That(defrosted.UPPER_CASE, Is.EqualTo("1"));
             Assert.That(defrosted._1_IsANumber, Is.EqualTo("2"));
@@ -52,6 +59,8 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(defrosted.snake_case, Is.EqualTo("5"));
         }
 
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
+        [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
         public class CasedTypes
         {
             public string? _1_IsANumber { get; set; }

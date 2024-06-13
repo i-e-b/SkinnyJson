@@ -1,12 +1,14 @@
-﻿using System.Text;
+﻿using System.Diagnostics.CodeAnalysis;
 // ReSharper disable AssignNullToNotNullAttribute
 // ReSharper disable PossibleNullReferenceException
+// ReSharper disable MemberCanBePrivate.Global
 
 namespace SkinnyJson.Unit.Tests
 {
     using NUnit.Framework;
 
     [TestFixture]
+    [SuppressMessage("ReSharper", "NotAccessedField.Global")]
     public class ChangingSettings
     {
         [Test]
@@ -14,16 +16,14 @@ namespace SkinnyJson.Unit.Tests
         {
 			var original = ObjectWithoutAnInterface.Make();
 
-            Json.DefaultParameters.EnableAnonymousTypes = true;
-            var on = Json.Freeze(original);
-            Json.DefaultParameters.EnableAnonymousTypes = false;
-            var off = Json.Freeze(original);
+            var setOn = new JsonParameters { EnableAnonymousTypes = true};
+            var setOff = new JsonParameters { EnableAnonymousTypes = false, UseTypeExtensions = true};
             
-            Json.DefaultStreamEncoding = Encoding.UTF7;
-
+            var on = Json.Freeze(original, setOn);
+            var off = Json.Freeze(original, setOff);
+            
             Assert.That(on, Does.Not.Contain("$type"));
             Assert.That(off, Contains.Substring("$type"));
-            Json.DefaultParameters.EnableAnonymousTypes = true;
         }
 
 
@@ -33,13 +33,19 @@ namespace SkinnyJson.Unit.Tests
             var input1 = new OptionalSample { One = "set" };
             var input2 = new OptionalSample { Two = "set" };
             
-            Json.DefaultParameters.EnableAnonymousTypes = true;
+            var set1 = new JsonParameters{
+                SerializeNullValues = true
+            };
+            var set2 = new JsonParameters{
+                SerializeNullValues = false
+            };
 
-            Json.DefaultParameters.SerializeNullValues = true;
-            var on = Json.Freeze(input1);
-            Json.DefaultParameters.SerializeNullValues = false;
-            var off1 = Json.Freeze(input1);
-            var off2 = Json.Freeze(input2);
+            
+            var on = Json.Freeze(input1, set1);
+            
+            
+            var off1 = Json.Freeze(input1, set2);
+            var off2 = Json.Freeze(input2, set2);
 
             Assert.That(on, Is.EqualTo("{\"One\":\"set\",\"Two\":null,\"Three\":null}"));
             Assert.That(off1, Is.EqualTo("{\"One\":\"set\"}"));
@@ -51,10 +57,12 @@ namespace SkinnyJson.Unit.Tests
         {
             var input = new OptionalSample { One = "set", Three = "set" };
             
-            Json.DefaultParameters.EnableAnonymousTypes = true;
-            Json.DefaultParameters.SerializeNullValues = false;
+            var settings = new JsonParameters{
+                EnableAnonymousTypes = true,
+                SerializeNullValues = false
+            };
             
-            var off = Json.Freeze(input);
+            var off = Json.Freeze(input, settings);
             
             Assert.That(off, Is.EqualTo("{\"One\":\"set\",\"Three\":\"set\"}"));
         }

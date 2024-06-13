@@ -7,7 +7,7 @@ namespace SkinnyJson
     internal class Getters
     {
         public string? Name;
-        public Json.GenericGetter? Getter;
+        public TypeManager.GenericGetter? Getter;
         public Type? PropertyType;
 		public FieldInfo? FieldInfo;
     }

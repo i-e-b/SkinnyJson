@@ -2,6 +2,7 @@
 using NUnit.Framework;
 // ReSharper disable AssignNullToNotNullAttribute
 // ReSharper disable UnusedMemberInSuper.Global
+// ReSharper disable ClassNeverInstantiated.Global
 
 namespace SkinnyJson.Unit.Tests
 {
@@ -93,10 +94,6 @@ namespace SkinnyJson.Unit.Tests
         {
             var input = RepositoryType.CaseComplex();
             
-            Json.Reset();
-            Json.DefaultParameters.EnableAnonymousTypes = true;
-            Json.DefaultParameters.IgnoreCaseOnDeserialize = true;
-            
             var result = Json.DefrostFromPath<ISubtype>("Root.Options", input).ToList();
             Assert.That(result.Count, Is.EqualTo(2), "found item");
             
@@ -106,7 +103,9 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(result[1]!.Name, Is.EqualTo("Second Option"), "Item 2 name");
             Assert.That(result[1]!.Value, Is.EqualTo("2"), "Item 2 value");
             
-            Json.Reset();
+            
+            result = Json.DefrostFromPath<ISubtype>("Root.Options", input, JsonParameters.Compatible).ToList();
+            Assert.That(result.Count, Is.Zero, "Should not find item");
         }
     }
 

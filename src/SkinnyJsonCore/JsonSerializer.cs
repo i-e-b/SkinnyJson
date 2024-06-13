@@ -16,11 +16,11 @@ namespace SkinnyJson
         private TextWriter? _output;
     	int _currentDepth;
         private readonly Dictionary<string, int> _globalTypes = new Dictionary<string, int>();
-        private readonly JsonParameters _jsonParameters;
+        private readonly JsonParameters _settings;
 
         public JsonSerializer(JsonParameters param)
         {
-            _jsonParameters = param;
+            _settings = param;
         }
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace SkinnyJson
             WriteValue(obj);
             _output.Flush();
 
-            if (!_jsonParameters.UsingGlobalTypes)
+            if (!_settings.UsingGlobalTypes)
                 return sb.ToString();
 
 
@@ -128,6 +128,9 @@ namespace SkinnyJson
 		        case char _:
 		            WriteString((string)obj);
 		            break;
+                case WideNumber wn:
+                    Append(wn.ToString());
+                    break;
 		        case Guid guid:
 		            WriteGuid(guid);
 		            break;
@@ -135,10 +138,11 @@ namespace SkinnyJson
 		            Append(b ? "true" : "false"); // conform to standard
 		            break;
 		        default:
-		            if (IsNumericPrimitive(obj))
-		                Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo));
-
-		            else switch (obj)
+                    if (IsNumericPrimitive(obj))
+                    {
+                        Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo));
+                    }
+                    else switch (obj)
 		            {
 		                case DateTime time:
 		                    WriteDateTime(time);
@@ -176,7 +180,7 @@ namespace SkinnyJson
                             WriteString(typeDef.FullName ?? typeDef.Name);
                             break;
 		                default:
-		                    WriteObject(obj);
+		                    WriteObject(obj, _settings);
 		                    break;
 		            }
 		            break;
@@ -199,7 +203,7 @@ namespace SkinnyJson
 
         private void WriteGuid(Guid g)
         {
-            if (_jsonParameters.UseFastGuid == false)
+            if (_settings.UseFastGuid == false)
                 WriteStringFast(g.ToString());
             else
                 WriteBytes(g.ToByteArray());
@@ -217,7 +221,7 @@ namespace SkinnyJson
             {
                 Append(dateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"));
             }
-            else if (_jsonParameters.UseUtcDateTime)
+            else if (_settings.UseUtcDateTime)
             {
                 Append(dateTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"));
             }
@@ -274,15 +278,15 @@ namespace SkinnyJson
         {
             using var writer = new StringWriter();
             dt.WriteXmlSchema(writer);
-            return dt.ToString()!;
+            return dt.ToString();
         }
 
         private void WriteDataset(DataSet ds)
         {
             Append('{');
-            if ( _jsonParameters.UseExtensions)
+            if ( _settings.UseTypeExtensions)
             {
-                WritePair("$schema", _jsonParameters.UseOptimizedDatasetSchema ? GetSchema(ds) as object : ds.GetXmlSchema());
+                WritePair("$schema", _settings.UseOptimizedDatasetSchema ? GetSchema(ds) : ds.GetXmlSchema());
                 Append(',');
             }
             var tableSep = false;
@@ -324,9 +328,9 @@ namespace SkinnyJson
         void WriteDataTable(DataTable dt)
         {
             Append('{');
-            if (_jsonParameters.UseExtensions)
+            if (_settings.UseTypeExtensions)
             {
-                WritePair("$schema", _jsonParameters.UseOptimizedDatasetSchema ? GetSchema(dt) as object : GetXmlSchema(dt));
+                WritePair("$schema", _settings.UseOptimizedDatasetSchema ? GetSchema(dt) : GetXmlSchema(dt));
                 Append(',');
             }
 
@@ -335,9 +339,9 @@ namespace SkinnyJson
         }
 
         bool _typesWritten;
-        private void WriteObject(object obj)
+        private void WriteObject(object obj, JsonParameters settings)
         {
-            if (_jsonParameters.UsingGlobalTypes == false) Append('{');
+            if (_settings.UsingGlobalTypes == false) Append('{');
 			else Append(_typesWritten == false ? "{$types$" : "{");
 
 			_typesWritten = true;
@@ -349,13 +353,13 @@ namespace SkinnyJson
             var map = new Dictionary<string, string>();
             var t = obj.GetType();
             var append = false;
-            if (_jsonParameters.UseExtensions)
+            if (_settings.UseTypeExtensions)
             {
-                if (_jsonParameters.UsingGlobalTypes == false)
-                    WritePairFast("$type", Json.Instance.GetTypeAssemblyName(t));
+                if (_settings.UsingGlobalTypes == false)
+                    WritePairFast("$type", TypeManager.GetTypeAssemblyName(t, settings));
                 else
                 {
-                    var ct = Json.Instance.GetTypeAssemblyName(t);
+                    var ct = TypeManager.GetTypeAssemblyName(t, settings);
                     if (_globalTypes.TryGetValue(ct, out var dt) == false)
                     {
                         dt = _globalTypes.Count + 1;
@@ -366,16 +370,16 @@ namespace SkinnyJson
                 append = true;
             }
 
-            var readableProperties = Json.Instance.GetGetters(t);
+            var readableProperties = TypeManager.GetGetters(t, settings);
             foreach (var property in readableProperties)
             {
                 if (property.Name == null) continue;
                 var o = GetInstanceValue(obj, t, property);
-                if ((o == null || o is DBNull) && _jsonParameters.SerializeNullValues == false) continue;
+                if ((o == null || o is DBNull) && _settings.SerializeNullValues == false) continue;
 
                 if (append) Append(',');
                 WritePair(property.Name, o);
-                if (o != null && _jsonParameters.UseExtensions)
+                if (o != null && _settings.UseTypeExtensions)
                 {
                     var tt = o.GetType();
                     if (tt == typeof(object)) map.Add(property.Name, tt.ToString());
@@ -383,7 +387,7 @@ namespace SkinnyJson
 
                 append = true;
             }
-            if (map.Count > 0 && _jsonParameters.UseExtensions)
+            if (map.Count > 0 && _settings.UseTypeExtensions)
             {
                 Append(",\"$map\":");
                 WriteStringDictionary(map);
@@ -398,7 +402,7 @@ namespace SkinnyJson
     		if (t.IsValueType && p.FieldInfo != null) {
 				return p.FieldInfo.GetValue(obj);
 			}
-    		if (t.IsValueType && p.PropertyType != null && p.Name != null) {
+    		if (t.IsValueType && p is { PropertyType: not null, Name: not null }) {
     			return t.GetProperty(p.Name, BindingFlags.Public | BindingFlags.Instance)?.GetValue(obj, null!);
     		}
     		return p.Getter?.Invoke(obj);
@@ -406,7 +410,7 @@ namespace SkinnyJson
 
     	private void WritePairFast(string name, string? value)
         {
-            if ((value == null) && _jsonParameters.SerializeNullValues == false)
+            if ((value == null) && _settings.SerializeNullValues == false)
                 return;
             WriteStringFast(name);
 
@@ -417,7 +421,7 @@ namespace SkinnyJson
 
         private void WritePair(string name, object? value)
         {
-            if ((value == null || value is DBNull) && _jsonParameters.SerializeNullValues == false) return;
+            if ((value == null || value is DBNull) && _settings.SerializeNullValues == false) return;
             WriteStringFast(name);
             Append(':');
             WriteValue(value);
