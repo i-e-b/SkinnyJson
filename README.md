@@ -13,8 +13,6 @@ SkinnyJson has a simple interface, and handles interface based serialisation bet
 SkinnyJson was designed to handle Event Store messages, and is tuned to
 deal with situations where a common interface declaration is available, but the original serialised objects/types are not available.
 
-To adjust settings globally, look in `SkinnyJson.Json.DefaultParameters`
-
 Things SkinnyJson can do that most .Net serialisers don't
 -----------------------------------------------------------
 
