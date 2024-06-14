@@ -34,7 +34,7 @@ namespace SkinnyJson
 
         private readonly ContextTextReader _json;
         private readonly StringBuilder _sb = new(); // common builder for building partials
-        private readonly JsonParameters _settings;
+        private readonly JsonSettings _settings;
         private Token _lookAheadToken = Token.None;
         private char _lookAheadChar = '\0';
         private int _index; // string index. Only used for reporting back error positions
@@ -44,9 +44,9 @@ namespace SkinnyJson
         /// </summary>
         /// <param name="json">The input JSON string</param>
         /// <param name="settings">Json interpretation settings</param>
-        public JsonParser(string json, JsonParameters? settings)
+        public JsonParser(string json, JsonSettings? settings)
         {
-            _settings = settings ?? JsonParameters.Default;
+            _settings = settings ?? JsonSettings.Default;
             _json = new ContextTextReader(json);
         }
 
@@ -55,9 +55,9 @@ namespace SkinnyJson
         /// </summary>
         /// <param name="json">The input JSON stream</param>
         /// <param name="settings">Json interpretation settings</param>
-        public JsonParser(Stream json, JsonParameters? settings)
+        public JsonParser(Stream json, JsonSettings? settings)
         {
-            _settings = settings ?? JsonParameters.Default;
+            _settings = settings ?? JsonSettings.Default;
             _json = new ContextTextReader(json, _settings.StreamEncoding);
         }
 
@@ -66,9 +66,9 @@ namespace SkinnyJson
         /// </summary>
         /// <param name="json">The input JSON byte array</param>
         /// <param name="settings">Json interpretation settings</param>
-        public JsonParser(byte[] json, JsonParameters? settings)
+        public JsonParser(byte[] json, JsonSettings? settings)
         {
-            _settings = settings ?? JsonParameters.Default;
+            _settings = settings ?? JsonSettings.Default;
             
             var jsonBytesString = _settings.StreamEncoding.GetString(json);
             _json = new ContextTextReader(jsonBytesString);

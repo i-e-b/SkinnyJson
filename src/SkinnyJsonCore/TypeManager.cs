@@ -15,12 +15,13 @@ namespace SkinnyJson
 
         private class CacheSet
         {
+            /// <summary> Used to map incoming <c>"$type"</c> keys to dotnet types </summary>
+            internal readonly SafeDictionary<string, Type> NamedTypeCache = new();
             internal readonly SafeDictionary<Type, string> TypeNameMap = new();
             internal readonly SafeDictionary<Type, CreateObject> ConstructorCache = new();
-            internal readonly SafeDictionary<string, Type> TypeCache = new();
             internal readonly List<Type> AssemblyCache = new();
             internal readonly SafeDictionary<Type, List<Getters>> GetterCache = new();
-            internal readonly SafeDictionary<string, SafeDictionary<string, TypePropertyInfo>> PropertyCache = new();
+            internal readonly SafeDictionary<Type, SafeDictionary<string, TypePropertyInfo>> PropertyCache = new();
         }
         
         /// <summary> Per-settings caches of type info</summary>
@@ -29,7 +30,7 @@ namespace SkinnyJson
         /// <summary>
         /// Get caches for setting spec. Creates a new set if needed.
         /// </summary>
-        private static CacheSet Cache(JsonParameters settings)
+        private static CacheSet Cache(JsonSettings settings)
         {
             var key = settings.ParameterKey();
             _caches.TryAdd(key, new CacheSet());
@@ -60,7 +61,7 @@ namespace SkinnyJson
         /// <summary>
         /// Get a shortened string name for a type's containing assembly
         /// </summary>
-        internal static string GetTypeAssemblyName(Type t, JsonParameters settings)
+        internal static string GetTypeAssemblyName(Type t, JsonSettings settings)
         {
             var cache = Cache(settings);
             if (cache.TypeNameMap.TryGetValue(t, out string val)) return val;
@@ -82,7 +83,7 @@ namespace SkinnyJson
         /// <summary>
         /// Shorten an assembly qualified name
         /// </summary>
-        internal static string ShortenName(string assemblyQualifiedName) {
+        private static string ShortenName(string assemblyQualifiedName) {
             var one = assemblyQualifiedName.IndexOf(',');
             var two = assemblyQualifiedName.IndexOf(',', one+1);
             return assemblyQualifiedName.Substring(0, two);
@@ -92,9 +93,9 @@ namespace SkinnyJson
         /// <summary>
         /// Try to get or build a type for a given type-name
         /// </summary>
-        internal static Type? GetTypeFromCache(string typename, JsonParameters settings) {
+        internal static Type? GetTypeFromCache(string typename, JsonSettings settings) {
             var cache = Cache(settings);
-            if (cache.TypeCache.TryGetValue(typename, out Type val)) return val;
+            if (cache.NamedTypeCache.TryGetValue(typename, out Type val)) return val;
 
             var typeParts = typename.Split(',');
 
@@ -111,7 +112,7 @@ namespace SkinnyJson
             } else throw new Exception("Invalid type description: "+typename);
             
             if (t != null) {
-                cache.TypeCache.Add(typename, t);
+                cache.NamedTypeCache.Add(typename, t);
             }
             return t;
         }
@@ -121,7 +122,7 @@ namespace SkinnyJson
         /// Try to make a new instance of a type.
         /// Will drop down to 'SlowCreateInstance' in special cases
         /// </summary>
-        internal static object? FastCreateInstance(Type? objType, JsonParameters settings)
+        internal static object? FastCreateInstance(Type? objType, JsonSettings settings)
         {
             var cache = Cache(settings);
             if (objType == null) return null;
@@ -158,7 +159,7 @@ namespace SkinnyJson
             }
         }
 
-        internal static bool TryMakeStandardContainer(Type objType, out object? inst)
+        private static bool TryMakeStandardContainer(Type objType, out object? inst)
         {
             inst = null;
             switch (objType.Name)
@@ -185,14 +186,14 @@ namespace SkinnyJson
             return false;
         }
 
-        internal static object CreateGenericInstance(Type interfaceType, Type concreteType)
+        private static object CreateGenericInstance(Type interfaceType, Type concreteType)
         {
             var typeParameters = interfaceType.GetGenericArguments();
             var constructed = concreteType.MakeGenericType(typeParameters);
             return Activator.CreateInstance(constructed)!;
         }
 
-        internal static object SlowCreateInstance(Type objType, JsonParameters settings)
+        private static object SlowCreateInstance(Type objType, JsonSettings settings)
         {
             if (objType == typeof(string)) {
                 throw new Exception("Invalid parser state");
@@ -213,7 +214,7 @@ namespace SkinnyJson
         /// Return a list of property/field access proxies for a type.
         /// This is cached after first access for each type.
         /// </summary>
-        internal static List<Getters> GetGetters(Type type, JsonParameters settings)
+        internal static List<Getters> GetGetters(Type type, JsonSettings settings)
         {
             var cache = Cache(settings);
             if (cache.GetterCache.TryGetValue(type, out var val)) return val;
@@ -249,7 +250,7 @@ namespace SkinnyJson
         /// This will use the first name from any name-overriding attribute,
         /// or the name of the member directly if not overridden.
         /// </summary>
-        internal static Getters MakeFieldGetterWithPreferredName(FieldInfo field, GenericGetter getMethod)
+        private static Getters MakeFieldGetterWithPreferredName(FieldInfo field, GenericGetter getMethod)
         {
             var name = GetAlternativeNames(field).FirstOrDefault() ?? field.Name;
             return new Getters { Name = name, Getter = getMethod, PropertyType = field.FieldType, FieldInfo = field};
@@ -260,7 +261,7 @@ namespace SkinnyJson
         /// This will use the first name from any name-overriding attribute,
         /// or the name of the member directly if not overridden.
         /// </summary>
-        internal static Getters MakePropertyGetterWithPreferredName(PropertyInfo property, GenericGetter getMethod)
+        private static Getters MakePropertyGetterWithPreferredName(PropertyInfo property, GenericGetter getMethod)
         {
             var name = GetAlternativeNames(property).FirstOrDefault() ?? property.Name;
             return new Getters { Name = name, Getter = getMethod, PropertyType = property.PropertyType };
@@ -423,13 +424,10 @@ namespace SkinnyJson
             }
         }
 
-        internal static object GetProperty(object src, PropertyInfo propertyInfo)
+        private static object GetProperty(object src, PropertyInfo propertyInfo)
         {
             return propertyInfo.GetGetMethod()?.Invoke(src, _emptyObjectArray) ?? throw new Exception($"Could not get value for {propertyInfo.Name}");
         }
-
-
-        
 
         /// <summary>
         /// Returns alternative names for a field, based on various other libraries' code attributes
@@ -467,16 +465,16 @@ namespace SkinnyJson
             }
         }
 
-        public static bool GetPropertySet(string typename, JsonParameters settings, out SafeDictionary<string, TypePropertyInfo> sd)
+        public static bool GetPropertySet(Type type, JsonSettings settings, out SafeDictionary<string, TypePropertyInfo> sd)
         {
             var cache = Cache(settings);
-            return cache.PropertyCache.TryGetValue(typename, out sd);
+            return cache.PropertyCache.TryGetValue(type, out sd);
         }
 
-        public static void AddToPropertyCache(string typename, SafeDictionary<string,TypePropertyInfo> sd, JsonParameters settings)
+        public static void AddToPropertyCache(Type type, SafeDictionary<string,TypePropertyInfo> sd, JsonSettings settings)
         {
             var cache = Cache(settings);
-            cache.PropertyCache.Add(typename, sd);
+            cache.PropertyCache.Add(type, sd);
         }
     }
 }

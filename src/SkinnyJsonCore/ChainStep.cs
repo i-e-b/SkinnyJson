@@ -3,7 +3,7 @@
     /// <summary>
     /// Represents a step in a dynamic call chain
     /// </summary>
-    public class ChainStep
+    internal class ChainStep
     {
         /// <summary>
         /// Name of property

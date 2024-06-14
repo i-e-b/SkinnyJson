@@ -108,7 +108,7 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(output.Success, Is.False);
             Assert.That(output.ErrorMessage, Is.EqualTo("Failed to publish command message to queue"));
             
-            var exception = Assert.Throws<Exception>(()=>Json.Defrost<BaseResponse>(input, JsonParameters.Compatible));
+            var exception = Assert.Throws<Exception>(()=>Json.Defrost<BaseResponse>(input, JsonSettings.Compatible));
             
             Assert.That(exception.Message, Contains.Substring("Properties would match if IgnoreCaseOnDeserialize was set to true"));
         }
@@ -118,10 +118,10 @@ namespace SkinnyJson.Unit.Tests
         {
             var text = File.ReadAllText("ExampleData/RabbitMq.txt");
 
-            var set1 = new JsonParameters {EnableAnonymousTypes = true, IgnoreCaseOnDeserialize = true, StrictMatching = true};
+            var set1 = new JsonSettings {EnableAnonymousTypes = true, IgnoreCaseOnDeserialize = true, StrictMatching = true};
             Assert.Throws<Exception>(()=>Json.Defrost<List<RabbitMqStatistic>>(text, set1));
             
-            var set2 = new JsonParameters {EnableAnonymousTypes = true, IgnoreCaseOnDeserialize = true, StrictMatching = false};
+            var set2 = new JsonSettings {EnableAnonymousTypes = true, IgnoreCaseOnDeserialize = true, StrictMatching = false};
             var objects = Json.Defrost<List<RabbitMqStatistic>>(text, set2);
             
             Assert.That(objects, Is.Not.Null);
@@ -136,6 +136,25 @@ namespace SkinnyJson.Unit.Tests
 
             Assert.That(Encoding.UTF8.GetString(resultBase64.Bytes), Is.EqualTo("convert"), "base64 should be converted");
             Assert.That(Encoding.UTF8.GetString(resultHexStr.Bytes), Is.EqualTo("convert"), "hex string should be converted");
+        }
+
+        [Test]
+        public void can_use_hex_to_byte_helper_method()
+        {
+            var result = Json.HexToByteArray("636F6E76657274");
+            Assert.That(result, Is.EqualTo(new byte[]{0x63, 0x6F, 0x6E, 0x76, 0x65, 0x72, 0x74}).AsCollection);
+        }
+
+        [Test]
+        public void can_parse_json_into_anonymous_object()
+        {
+            var input = @"{
+  ""success"": false,
+  ""errorMessage"": ""Failed to publish command message to queue""
+}";
+            var result = Json.Parse(input);
+
+            Assert.That(result, Is.Not.Null);
         }
 
         [Test]

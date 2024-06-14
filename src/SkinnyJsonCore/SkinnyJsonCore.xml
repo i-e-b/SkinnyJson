@@ -4,6 +4,108 @@
         <name>SkinnyJsonCore</name>
     </assembly>
     <members>
+        <member name="T:SkinnyJson.SJson">
+            <summary>
+            SkinnyJson entry point. Use the static methods of this class to interact with JSON data
+            </summary>
+            <remarks>
+            This is an alias for <see cref="T:SkinnyJson.Json"/> to work around naming conflicts
+            </remarks>
+        </member>
+        <member name="M:SkinnyJson.SJson.Freeze(System.Object,SkinnyJson.JsonSettings)">
+            <summary> Turn an object into a JSON string </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Freeze(System.Object,System.IO.Stream,SkinnyJson.JsonSettings)">
+            <summary> Write an object to a stream as a JSON string </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Defrost(System.String,SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON string into a detected object </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Defrost(System.Byte[],SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON byte array into a detected object </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Defrost(System.IO.Stream,SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON data stream into a detected object </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.WrapperType(System.Object,SkinnyJson.JsonSettings)">
+            <summary> Return the type name that SkinnyJson will use for the serialising the object </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Defrost``1(System.String,SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON string into a specific object </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Defrost``1(System.IO.Stream,SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON data stream into a specific object </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Defrost``1(System.Byte[],SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON byte array into a specific object </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Defrost(System.String,System.Type,SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON string into a runtime type </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Defrost(System.Byte[],System.Type,SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON byte array into a runtime type </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Defrost(System.IO.Stream,System.Type,SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON data stream into a runtime type </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.DefrostDynamic(System.String,SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON string into an object containing properties found </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.DefrostDynamic(System.IO.Stream,SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON string into an object containing properties found </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.DefrostFromPath``1(System.String,System.String,SkinnyJson.JsonSettings)">
+            <summary>
+            Turn a sub-path of a JSON document into an enumeration of values, by specific type
+            </summary>
+            <remarks>This is intended to extract useful fragments from repository-style files</remarks>
+            <typeparam name="T">Type of the fragments to be returned</typeparam>
+            <param name="path">Dotted path through document. If the path can't be found, an empty enumeration will be returned.
+            An empty path is equivalent to `Defrost&lt;T&gt;`</param>
+            <param name="json">The JSON document string to read</param>
+            <param name="settings">Json parsing settings</param>
+        </member>
+        <member name="M:SkinnyJson.SJson.Clone``1(``0)">
+            <summary> Create a copy of an object through serialisation </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Parse(System.String,SkinnyJson.JsonSettings)">
+            <summary>Read a JSON object into an anonymous .Net object</summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Edit(System.String,System.Action{System.Object},SkinnyJson.JsonSettings)">
+            <summary>
+            Deserialise a string, perform some edits then reform as a new string
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.Beautify(System.String)">
+            <summary>
+            Pretty print a JSON string. This is done without value parsing.
+            <p/>
+            Note that any JS comments in the input are removed in the output.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.BeautifyStream(System.IO.Stream,System.Text.Encoding,System.IO.Stream,System.Text.Encoding)">
+            <summary>
+            Pretty print a JSON data stream to another stream.
+            This is done without value parsing or buffering, so very large streams can be processed.
+            The input and output encodings can be the same or different.
+            <p/>
+            Note that any JS comments in the input are removed in the output.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.DefrostInto(System.Object,System.String,SkinnyJson.JsonSettings)">
+            <summary>Fill the members of an .Net object from a JSON object string</summary>
+            <remarks>Alias for <see cref="M:SkinnyJson.SJson.FillObject(System.Object,System.String,SkinnyJson.JsonSettings)"/></remarks>
+        </member>
+        <member name="M:SkinnyJson.SJson.FillObject(System.Object,System.String,SkinnyJson.JsonSettings)">
+            <summary>Fill the members of an .Net object from a JSON object string</summary>
+        </member>
+        <member name="M:SkinnyJson.SJson.HexToByteArray(System.String)">
+            <summary>
+            Convert a hex string to a byte array.
+            <p/>
+            Use <c>Convert.FromHexString</c> where available
+            </summary>
+        </member>
         <member name="T:SkinnyJson.ChainStep">
             <summary>
             Represents a step in a dynamic call chain
@@ -141,49 +243,49 @@
             SkinnyJson entry point. Use the static methods of this class to interact with JSON data
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Freeze(System.Object,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Freeze(System.Object,SkinnyJson.JsonSettings)">
             <summary> Turn an object into a JSON string </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Freeze(System.Object,System.IO.Stream,System.Text.Encoding,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Freeze(System.Object,System.IO.Stream,SkinnyJson.JsonSettings)">
             <summary> Write an object to a stream as a JSON string </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Defrost(System.String,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Defrost(System.String,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON string into a detected object </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Defrost(System.Byte[],SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Defrost(System.Byte[],SkinnyJson.JsonSettings)">
             <summary> Turn a JSON byte array into a detected object </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Defrost(System.IO.Stream,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Defrost(System.IO.Stream,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON data stream into a detected object </summary>
         </member>
-        <member name="M:SkinnyJson.Json.WrapperType(System.Object,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.WrapperType(System.Object,SkinnyJson.JsonSettings)">
             <summary> Return the type name that SkinnyJson will use for the serialising the object </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Defrost``1(System.String,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Defrost``1(System.String,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON string into a specific object </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Defrost``1(System.IO.Stream,System.Text.Encoding,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Defrost``1(System.IO.Stream,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON data stream into a specific object </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Defrost``1(System.Byte[],System.Text.Encoding,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Defrost``1(System.Byte[],SkinnyJson.JsonSettings)">
             <summary> Turn a JSON byte array into a specific object </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Defrost(System.String,System.Type,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Defrost(System.String,System.Type,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON string into a runtime type </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Defrost(System.Byte[],System.Type,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Defrost(System.Byte[],System.Type,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON byte array into a runtime type </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Defrost(System.IO.Stream,System.Type,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Defrost(System.IO.Stream,System.Type,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON data stream into a runtime type </summary>
         </member>
-        <member name="M:SkinnyJson.Json.DefrostDynamic(System.String,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.DefrostDynamic(System.String,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON string into an object containing properties found </summary>
         </member>
-        <member name="M:SkinnyJson.Json.DefrostDynamic(System.IO.Stream,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.DefrostDynamic(System.IO.Stream,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON string into an object containing properties found </summary>
         </member>
-        <member name="M:SkinnyJson.Json.DefrostFromPath``1(System.String,System.String,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.DefrostFromPath``1(System.String,System.String,SkinnyJson.JsonSettings)">
             <summary>
             Turn a sub-path of a JSON document into an enumeration of values, by specific type
             </summary>
@@ -197,10 +299,10 @@
         <member name="M:SkinnyJson.Json.Clone``1(``0)">
             <summary> Create a copy of an object through serialisation </summary>
         </member>
-        <member name="M:SkinnyJson.Json.Parse(System.String,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Parse(System.String,SkinnyJson.JsonSettings)">
             <summary>Read a JSON object into an anonymous .Net object</summary>
         </member>
-        <member name="M:SkinnyJson.Json.Edit(System.String,System.Action{System.Object},SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.Edit(System.String,System.Action{System.Object},SkinnyJson.JsonSettings)">
             <summary>
             Deserialise a string, perform some edits then reform as a new string
             </summary>
@@ -221,29 +323,36 @@
             Note that any JS comments in the input are removed in the output.
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.DefrostInto(System.Object,System.String,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.DefrostInto(System.Object,System.String,SkinnyJson.JsonSettings)">
             <summary>Fill the members of an .Net object from a JSON object string</summary>
-            <remarks>Alias for <see cref="M:SkinnyJson.Json.FillObject(System.Object,System.String,SkinnyJson.JsonParameters)"/></remarks>
+            <remarks>Alias for <see cref="M:SkinnyJson.Json.FillObject(System.Object,System.String,SkinnyJson.JsonSettings)"/></remarks>
         </member>
-        <member name="M:SkinnyJson.Json.FillObject(System.Object,System.String,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.FillObject(System.Object,System.String,SkinnyJson.JsonSettings)">
             <summary>Fill the members of an .Net object from a JSON object string</summary>
         </member>
-        <member name="M:SkinnyJson.Json.ToJsonStatics(System.Type,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.HexToByteArray(System.String)">
+            <summary>
+            Convert a hex string to a byte array.
+            <p/>
+            Use <c>Convert.FromHexString</c> where available
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.ToJsonStatics(System.Type,SkinnyJson.JsonSettings)">
             <summary>
             Read public static properties and fields from a type, output as JSON
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.SelectObjects``1(System.Object,System.String,SkinnyJson.WarningSet,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.SelectObjects``1(System.Object,System.String,SkinnyJson.WarningSet,SkinnyJson.JsonSettings)">
             <summary>
             Pick items out of a parsed object using dotted string path
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.PathWalk``1(System.Object,System.Collections.Generic.Dictionary{System.String,System.Object},System.String[],System.Int32,System.Boolean,SkinnyJson.WarningSet,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.PathWalk``1(System.Object,System.Collections.Generic.Dictionary{System.String,System.Object},System.String[],System.Int32,System.Boolean,SkinnyJson.WarningSet,SkinnyJson.JsonSettings)">
             <summary>
             Recursive helper for SelectObjects˂T˃
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.ToObject(System.Object,System.Type,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.ToObject(System.Object,System.Type,SkinnyJson.JsonSettings)">
             <summary>
             Create a new object by type, using input json data
             </summary>
@@ -251,7 +360,7 @@
             <param name="type">Target return type</param>
             <param name="settings">Json parsing options</param>
         </member>
-        <member name="M:SkinnyJson.Json.StrengthenType(System.Type,System.Object,System.Collections.Generic.Dictionary{System.String,System.Object},SkinnyJson.WarningSet,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.StrengthenType(System.Type,System.Object,System.Collections.Generic.Dictionary{System.String,System.Object},SkinnyJson.WarningSet,SkinnyJson.JsonSettings)">
             <summary>
             Try to decode a parsed json object into a new type instance
             </summary>
@@ -261,7 +370,7 @@
             <param name="warnings">Additional information will be added to this</param>
             <param name="settings">Json parser settings</param>
         </member>
-        <member name="M:SkinnyJson.Json.ParserFromStreamOrStringOrBytes(System.Object,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.ParserFromStreamOrStringOrBytes(System.Object,SkinnyJson.JsonSettings)">
             <summary>
             Pass in either a string or a stream and get back a parser instance
             </summary>
@@ -281,7 +390,7 @@
             Make an HashSet˂T˃() instance for a runtime type
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.ParseDictionary(System.Collections.Generic.IDictionary{System.String,System.Object},System.Collections.Generic.IDictionary{System.String,System.Object},System.Type,System.Object,SkinnyJson.WarningSet,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.ParseDictionary(System.Collections.Generic.IDictionary{System.String,System.Object},System.Collections.Generic.IDictionary{System.String,System.Object},System.Type,System.Object,SkinnyJson.WarningSet,SkinnyJson.JsonSettings)">
             <summary>
             Read a weakly-typed dictionary tree into a strong type. If the keys do not match exactly,
             all matching field/properties will be filled.
@@ -291,12 +400,12 @@
             this will attempt to fill static members of the given type.
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.MapJsonValueToObject(System.String,System.Type,System.Object,System.Collections.Generic.IDictionary{System.String,System.Object},System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.SafeDictionary{System.String,SkinnyJson.TypePropertyInfo},SkinnyJson.WarningSet,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.MapJsonValueToObject(System.String,System.Type,System.Object,System.Collections.Generic.IDictionary{System.String,System.Object},System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.SafeDictionary{System.String,SkinnyJson.TypePropertyInfo},SkinnyJson.WarningSet,SkinnyJson.JsonSettings)">
             <summary>
             Map json value dictionary to the properties and fields of a target object instance.
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.MakeSettableObject(System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.TypePropertyInfo,System.Object,SkinnyJson.WarningSet,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.MakeSettableObject(System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.TypePropertyInfo,System.Object,SkinnyJson.WarningSet,SkinnyJson.JsonSettings)">
             <summary>
             Try to create an object instance that can be directly assigned to the property or field
             defined by 'propertyInfo'.
@@ -308,20 +417,13 @@
             Our default is Base64, but we will fall back on hex if it's input
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.HexToByteArray(System.String)">
-            <summary>
-            Convert a hex string to a byte array.
-            <p/>
-            Use <c>Convert.FromHexString</c> where available
-            </summary>
-        </member>
         <member name="M:SkinnyJson.Json.WriteValueToTypeInstance(System.String,System.Type,System.Object,SkinnyJson.TypePropertyInfo,System.Object)">
             <summary>
             Inject a value into an object's property.
             If object is null, we will attempt to write to a static member.
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.GetProperties(System.Type,System.String,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.GetProperties(System.Type,System.String,SkinnyJson.JsonSettings)">
             <summary>
             Read the properties and public fields of a type.
             In special cases, this will also read private fields
@@ -337,164 +439,9 @@
             Convert between runtime types
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.TryGetDouble(System.Collections.Generic.Dictionary{System.String,System.Object},System.String,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.Json.TryGetDouble(System.Collections.Generic.Dictionary{System.String,System.Object},System.String,SkinnyJson.JsonSettings)">
             <summary>
             Try to get a keyed value as a double, or return zero. 
-            </summary>
-        </member>
-        <member name="T:SkinnyJson.JsonParameters">
-            <summary>
-            Parameters for serialising and deserialising.
-            </summary>
-        </member>
-        <member name="F:SkinnyJson.JsonParameters.StandardDateFormatsInPreferenceOrder">
-            <summary>
-            Date formats we expect from JSON strings
-            </summary>
-        </member>
-        <member name="F:SkinnyJson.JsonParameters.Default">
-            <summary>
-            Default SkinnyJson parameters.
-            <p>Uses large number support, Base64 Guids, anonymous types, case insensitive matching, and strict matching.</p>
-            <p>Excludes source type information and global types</p>
-            </summary>
-        </member>
-        <member name="F:SkinnyJson.JsonParameters.Compatible">
-            <summary>
-            SkinnyJson parameters, with some less-supported features turned off.
-            <p>Uses anonymous types, and strict matching.</p>
-            <p>Excludes large number support, case insensitive matching, Base64 Guids, source type information and global types</p>
-            </summary>
-        </member>
-        <member name="F:SkinnyJson.JsonParameters.TypeConstrained">
-            <summary>
-            SkinnyJson parameters for reading and writing strongly-typed messages.
-            This is not compatible with most other JSON libraries.
-            <p>Uses source type information and global types</p>
-            <p>Excludes anonymous types, case insensitivity</p>
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.StreamEncoding">
-            <summary>
-            String encoding to use for streams, when no specific encoding is provided.
-            Initial value is UTF8.
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.DateFormats">
-            <summary>
-            String-to-Date and Date-to-String formats, in descending preference order.
-            Highest preference will be used for serialisation.
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.UseWideNumbers">
-            <summary>
-            If set to true, numeric values will be parsed as high-precision types.
-            Otherwise, numeric values are parsed as double-precision floats.
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.UseOptimizedDatasetSchema">
-            <summary>
-            Use a special format for Sql Datasets. Default true
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.UseFastGuid">
-            <summary>
-            Use Base64 encoding for Guids. If false, uses Hex.
-            Default true
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.SerializeNullValues">
-            <summary>
-            Insert null values into JSON output. Otherwise remove field.
-            Default true
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.UseUtcDateTime">
-            <summary>
-            Force date times to UTC. Default true
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.ShowReadOnlyProperties">
-            <summary>
-            Serialise properties that can't be written on deserialise. Default false
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.UsingGlobalTypes">
-            <summary>
-            Declare types once at the start of a document. Otherwise declare in each object.
-            Default true, but overridden by `EnableAnonymousTypes`
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.IgnoreCaseOnDeserialize">
-            <summary>
-            <p>Default false.</p>
-            Allow case insensitive matching on deserialise. Also ignores underscores, dashes, and spaces in object keys.
-            </summary>
-            <remarks>
-            If case insensitive matching is enabled, these are all considered equal keys:
-            <ul>
-            <li>CASE_INSENSITIVE</li>
-            <li>CASE-INSENSITIVE</li>
-            <li>CASEINSENSITIVE</li>
-            <li>case_insensitive</li>
-            <li>case-insensitive</li>
-            <li>Case Insensitive</li>
-            <li>case insensitive</li>
-            <li>CaseInsensitive</li>
-            <li>caseInsensitive</li>
-            <li>caseinsensitive</li>
-            </ul>
-            </remarks>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.StrictMatching">
-            <summary>
-            Default true.
-            <p/>
-            When true, and an object is deserialised which has values in the JSON side, but none of them match
-            the class definition, then deserialisation fails.
-            <p/>
-            When false, an object with mismatching data is allowed to pass, and may result in empty objects
-            in the class model returned.
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.EnableAnonymousTypes">
-            <summary>
-            Default true. If false, source type information will be included in serialised output.
-            <p/>
-            Overrides `UseExtensions` and `UsingGlobalTypes` 
-            Directly serialising an anonymous type will use these settings for that call, without needing a global setting.
-            </summary>
-        </member>
-        <member name="P:SkinnyJson.JsonParameters.UseTypeExtensions">
-            <summary>
-            Add type and schema information to output JSON, using $type, $types, $schema and $map properties.
-            </summary>
-        </member>
-        <member name="M:SkinnyJson.JsonParameters.WithAnonymousTypes">
-            <summary>
-            Copy of these settings, but with type extensions disabled and anonymous types enabled
-            </summary>
-        </member>
-        <member name="M:SkinnyJson.JsonParameters.WithEncoding(System.Text.Encoding)">
-            <summary>
-            Change the byte-to-string encoding type
-            </summary>
-        </member>
-        <member name="M:SkinnyJson.JsonParameters.WithDateFormats(System.String[])">
-            <summary>
-            Set the acceptable date formats, in descending preference order.
-            Highest preference will be used for serialisation.
-            </summary>
-        </member>
-        <member name="M:SkinnyJson.JsonParameters.WithCaseSensitivity">
-            <summary>
-            Add case sensitive matching to these parameters
-            </summary>
-        </member>
-        <member name="M:SkinnyJson.JsonParameters.ParameterKey">
-            <summary>
-            Unique key for this parameter set.
-            Used to key various caches.
             </summary>
         </member>
         <member name="T:SkinnyJson.JsonParser">
@@ -506,21 +453,21 @@
             All numbers are parsed to doubles.
             </summary>
         </member>
-        <member name="M:SkinnyJson.JsonParser.#ctor(System.String,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.JsonParser.#ctor(System.String,SkinnyJson.JsonSettings)">
             <summary>
             Create a parser for an JSON string loaded in memory
             </summary>
             <param name="json">The input JSON string</param>
             <param name="settings">Json interpretation settings</param>
         </member>
-        <member name="M:SkinnyJson.JsonParser.#ctor(System.IO.Stream,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.JsonParser.#ctor(System.IO.Stream,SkinnyJson.JsonSettings)">
             <summary>
             Create a parser for an JSON string accessible as a stream
             </summary>
             <param name="json">The input JSON stream</param>
             <param name="settings">Json interpretation settings</param>
         </member>
-        <member name="M:SkinnyJson.JsonParser.#ctor(System.Byte[],SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.JsonParser.#ctor(System.Byte[],SkinnyJson.JsonSettings)">
             <summary>
             Create a parser for an JSON byte array loaded in memory
             </summary>
@@ -565,6 +512,161 @@
             Write a string to the output, converting characters to escape sequences where needed.
             </summary>
         </member>
+        <member name="T:SkinnyJson.JsonSettings">
+            <summary>
+            Settings for serialising and deserialising.
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.JsonSettings.StandardDateFormatsInPreferenceOrder">
+            <summary>
+            Date formats we expect from JSON strings
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.JsonSettings.Default">
+            <summary>
+            Default SkinnyJson parameters.
+            <p>Uses large number support, Base64 Guids, anonymous types, case insensitive matching, and strict matching.</p>
+            <p>Excludes source type information and global types</p>
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.JsonSettings.Compatible">
+            <summary>
+            SkinnyJson parameters, with some less-supported features turned off.
+            <p>Uses anonymous types, and strict matching.</p>
+            <p>Excludes large number support, case insensitive matching, Base64 Guids, source type information and global types</p>
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.JsonSettings.TypeConstrained">
+            <summary>
+            SkinnyJson parameters for reading and writing strongly-typed messages.
+            This is not compatible with most other JSON libraries.
+            <p>Uses source type information and global types</p>
+            <p>Excludes anonymous types, case insensitivity</p>
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.StreamEncoding">
+            <summary>
+            String encoding to use for streams, when no specific encoding is provided.
+            Initial value is UTF8.
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.DateFormats">
+            <summary>
+            String-to-Date and Date-to-String formats, in descending preference order.
+            Highest preference will be used for serialisation.
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.UseWideNumbers">
+            <summary>
+            If set to true, numeric values will be parsed as high-precision types.
+            Otherwise, numeric values are parsed as double-precision floats.
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.UseOptimizedDatasetSchema">
+            <summary>
+            Use a special format for Sql Datasets. Default true
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.UseFastGuid">
+            <summary>
+            Use Base64 encoding for Guids. If false, uses Hex.
+            Default true
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.SerializeNullValues">
+            <summary>
+            Insert null values into JSON output. Otherwise remove field.
+            Default true
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.UseUtcDateTime">
+            <summary>
+            Force date times to UTC. Default true
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.ShowReadOnlyProperties">
+            <summary>
+            Serialise properties that can't be written on deserialise. Default false
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.UsingGlobalTypes">
+            <summary>
+            Declare types once at the start of a document. Otherwise declare in each object.
+            Default true, but overridden by `EnableAnonymousTypes`
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.IgnoreCaseOnDeserialize">
+            <summary>
+            <p>Default false.</p>
+            Allow case insensitive matching on deserialise. Also ignores underscores, dashes, and spaces in object keys.
+            </summary>
+            <remarks>
+            If case insensitive matching is enabled, these are all considered equal keys:
+            <ul>
+            <li>CASE_INSENSITIVE</li>
+            <li>CASE-INSENSITIVE</li>
+            <li>CASEINSENSITIVE</li>
+            <li>case_insensitive</li>
+            <li>case-insensitive</li>
+            <li>Case Insensitive</li>
+            <li>case insensitive</li>
+            <li>CaseInsensitive</li>
+            <li>caseInsensitive</li>
+            <li>caseinsensitive</li>
+            </ul>
+            </remarks>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.StrictMatching">
+            <summary>
+            Default true.
+            <p/>
+            When true, and an object is deserialised which has values in the JSON side, but none of them match
+            the class definition, then deserialisation fails.
+            <p/>
+            When false, an object with mismatching data is allowed to pass, and may result in empty objects
+            in the class model returned.
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.EnableAnonymousTypes">
+            <summary>
+            Default true. If false, source type information will be included in serialised output.
+            <p/>
+            Overrides `UseExtensions` and `UsingGlobalTypes` 
+            Directly serialising an anonymous type will use these settings for that call, without needing a global setting.
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.UseTypeExtensions">
+            <summary>
+            Add type and schema information to output JSON, using $type, $types, $schema and $map properties.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.JsonSettings.WithAnonymousTypes">
+            <summary>
+            Copy of these settings, but with type extensions disabled and anonymous types enabled
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.JsonSettings.WithEncoding(System.Text.Encoding)">
+            <summary>
+            Change the byte-to-string encoding type
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.JsonSettings.WithDateFormats(System.String[])">
+            <summary>
+            Set the acceptable date formats, in descending preference order.
+            Highest preference will be used for serialisation.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.JsonSettings.WithCaseSensitivity">
+            <summary>
+            Add case sensitive matching to these parameters
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.JsonSettings.ParameterKey">
+            <summary>
+            Unique key for this parameter set.
+            Used to key various caches.
+            </summary>
+        </member>
         <member name="T:SkinnyJson.SafeDictionary`2">
             <summary>
             Dictionary with thread locks
@@ -575,10 +677,13 @@
             Add a key/value pair only if the key is not already present
             </summary>
         </member>
+        <member name="F:SkinnyJson.TypeManager.CacheSet.NamedTypeCache">
+            <summary> Used to map incoming <c>"$type"</c> keys to dotnet types </summary>
+        </member>
         <member name="F:SkinnyJson.TypeManager._caches">
             <summary> Per-settings caches of type info</summary>
         </member>
-        <member name="M:SkinnyJson.TypeManager.Cache(SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.TypeManager.Cache(SkinnyJson.JsonSettings)">
             <summary>
             Get caches for setting spec. Creates a new set if needed.
             </summary>
@@ -602,7 +707,7 @@
             <param name="value">value of property to set</param>
             <param name="key">optional key for dictionaries</param>
         </member>
-        <member name="M:SkinnyJson.TypeManager.GetTypeAssemblyName(System.Type,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.TypeManager.GetTypeAssemblyName(System.Type,SkinnyJson.JsonSettings)">
             <summary>
             Get a shortened string name for a type's containing assembly
             </summary>
@@ -612,18 +717,18 @@
             Shorten an assembly qualified name
             </summary>
         </member>
-        <member name="M:SkinnyJson.TypeManager.GetTypeFromCache(System.String,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.TypeManager.GetTypeFromCache(System.String,SkinnyJson.JsonSettings)">
             <summary>
             Try to get or build a type for a given type-name
             </summary>
         </member>
-        <member name="M:SkinnyJson.TypeManager.FastCreateInstance(System.Type,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.TypeManager.FastCreateInstance(System.Type,SkinnyJson.JsonSettings)">
             <summary>
             Try to make a new instance of a type.
             Will drop down to 'SlowCreateInstance' in special cases
             </summary>
         </member>
-        <member name="M:SkinnyJson.TypeManager.GetGetters(System.Type,SkinnyJson.JsonParameters)">
+        <member name="M:SkinnyJson.TypeManager.GetGetters(System.Type,SkinnyJson.JsonSettings)">
             <summary>
             Return a list of property/field access proxies for a type.
             This is cached after first access for each type.

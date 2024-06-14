@@ -16,9 +16,9 @@ namespace SkinnyJson
         private TextWriter? _output;
     	int _currentDepth;
         private readonly Dictionary<string, int> _globalTypes = new Dictionary<string, int>();
-        private readonly JsonParameters _settings;
+        private readonly JsonSettings _settings;
 
-        public JsonSerializer(JsonParameters param)
+        public JsonSerializer(JsonSettings param)
         {
             _settings = param;
         }
@@ -339,7 +339,7 @@ namespace SkinnyJson
         }
 
         bool _typesWritten;
-        private void WriteObject(object obj, JsonParameters settings)
+        private void WriteObject(object obj, JsonSettings settings)
         {
             if (_settings.UsingGlobalTypes == false) Append('{');
 			else Append(_typesWritten == false ? "{$types$" : "{");

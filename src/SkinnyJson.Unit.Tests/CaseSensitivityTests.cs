@@ -11,7 +11,7 @@ namespace SkinnyJson.Unit.Tests
         public void with_ignore_case_off_properties_must_exactly_match()
         {
             // Only one of these matches
-            var settings = JsonParameters.Compatible;
+            var settings = JsonSettings.Compatible;
             var defrosted = Json.Defrost<CasedTypes>(
                 "{\"word gap\":\"OK\", \"LOWER_CASE\":\"OK\", \"uppercase\":\"OK\", \"pascal_case\":\"OK\", \"camelCase\":\"OK\", \"SnakeCase\":\"OK\"}",
                 settings);
@@ -39,7 +39,7 @@ namespace SkinnyJson.Unit.Tests
         public void with_ignore_case_on_property_need_just_the_same_letters_and_numbers()
         {
             // everything should have a match
-            var settings = JsonParameters.Default;
+            var settings = JsonSettings.Default;
             var defrosted = Json.Defrost<CasedTypes>("{\"LOWER_CASE\":\"1\", \"uppercase\":\"2\", \"pascal_case\":\"3\", \"camelCase\":\"4\", \"SnakeCase\":\"5\"}",
                 settings);
             

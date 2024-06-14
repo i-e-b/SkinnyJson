@@ -61,11 +61,11 @@ namespace SkinnyJson.Unit.Tests {
 		{
 			var original = new ABasicStruct { aField = "value", aProp = "different!" };
 			var frozen = Json.Freeze(original);
-			var frozenBytes = Encoding.UTF8.GetBytes(frozen);
+			var frozenBytes = Encoding.BigEndianUnicode.GetBytes(frozen);
 
 			Console.WriteLine(frozen);
 
-			var defrosted = Json.Defrost<ABasicStruct>(frozenBytes, new UTF8Encoding());
+			var defrosted = Json.Defrost<ABasicStruct>(frozenBytes, JsonSettings.Default.WithEncoding(Encoding.BigEndianUnicode));
 
 			Assert.That(original, Is.EqualTo(defrosted));
 		}

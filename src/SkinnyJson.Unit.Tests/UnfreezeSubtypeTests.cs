@@ -104,7 +104,7 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(result[1]!.Value, Is.EqualTo("2"), "Item 2 value");
             
             
-            result = Json.DefrostFromPath<ISubtype>("Root.Options", input, JsonParameters.Compatible).ToList();
+            result = Json.DefrostFromPath<ISubtype>("Root.Options", input, JsonSettings.Compatible).ToList();
             Assert.That(result.Count, Is.Zero, "Should not find item");
         }
     }

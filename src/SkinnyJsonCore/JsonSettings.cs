@@ -4,10 +4,10 @@ using System.Text;
 namespace SkinnyJson
 {
     /// <summary>
-    /// Parameters for serialising and deserialising.
+    /// Settings for serialising and deserialising.
     /// </summary>
     [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
-    public class JsonParameters
+    public class JsonSettings
     {
         #region Standard sets
 
@@ -32,7 +32,7 @@ namespace SkinnyJson
         /// <p>Uses large number support, Base64 Guids, anonymous types, case insensitive matching, and strict matching.</p>
         /// <p>Excludes source type information and global types</p>
         /// </summary>
-        public static readonly JsonParameters Default = new() {
+        public static readonly JsonSettings Default = new() {
             UseOptimizedDatasetSchema = true,
             UseFastGuid = true,
             SerializeNullValues = true,
@@ -52,7 +52,7 @@ namespace SkinnyJson
         /// <p>Uses anonymous types, and strict matching.</p>
         /// <p>Excludes large number support, case insensitive matching, Base64 Guids, source type information and global types</p>
         /// </summary>
-        public static readonly JsonParameters Compatible = new() {
+        public static readonly JsonSettings Compatible = new() {
             UseOptimizedDatasetSchema = true,
             UseFastGuid = false,
             SerializeNullValues = true,
@@ -73,7 +73,7 @@ namespace SkinnyJson
         /// <p>Uses source type information and global types</p>
         /// <p>Excludes anonymous types, case insensitivity</p>
         /// </summary>
-        public static readonly JsonParameters TypeConstrained = new() {
+        public static readonly JsonSettings TypeConstrained = new() {
             UseOptimizedDatasetSchema = true,
             UseFastGuid = true,
             SerializeNullValues = true,
@@ -197,9 +197,9 @@ namespace SkinnyJson
         /// <summary>
         /// Copy of these settings, but with type extensions disabled and anonymous types enabled
         /// </summary>
-        public JsonParameters WithAnonymousTypes()
+        public JsonSettings WithAnonymousTypes()
         {
-            return new JsonParameters {
+            return new JsonSettings {
                 EnableAnonymousTypes = true,
                 UsingGlobalTypes = false,
                 UseTypeExtensions = false,
@@ -219,9 +219,9 @@ namespace SkinnyJson
         /// <summary>
         /// Change the byte-to-string encoding type
         /// </summary>
-        public JsonParameters WithEncoding(Encoding encoding)
+        public JsonSettings WithEncoding(Encoding encoding)
         {
-            return new JsonParameters {
+            return new JsonSettings {
                 StreamEncoding = encoding,
                 
                 EnableAnonymousTypes = EnableAnonymousTypes,
@@ -242,9 +242,9 @@ namespace SkinnyJson
         /// Set the acceptable date formats, in descending preference order.
         /// Highest preference will be used for serialisation.
         /// </summary>
-        public JsonParameters WithDateFormats(params string[] dateFormats)
+        public JsonSettings WithDateFormats(params string[] dateFormats)
         {
-            return new JsonParameters {
+            return new JsonSettings {
                 DateFormats = dateFormats,
                 
                 StreamEncoding = StreamEncoding,
@@ -264,9 +264,9 @@ namespace SkinnyJson
         /// <summary>
         /// Add case sensitive matching to these parameters
         /// </summary>
-        public JsonParameters WithCaseSensitivity()
+        public JsonSettings WithCaseSensitivity()
         {
-            return new JsonParameters {
+            return new JsonSettings {
                 IgnoreCaseOnDeserialize = false,
                 
                 DateFormats = DateFormats,

@@ -5,9 +5,9 @@ namespace SkinnyJson
 {
     internal static class Formatter
     {
-        public static string Indent = "    ";
+        private const string Indent = "    ";
 
-        public static void AppendIndent(TextWriter sb, int count)
+        private static void AppendIndent(TextWriter sb, int count)
         {
             for (; count > 0; --count) sb.Write(Indent);
         }

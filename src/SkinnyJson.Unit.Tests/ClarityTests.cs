@@ -9,7 +9,7 @@ namespace SkinnyJson.Unit.Tests
         [Test]
         public void a_dictionary_of_dictionaries_should_freeze_to_a_tree_of_object_literals()
         {
-            var settings = new JsonParameters { 
+            var settings = new JsonSettings { 
                 EnableAnonymousTypes = true,
                 IgnoreCaseOnDeserialize = false
             };

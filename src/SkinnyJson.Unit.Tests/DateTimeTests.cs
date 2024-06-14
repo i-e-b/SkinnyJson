@@ -89,7 +89,7 @@ namespace SkinnyJson.Unit.Tests
         [Test]
         public void Universal_time_dates_have_Z_on_the_end_even_if_UseUtc_is_off()
         {
-            var setOff = new JsonParameters { UseUtcDateTime = false};
+            var setOff = new JsonSettings { UseUtcDateTime = false};
             var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":\"2019-01-10T09:48:27Z\"}", setOff);
 
             Assert.That(defrosted.date_time.Kind, Is.EqualTo(DateTimeKind.Utc), "Date was not interpreted correctly");
@@ -103,7 +103,7 @@ namespace SkinnyJson.Unit.Tests
         [Test]
         public void Non_universal_times_are_left_unspecified_if_UseUtc_is_off()
         {
-            var setOff = new JsonParameters { UseUtcDateTime = false};
+            var setOff = new JsonSettings { UseUtcDateTime = false};
             var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":\"2019-01-10T09:48:27\"}", setOff);
 
             Assert.That(defrosted.date_time.Kind, Is.EqualTo(DateTimeKind.Unspecified), "Date was not interpreted correctly");

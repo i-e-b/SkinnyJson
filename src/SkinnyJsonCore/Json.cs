@@ -16,18 +16,24 @@ namespace SkinnyJson
     /// SkinnyJson entry point. Use the static methods of this class to interact with JSON data
     /// </summary>
     [SuppressMessage("ReSharper", "RedundantNullnessAttributeWithNullableReferenceTypes")]
-    public static class Json
+    public abstract class Json
     {
-
+        /*
+         * IMPORTANT: If you change, remove, or add to any of the methods here,
+         *            make sure to update the `SJson` alias to match.
+         * 
+         */
+        
+        
         /// <summary> Turn an object into a JSON string </summary>
-        public static string Freeze(object? obj, JsonParameters? settings = null)
+        public static string Freeze(object? obj, JsonSettings? settings = null)
         {
             if (obj == null) return "";
             if (obj is DynamicWrapper dyn) {
                 return Freeze(dyn.Parsed, settings);
             }
 
-            settings ??= JsonParameters.Default;
+            settings ??= JsonSettings.Default;
 
             if (obj is Type typeKind) // caller has `Json.Freeze(typeof(SomeClass));`
             {
@@ -43,10 +49,9 @@ namespace SkinnyJson
         }
 
         /// <summary> Write an object to a stream as a JSON string </summary>
-        public static void Freeze(object obj, Stream target, Encoding? encoding = null, JsonParameters? settings = null)
+        public static void Freeze(object obj, Stream target, JsonSettings? settings = null)
         {
-            settings ??= JsonParameters.Default;
-            encoding ??= settings.StreamEncoding;
+            settings ??= JsonSettings.Default;
 
             if (obj is DynamicWrapper dyn) {
                 Freeze(dyn.Parsed, target);
@@ -55,86 +60,86 @@ namespace SkinnyJson
             // If we are passed an anon type, turn off type information -- it will all be junk.
             if (IsAnonymousTypedObject(obj)) settings = settings.WithAnonymousTypes();
             
-            ToJsonStream(obj, target, settings, encoding);
+            ToJsonStream(obj, target, settings);
         }
 
         /// <summary> Turn a JSON string into a detected object </summary>
-        public static object Defrost(string json, JsonParameters? settings = null)
+        public static object Defrost(string json, JsonSettings? settings = null)
         {
             return ToObject(json, null, settings);
         }
 
         /// <summary> Turn a JSON byte array into a detected object </summary>
-        public static object Defrost(byte[] json, JsonParameters? settings = null)
+        public static object Defrost(byte[] json, JsonSettings? settings = null)
         {
             return ToObject(json, null, settings);
         }
         
         /// <summary> Turn a JSON data stream into a detected object </summary>
-        public static object Defrost(Stream json, JsonParameters? settings = null)
+        public static object Defrost(Stream json, JsonSettings? settings = null)
         {
-            settings ??= JsonParameters.Default;
+            settings ??= JsonSettings.Default;
             
             return ToObject(json, null, settings);
         }
 
         /// <summary> Return the type name that SkinnyJson will use for the serialising the object </summary>
-        public static string WrapperType(object obj, JsonParameters? settings = null)
+        public static string WrapperType(object obj, JsonSettings? settings = null)
         {
-            settings ??= JsonParameters.Default;
+            settings ??= JsonSettings.Default;
             if (obj is Type type) return TypeManager.GetTypeAssemblyName(type, settings);
             return TypeManager.GetTypeAssemblyName(obj.GetType(), settings);
         }
 
         /// <summary> Turn a JSON string into a specific object </summary>
-        public static T Defrost<[MeansImplicitUse]T>(string json, JsonParameters? settings = null)
+        public static T Defrost<[MeansImplicitUse]T>(string json, JsonSettings? settings = null)
         {
-            settings ??= JsonParameters.Default;
+            settings ??= JsonSettings.Default;
             return (T)ToObject(json, typeof(T), settings);
         }
         
         /// <summary> Turn a JSON data stream into a specific object </summary>
-        public static T Defrost<[MeansImplicitUse]T>(Stream json, Encoding? encoding = null, JsonParameters? settings = null)
+        public static T Defrost<[MeansImplicitUse]T>(Stream json, JsonSettings? settings = null)
         {
-            settings ??= JsonParameters.Default;
+            settings ??= JsonSettings.Default;
             
             return (T)ToObject(json, typeof(T), settings);
         }
         
         /// <summary> Turn a JSON byte array into a specific object </summary>
-        public static T Defrost<[MeansImplicitUse]T>(byte[] json, Encoding? encoding = null, JsonParameters? settings = null)
+        public static T Defrost<[MeansImplicitUse]T>(byte[] json, JsonSettings? settings = null)
         {
-            settings ??= JsonParameters.Default;
+            settings ??= JsonSettings.Default;
             
             return (T)ToObject(json, typeof(T), settings);
         }
         
         /// <summary> Turn a JSON string into a runtime type </summary>
-        public static object Defrost(string json, Type runtimeType, JsonParameters? settings = null)
+        public static object Defrost(string json, Type runtimeType, JsonSettings? settings = null)
         {
             return ToObject(json, runtimeType, settings);
         }
 
         /// <summary> Turn a JSON byte array into a runtime type </summary>
-        public static object Defrost(byte[] json, Type runtimeType, JsonParameters? settings = null)
+        public static object Defrost(byte[] json, Type runtimeType, JsonSettings? settings = null)
         {
             return ToObject(json, runtimeType, settings);
         }
 
         /// <summary> Turn a JSON data stream into a runtime type </summary>
-        public static object Defrost(Stream json, Type runtimeType, JsonParameters? settings = null)
+        public static object Defrost(Stream json, Type runtimeType, JsonSettings? settings = null)
         {
             return ToObject(json, runtimeType, settings);
         }
 
         /// <summary> Turn a JSON string into an object containing properties found </summary>
-        public static dynamic DefrostDynamic(string json, JsonParameters? settings = null)
+        public static dynamic DefrostDynamic(string json, JsonSettings? settings = null)
         {
             return new DynamicWrapper(Parse(json, settings));
         }
         
         /// <summary> Turn a JSON string into an object containing properties found </summary>
-        public static dynamic DefrostDynamic(Stream json, JsonParameters? settings = null)
+        public static dynamic DefrostDynamic(Stream json, JsonSettings? settings = null)
         {
             return new DynamicWrapper(ToObject(json, null, settings));
         }
@@ -148,13 +153,13 @@ namespace SkinnyJson
         /// An empty path is equivalent to `Defrost&lt;T&gt;`</param>
         /// <param name="json">The JSON document string to read</param>
         /// <param name="settings">Json parsing settings</param>
-        public static IEnumerable<T> DefrostFromPath<[MeansImplicitUse]T>(string path, string json, JsonParameters? settings = null)
+        public static IEnumerable<T> DefrostFromPath<[MeansImplicitUse]T>(string path, string json, JsonSettings? settings = null)
         {
             if (string.IsNullOrWhiteSpace(path)) {
                 return new[] { Defrost<T>(json) };
             }
             
-            settings ??= JsonParameters.Default;
+            settings ??= JsonSettings.Default;
             return SelectObjects<T>(json, path, null, settings);
         }
 
@@ -162,11 +167,11 @@ namespace SkinnyJson
         public static T Clone<[MeansImplicitUse]T>(T obj)
         {
             if (obj == null) return obj;
-            return Defrost<T>(Freeze(obj, JsonParameters.Compatible), JsonParameters.Compatible);
+            return Defrost<T>(Freeze(obj, JsonSettings.Compatible), JsonSettings.Compatible);
         }
 
         /// <summary>Read a JSON object into an anonymous .Net object</summary>
-        public static object Parse(string json, JsonParameters? settings = null)
+        public static object Parse(string json, JsonSettings? settings = null)
         {
             return new JsonParser(json, settings).Decode() ?? new {};
         }
@@ -174,7 +179,7 @@ namespace SkinnyJson
         /// <summary>
         /// Deserialise a string, perform some edits then reform as a new string
         /// </summary>
-        public static string Edit(string json, Action<dynamic> editAction, JsonParameters? settings = null)
+        public static string Edit(string json, Action<dynamic> editAction, JsonSettings? settings = null)
         {
             DynamicWrapper dyn = DefrostDynamic(json, settings);
             editAction(dyn);
@@ -205,17 +210,17 @@ namespace SkinnyJson
         
         /// <summary>Fill the members of an .Net object from a JSON object string</summary>
         /// <remarks>Alias for <see cref="FillObject"/></remarks>
-        public static object? DefrostInto(object input, string json, JsonParameters? settings = null)
+        public static object? DefrostInto(object input, string json, JsonSettings? settings = null)
         {
             return FillObject(input, json, settings);
         }
 
         /// <summary>Fill the members of an .Net object from a JSON object string</summary>
-        public static object? FillObject(object input, string json, JsonParameters? settings = null)
+        public static object? FillObject(object input, string json, JsonSettings? settings = null)
         {
             if (new JsonParser(json, settings).Decode() is not Dictionary<string, object> ht) return null;
 
-            settings ??= JsonParameters.Default;
+            settings ??= JsonSettings.Default;
             if (input is Type type)
             {
                 ParseDictionary(ht, null, type, null, null, settings);
@@ -225,7 +230,40 @@ namespace SkinnyJson
             return ParseDictionary(ht, null, input.GetType(), input, null, settings);
         }
 
+        /// <summary>
+        /// Convert a hex string to a byte array.
+        /// <p/>
+        /// Use <c>Convert.FromHexString</c> where available
+        /// </summary>
+        public static byte[]? HexToByteArray(string? hex)
+        {
+            if (hex is null || string.IsNullOrWhiteSpace(hex)) return null;
+            
+            var temp = new List<byte>(hex.Length / 2);
+            var shift = 4; // byte position
+            var v = 0;
+            
+            foreach (var c in hex)
+            {
+                switch (c)
+                {
+                    case >= '0' and <= '9': v |= (c - '0') << shift; break;
+                    case >= 'A' and <= 'F': v |= (c - 'A' + 10) << shift; break;
+                    case >= 'a' and <= 'f': v |= (c - 'a' + 10) << shift; break;
+                    case '-': case ' ': continue; // accept spaces and hyphens as separators
+                    default: return null; // invalid character
+                }
+                
+                shift = 4 - shift;
+                if (shift != 4) continue;
+                temp.Add((byte)v);
+                v = 0;
+            }
+            if (shift != 4) return null; // did not complete final byte
+            return temp.ToArray();
+        }
 
+        #region Internal
         private static bool IsAnonymousTypedObject(object? obj)
         {
             return IsAnonymousType(obj?.GetType());
@@ -240,25 +278,25 @@ namespace SkinnyJson
         /// <summary>
         /// Read public static properties and fields from a type, output as JSON
         /// </summary>
-        private static string ToJsonStatics(Type type, JsonParameters param)
+        private static string ToJsonStatics(Type type, JsonSettings param)
         {
             return new JsonSerializer(param).ConvertStaticsToJson(type);
         }
 
-        private static string ToJson(object obj, JsonParameters param)
+        private static string ToJson(object obj, JsonSettings param)
         {
             return new JsonSerializer(param).ConvertToJson(obj);
         }
 
-        private static void ToJsonStream(object obj, Stream target, JsonParameters param, Encoding encoding)
+        private static void ToJsonStream(object obj, Stream target, JsonSettings param)
         {
-            new JsonSerializer(param).ConvertToJson(obj, target, encoding);
+            new JsonSerializer(param).ConvertToJson(obj, target, param.StreamEncoding);
         }
         
         /// <summary>
         /// Pick items out of a parsed object using dotted string path
         /// </summary>
-        private static IEnumerable<T> SelectObjects<T>(object json, string path,WarningSet? warnings, JsonParameters settings)
+        private static IEnumerable<T> SelectObjects<T>(object json, string path,WarningSet? warnings, JsonSettings settings)
         {
             var parser = ParserFromStreamOrStringOrBytes(json, settings);
             var globalTypes = new Dictionary<string, object>();
@@ -272,7 +310,7 @@ namespace SkinnyJson
         /// <summary>
         /// Recursive helper for SelectObjects˂T˃
         /// </summary>
-        private static IEnumerable<T> PathWalk<T>(object? rawObject, Dictionary<string, object> globalTypes, string[] pathParts, int pathIndex, bool parentIsArray, WarningSet? warnings, JsonParameters settings)
+        private static IEnumerable<T> PathWalk<T>(object? rawObject, Dictionary<string, object> globalTypes, string[] pathParts, int pathIndex, bool parentIsArray, WarningSet? warnings, JsonSettings settings)
         {
             if (rawObject == null) yield break;
             
@@ -415,7 +453,7 @@ namespace SkinnyJson
             }
         }
 
-        private static bool FindNext(Dictionary<string,object> objects, string step, JsonParameters settings, out object? next)
+        private static bool FindNext(Dictionary<string,object> objects, string step, JsonSettings settings, out object? next)
         {
             if (objects.TryGetValue(step, out next)) return true;
             if (!settings.IgnoreCaseOnDeserialize) return false;
@@ -441,9 +479,9 @@ namespace SkinnyJson
         /// <param name="json">Either a stream of utf-8 data or an in-memory `string`</param>
         /// <param name="type">Target return type</param>
         /// <param name="settings">Json parsing options</param>
-        private static object ToObject(object json, Type? type, JsonParameters? settings)
+        private static object ToObject(object json, Type? type, JsonSettings? settings)
         {
-            settings ??= JsonParameters.Default;
+            settings ??= JsonSettings.Default;
             var globalTypes = new Dictionary<string, object>();
 			
             var parser = ParserFromStreamOrStringOrBytes(json, settings);
@@ -474,11 +512,10 @@ namespace SkinnyJson
         /// <param name="globalTypes">cache of type matches</param>
         /// <param name="warnings">Additional information will be added to this</param>
         /// <param name="settings">Json parser settings</param>
-        private static object? StrengthenType(Type? type, object decodedObject, Dictionary<string, object> globalTypes, WarningSet? warnings, JsonParameters settings)
+        private static object? StrengthenType(Type? type, object decodedObject, Dictionary<string, object> globalTypes, WarningSet? warnings, JsonSettings settings)
         {
             switch (decodedObject)
             {
-                // TODO: See if this can be integrated with `TryMakeStandardContainer()`
                 case Dictionary<string, object> objects:
                     return ParseDictionary(objects, globalTypes, type, null, warnings, settings);
 
@@ -509,7 +546,7 @@ namespace SkinnyJson
             return x.ToArray(elementType);
         }
 
-        private static IList ConvertToList(Type elementType, Dictionary<string, object> globalTypes, ArrayList arrayList, WarningSet? warnings, JsonParameters settings)
+        private static IList ConvertToList(Type elementType, Dictionary<string, object> globalTypes, ArrayList arrayList, WarningSet? warnings, JsonSettings settings)
         {
             var list = (IList) Activator.CreateInstance(GenericListType(elementType))!;
             foreach (var obj in arrayList)
@@ -520,7 +557,7 @@ namespace SkinnyJson
             return list;
         }
 
-        private static object? ConvertItem(Type elementType, Dictionary<string, object> globalTypes, object? obj, WarningSet? warnings, JsonParameters settings)
+        private static object? ConvertItem(Type elementType, Dictionary<string, object> globalTypes, object? obj, WarningSet? warnings, JsonSettings settings)
         {
             if (obj == null) return obj;
             if (obj.GetType().IsAssignableFrom(elementType)) return obj;
@@ -533,7 +570,7 @@ namespace SkinnyJson
             return parsed;
         }
 
-        private static object ConvertToSet(Type elementType, Dictionary<string, object> globalTypes, ArrayList arrayList, WarningSet? warnings, JsonParameters settings)
+        private static object ConvertToSet(Type elementType, Dictionary<string, object> globalTypes, ArrayList arrayList, WarningSet? warnings, JsonSettings settings)
         {
             var set = Activator.CreateInstance(GenericHashSetType(elementType));
             var adder = set?.GetType().GetMethod("Add", BindingFlags.Public|BindingFlags.Instance) ?? throw new Exception("Failed to find add method on set");
@@ -552,7 +589,7 @@ namespace SkinnyJson
         /// Pass in either a string or a stream and get back a parser instance
         /// </summary>
         [NotNull]
-        private static JsonParser ParserFromStreamOrStringOrBytes(object json, JsonParameters settings)
+        private static JsonParser ParserFromStreamOrStringOrBytes(object json, JsonSettings settings)
         {
             JsonParser parser;
             switch (json)
@@ -615,7 +652,7 @@ namespace SkinnyJson
         /// If the input object is null, but the input type is not,
         /// this will attempt to fill static members of the given type.
         /// </summary>
-        private static object? ParseDictionary(IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes, Type? type, object? input, WarningSet? warnings, JsonParameters settings)
+        private static object? ParseDictionary(IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes, Type? type, object? input, WarningSet? warnings, JsonSettings settings)
         {
             TryFillGlobalTypes(jsonValues, globalTypes);
 
@@ -696,7 +733,7 @@ namespace SkinnyJson
             return targetType?.GetInterface("IDictionary") != null;
         }
 
-        private static bool NoPropertiesMatch(SafeDictionary<string, TypePropertyInfo> props, ICollection<string> jsonValuesKeys, JsonParameters settings)
+        private static bool NoPropertiesMatch(SafeDictionary<string, TypePropertyInfo> props, ICollection<string> jsonValuesKeys, JsonSettings settings)
         {
             return settings.IgnoreCaseOnDeserialize
                 ? jsonValuesKeys.All(jsonKey => !props.HasKey(NormaliseCase(jsonKey))) 
@@ -707,7 +744,7 @@ namespace SkinnyJson
         /// Map json value dictionary to the properties and fields of a target object instance.
         /// </summary>
         private static void MapJsonValueToObject(string objectKey, Type? targetType, object? targetObject, IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes,
-            SafeDictionary<string, TypePropertyInfo> props, WarningSet? warnings, JsonParameters settings)
+            SafeDictionary<string, TypePropertyInfo> props, WarningSet? warnings, JsonSettings settings)
         {
             var name = objectKey;
             if (settings.IgnoreCaseOnDeserialize) name = NormaliseCase(name);
@@ -771,7 +808,7 @@ namespace SkinnyJson
             return null;
         }
 
-        private static void AddToDictionary(string key, object value, object? target, JsonParameters settings)
+        private static void AddToDictionary(string key, object value, object? target, JsonSettings settings)
         {
             if (target is null) throw new Exception("Target dictionary was null");
 
@@ -805,7 +842,7 @@ namespace SkinnyJson
         /// defined by 'propertyInfo'.
         /// The value will be the best interpretation of 'inputValue' that is available.
         /// </summary>
-        private static object MakeSettableObject(IDictionary<string, object>? globalTypes, TypePropertyInfo propertyInfo, object inputValue, WarningSet? warnings, JsonParameters settings)
+        private static object MakeSettableObject(IDictionary<string, object>? globalTypes, TypePropertyInfo propertyInfo, object inputValue, WarningSet? warnings, JsonSettings settings)
         {
             object setObj;
             var precisionLoss = false;
@@ -814,7 +851,7 @@ namespace SkinnyJson
                 setObj = CastNumericType(inputValue, propertyInfo, out precisionLoss)
                          ?? throw new Exception($"Failed to map input type '{inputValue.GetType().Name}' to target '{propertyInfo.parameterType?.Name ?? "<null>"}'");
 
-            else if (propertyInfo.isString) setObj = inputValue;
+            else if (propertyInfo.isString || propertyInfo.parameterType == typeof(string)) setObj = inputValue;
             else if (propertyInfo.isBool) setObj = InterpretBool(inputValue, settings);
             else if (propertyInfo.isGenericType && propertyInfo is { isValueType: false, isDictionary: false, isEnumerable: true } && inputValue is IEnumerable)
                 setObj = CreateGenericList((ArrayList)inputValue, propertyInfo.parameterType, propertyInfo.bt, globalTypes, settings);
@@ -911,41 +948,8 @@ namespace SkinnyJson
                 return HexToByteArray((string)inputValue) ?? throw new Exception("Input to byte array was not valid Base64 or hex string");
             }
         }
-        
-        /// <summary>
-        /// Convert a hex string to a byte array.
-        /// <p/>
-        /// Use <c>Convert.FromHexString</c> where available
-        /// </summary>
-        public static byte[]? HexToByteArray(string? hex)
-        {
-            if (hex is null || string.IsNullOrWhiteSpace(hex)) return null;
-            
-            var temp = new List<byte>(hex.Length / 2);
-            var shift = 4; // byte position
-            var v = 0;
-            
-            foreach (var c in hex)
-            {
-                switch (c)
-                {
-                    case >= '0' and <= '9': v |= (c - '0') << shift; break;
-                    case >= 'A' and <= 'F': v |= (c - 'A' + 10) << shift; break;
-                    case >= 'a' and <= 'f': v |= (c - 'a' + 10) << shift; break;
-                    case '-': case ' ': continue; // accept spaces and hyphens as separators
-                    default: return null; // invalid character
-                }
-                
-                shift = 4 - shift;
-                if (shift != 4) continue;
-                temp.Add((byte)v);
-                v = 0;
-            }
-            if (shift != 4) return null; // did not complete final byte
-            return temp.ToArray();
-        }
 
-        private static bool InterpretBool(object o, JsonParameters settings)
+        private static bool InterpretBool(object o, JsonSettings settings)
         {
             if (o is bool b) return b;
             if (o is string s)
@@ -1006,12 +1010,12 @@ namespace SkinnyJson
         /// Read the properties and public fields of a type.
         /// In special cases, this will also read private fields
         /// </summary>
-        private static SafeDictionary<string, TypePropertyInfo> GetProperties(Type type, string typename, JsonParameters settings)
+        private static SafeDictionary<string, TypePropertyInfo> GetProperties(Type type, string typename, JsonSettings settings)
         {
             var usePrivateFields = typename.StartsWith("Tuple`", StringComparison.Ordinal) || IsAnonymousType(type);
 
             //if (_propertyCache.TryGetValue(typename, out SafeDictionary<string, TypePropertyInfo> sd)) return sd;
-            if (TypeManager.GetPropertySet(typename, settings, out var sd)) return sd;
+            if (TypeManager.GetPropertySet(type, settings, out var sd)) return sd;
             sd = new SafeDictionary<string, TypePropertyInfo>();
 
             var pr = new List<PropertyInfo>();
@@ -1026,9 +1030,9 @@ namespace SkinnyJson
                 fi.AddRange(type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance));
             }
 
-            foreach (var iface in type.GetInterfaces())
+            foreach (var typeInterface in type.GetInterfaces())
             {
-                fi.AddRange(iface.GetFields(BindingFlags.Public | BindingFlags.Instance));
+                fi.AddRange(typeInterface.GetFields(BindingFlags.Public | BindingFlags.Instance));
             }
 
             foreach (var f in fi)
@@ -1083,7 +1087,7 @@ namespace SkinnyJson
             }
 
             if (type.GetGenericArguments().Length < 1) {
-                TypeManager.AddToPropertyCache(typename, sd, settings);
+                TypeManager.AddToPropertyCache(type, sd, settings);
             }
             return sd;
         }
@@ -1091,7 +1095,7 @@ namespace SkinnyJson
         /// <summary>
         /// Convert a string to lower case, removing a set of joining and non-printing characters
         /// </summary>
-        public static string NormaliseCase(string? src)
+        private static string NormaliseCase(string? src)
         {
             if (src is null || src.Length < 1) return "";
             var sb = new StringBuilder();
@@ -1213,7 +1217,7 @@ namespace SkinnyJson
             return s.Length > 30 ? new Guid(s) : new Guid(Convert.FromBase64String(s));
         }
 
-        private static DateTime CreateDateTime(object? value, JsonParameters settings)
+        private static DateTime CreateDateTime(object? value, JsonSettings settings)
         {
             if (value is null) return DateTime.MinValue;
 
@@ -1250,7 +1254,7 @@ namespace SkinnyJson
             return asUnixSeconds;
         }
 
-        private static TimeSpan CreateTimeSpan(object? v, JsonParameters settings)
+        private static TimeSpan CreateTimeSpan(object? v, JsonSettings settings)
         {
             if (v is null) return TimeSpan.Zero;
             if (v is string str) return TimeSpan.Parse(str);
@@ -1279,7 +1283,7 @@ namespace SkinnyJson
         /// <summary>
         /// Try to get a keyed value as a double, or return zero. 
         /// </summary>
-        private static double TryGetDouble(Dictionary<string,object> objects, string key, JsonParameters settings)
+        private static double TryGetDouble(Dictionary<string,object> objects, string key, JsonSettings settings)
         {
             if (objects.TryGetValue(key, out var value))
             {
@@ -1309,7 +1313,7 @@ namespace SkinnyJson
             return NormaliseCase(a) == NormaliseCase(b);
         }
 
-        private static object CreateArray(IEnumerable data, Type? elementType, IDictionary<string, object>? globalTypes, JsonParameters settings)
+        private static object CreateArray(IEnumerable data, Type? elementType, IDictionary<string, object>? globalTypes, JsonSettings settings)
         {
             if (elementType == null) throw new Exception("Invalid element type");
             var col = new ArrayList();
@@ -1324,7 +1328,7 @@ namespace SkinnyJson
             return col.ToArray(elementType);
         }
 
-        private static object CreateGenericList(IEnumerable data, Type? pt, Type? bt, IDictionary<string, object>? globalTypes, JsonParameters settings)
+        private static object CreateGenericList(IEnumerable data, Type? pt, Type? bt, IDictionary<string, object>? globalTypes, JsonSettings settings)
         {
             if (pt == null) throw new Exception("Invalid container type");
             if (bt == null) throw new Exception("Invalid element type");
@@ -1341,7 +1345,7 @@ namespace SkinnyJson
             return col;
         }
 
-        private static object CreateStringKeyDictionary(Dictionary<string, object> reader, Type? pt, IList<Type>? types, IDictionary<string, object>? globalTypes, JsonParameters settings)
+        private static object CreateStringKeyDictionary(Dictionary<string, object> reader, Type? pt, IList<Type>? types, IDictionary<string, object>? globalTypes, JsonSettings settings)
         {
             if (pt == null) throw new Exception("Target type was null");
             if (TypeManager.FastCreateInstance(pt, settings) is not IDictionary col) throw new Exception("Failed to create instance of " + pt);
@@ -1368,7 +1372,7 @@ namespace SkinnyJson
             return col;
         }
 
-        private static object CreateDictionary(IEnumerable reader, Type? pt, IList<Type>? types, IDictionary<string, object>? globalTypes, JsonParameters settings)
+        private static object CreateDictionary(IEnumerable reader, Type? pt, IList<Type>? types, IDictionary<string, object>? globalTypes, JsonSettings settings)
         {
             if (pt == null) throw new Exception("Invalid container type");
             if (TypeManager.FastCreateInstance(pt, settings) is not IDictionary col) throw new Exception("Failed to create instance of " + pt);
@@ -1401,7 +1405,7 @@ namespace SkinnyJson
             return col;
         }
 
-        private static DataSet? CreateDataset(IDictionary<string, object> reader, IDictionary<string, object>? globalTypes, JsonParameters settings)
+        private static DataSet? CreateDataset(IDictionary<string, object> reader, IDictionary<string, object>? globalTypes, JsonSettings settings)
         {
             var ds = new DataSet {EnforceConstraints = false};
             ds.BeginInit();
@@ -1425,7 +1429,7 @@ namespace SkinnyJson
             return ds;
         }
 
-        private static bool ReadSchema(IDictionary<string, object>? reader, DataSet ds, IDictionary<string, object>? globalTypes, JsonParameters settings)
+        private static bool ReadSchema(IDictionary<string, object>? reader, DataSet ds, IDictionary<string, object>? globalTypes, JsonSettings settings)
         {
             if (reader?.ContainsKey("$schema") != true) return false;
 
@@ -1461,7 +1465,7 @@ namespace SkinnyJson
             return true;
         }
 
-        private static void ReadDataTable(IEnumerable rows, DataTable? dt, JsonParameters settings)
+        private static void ReadDataTable(IEnumerable rows, DataTable? dt, JsonSettings settings)
         {
             if (dt == null) return;
             
@@ -1502,7 +1506,7 @@ namespace SkinnyJson
             dt.EndInit();
         }
 
-        private static DataTable CreateDataTable(IDictionary<string, object> reader, IDictionary<string, object>? globalTypes, JsonParameters settings)
+        private static DataTable CreateDataTable(IDictionary<string, object> reader, IDictionary<string, object>? globalTypes, JsonSettings settings)
         {
             var dt = new DataTable();
 
@@ -1553,22 +1557,7 @@ namespace SkinnyJson
 
             return dt;
         }
-    }
-
-    internal class WarningSet
-    {
-        private readonly HashSet<string> _messages = new();
-        public bool Any => _messages.Count > 0;
-
-        public void Append(string msg)
-        {
-            _messages.Add(msg);
-        }
-
-        public override string ToString()
-        {
-            if (_messages.Count < 1) return "";
-            return string.Join("; ", _messages);
-        }
+        
+        #endregion Internal
     }
 }

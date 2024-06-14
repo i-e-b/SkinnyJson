@@ -68,7 +68,7 @@ namespace SkinnyJson.Unit.Tests
             json = json.ToLowerInvariant();
             
             // Should not match if IgnoreCaseOnDeserialize not set
-            var setOff = JsonParameters.Default.WithCaseSensitivity();
+            var setOff = JsonSettings.Default.WithCaseSensitivity();
             
             StaticClassExample.StringProperty = "property modified";
             StaticClassExample.StringFieldValue = "field modified";

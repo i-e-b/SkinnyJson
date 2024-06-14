@@ -6,16 +6,12 @@ namespace SkinnyJson {
     /// Dictionary with thread locks
     /// </summary>
 	internal class SafeDictionary<TKey, TValue> {
-		private readonly object _padlock = new object();
-		private readonly Dictionary<TKey, TValue> _dictionary;
+		private readonly object _lock = new();
+		private readonly Dictionary<TKey, TValue> _dictionary = new();
 
-		public SafeDictionary () {
-			_dictionary = new Dictionary<TKey, TValue>();
-		}
-
-        public TKey[] Keys {
+		public TKey[] Keys {
             get {
-                lock(_padlock){
+                lock(_lock){
                     return _dictionary.Keys.ToArray();
                 }
             }
@@ -23,25 +19,25 @@ namespace SkinnyJson {
 
         public bool HasKey(TKey key)
         {
-	        lock (_padlock)
+	        lock (_lock)
 	        {
 		        return _dictionary.ContainsKey(key);
 	        }
         }
 
         public bool TryGetValue (TKey key, out TValue value) {
-			lock (_padlock) {
+			lock (_lock) {
 			    return _dictionary.TryGetValue(key, out value);
             }
 		}
 
 		public TValue this[TKey key] {
-			get { lock (_padlock) return _dictionary[key]; }
-			set { lock (_padlock) _dictionary[key] = value; }
+			get { lock (_lock) return _dictionary[key]; }
+			set { lock (_lock) _dictionary[key] = value; }
 		}
 
 		public void Add (TKey key, TValue value) {
-			lock (_padlock) {
+			lock (_lock) {
 				if (_dictionary.ContainsKey(key) == false) _dictionary.Add(key, value);
 			}
 		}
@@ -51,18 +47,10 @@ namespace SkinnyJson {
 		/// </summary>
 		public void TryAdd(TKey key, TValue value)
 		{
-			lock (_padlock)
+			lock (_lock)
 			{
 				if (_dictionary.ContainsKey(key)) return;
 				_dictionary.Add(key, value);
-			}
-		}
-
-		public void Clear()
-		{
-			lock (_padlock)
-			{
-				_dictionary.Clear();
 			}
 		}
     }

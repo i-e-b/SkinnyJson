@@ -58,7 +58,7 @@ namespace SkinnyJson.Unit.Tests
         [Test]
         public void Can_defrost_stream_into_a_dynamic_and_read_from_the_result_with_custom_encoding()
         {
-            var setBeu = JsonParameters.Default.WithEncoding(Encoding.BigEndianUnicode);
+            var setBeu = JsonSettings.Default.WithEncoding(Encoding.BigEndianUnicode);
             var original = "{\"Hello\":{\"Bob\":{\"Item1\":1,\"Item2\":2,\"Item3\":[1,2,3]}},\"World\":{\"Sam\":{\"Item1\":3,\"Item2\":\"What?\",\"Item3\":[10,20,30]}}}";
             using var stream = new MemoryStream(Encoding.BigEndianUnicode.GetBytes(original));
             dynamic subject = Json.DefrostDynamic(stream, setBeu);

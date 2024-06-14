@@ -45,7 +45,7 @@ namespace SkinnyJson.Unit.Tests
 
             // Write:
             using (var fs_out = File.Open(path, FileMode.Create, FileAccess.Write)){
-                Json.Freeze(original, fs_out, Encoding.UTF32);
+                Json.Freeze(original, fs_out, JsonSettings.Default.WithEncoding(Encoding.UTF32));
             }
 
             var result_1 = File.ReadAllText(path, Encoding.UTF32);
@@ -54,7 +54,7 @@ namespace SkinnyJson.Unit.Tests
             ISimpleObject result;
             // Read:
             using (var fs_in = File.Open(path, FileMode.Open, FileAccess.Read)){
-                result = Json.Defrost<ISimpleObject>(fs_in, Encoding.UTF32);
+                result = Json.Defrost<ISimpleObject>(fs_in, JsonSettings.Default.WithEncoding(Encoding.UTF32));
             }
 
             Assert.That(result.B, Is.EqualTo(original.B));

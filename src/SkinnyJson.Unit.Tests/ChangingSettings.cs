@@ -16,8 +16,8 @@ namespace SkinnyJson.Unit.Tests
         {
 			var original = ObjectWithoutAnInterface.Make();
 
-            var setOn = new JsonParameters { EnableAnonymousTypes = true};
-            var setOff = new JsonParameters { EnableAnonymousTypes = false, UseTypeExtensions = true};
+            var setOn = new JsonSettings { EnableAnonymousTypes = true};
+            var setOff = new JsonSettings { EnableAnonymousTypes = false, UseTypeExtensions = true};
             
             var on = Json.Freeze(original, setOn);
             var off = Json.Freeze(original, setOff);
@@ -33,10 +33,10 @@ namespace SkinnyJson.Unit.Tests
             var input1 = new OptionalSample { One = "set" };
             var input2 = new OptionalSample { Two = "set" };
             
-            var set1 = new JsonParameters{
+            var set1 = new JsonSettings{
                 SerializeNullValues = true
             };
-            var set2 = new JsonParameters{
+            var set2 = new JsonSettings{
                 SerializeNullValues = false
             };
 
@@ -57,7 +57,7 @@ namespace SkinnyJson.Unit.Tests
         {
             var input = new OptionalSample { One = "set", Three = "set" };
             
-            var settings = new JsonParameters{
+            var settings = new JsonSettings{
                 EnableAnonymousTypes = true,
                 SerializeNullValues = false
             };

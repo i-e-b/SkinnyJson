@@ -5,7 +5,7 @@ Based on FastJson: https://github.com/mgholam/fastJSON
 Nuget:
 
 * Default: https://www.nuget.org/packages/SkinnyJson/
-* Strong-named: https://www.nuget.org/packages/SkinnyJson/
+* Strong-named: https://www.nuget.org/packages/SkinnyJson_SN/
 
 The default is usually ahead of the strong-named version. If you need an updated version of the Strong-Named package, please open a Github issue.
 
