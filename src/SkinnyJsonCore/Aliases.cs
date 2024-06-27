@@ -19,6 +19,9 @@ namespace SkinnyJson
 
         /// <summary> Write an object to a stream as a JSON string </summary>
         public static void Freeze(object obj, Stream target, JsonSettings? settings = null) => Json.Freeze(obj, target, settings);
+        
+        /// <summary> Turn an object into a JSON string encoded to a byte array </summary>
+        public static byte[] FreezeToBytes(object? obj, JsonSettings? settings = null) => Json.FreezeToBytes(obj, settings);
 
         /// <summary> Turn a JSON string into a detected object </summary>
         public static object Defrost(string json, JsonSettings? settings = null) => Json.Defrost(json, settings);

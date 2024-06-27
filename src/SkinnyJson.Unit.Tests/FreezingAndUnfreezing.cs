@@ -26,13 +26,42 @@ namespace SkinnyJson.Unit.Tests {
 			Assert.That(defrosted.B, Is.EqualTo(original.B));
 		}
         
+		[Test]
+		public void Should_be_able_to_freeze_and_unfreeze_objects_as_byte_arrays()
+		{
+			var original = ObjectWithoutAnInterface.Make();
+			var frozen = Json.FreezeToBytes(original);
+			
+			Console.WriteLine(frozen);
+			var defrosted = Json.Defrost<ObjectWithoutAnInterface>(frozen);
+
+			Assert.That(defrosted.A, Is.EqualTo(original.A));
+			Assert.That(defrosted.B, Is.EqualTo(original.B));
+		}
+        
         [Test]
-        public void Should_be_ignore_extra_whitespace_in_json_string()
+        public void Should_ignore_extra_whitespace_in_json_string()
         {
 	        var original = ObjectWithoutAnInterface.Make();
 	        var frozen = Json.Freeze(original);
 	        
 	        frozen = frozen.Replace(":"," \r\n :   \t\t \n "); // any kind of new line, tabs, spaces
+	        
+	        Console.WriteLine(frozen);
+	        var defrosted = Json.Defrost<ObjectWithoutAnInterface>(frozen);
+
+	        Assert.That(defrosted.A, Is.EqualTo(original.A));
+	        Assert.That(defrosted.B, Is.EqualTo(original.B));
+        }
+        
+        [Test]
+        public void Should_encode_newlines_in_json_output()
+        {
+	        var original = ObjectWithoutAnInterface.Make();
+	        original.A = "Line one\r\nLine two\rLine three\nLine four.";
+	        var frozen = Json.Freeze(original);
+
+	        Assert.That(frozen, Contains.Substring("Line one\\r\\nLine two\\rLine three\\nLine four."));
 	        
 	        Console.WriteLine(frozen);
 	        var defrosted = Json.Defrost<ObjectWithoutAnInterface>(frozen);

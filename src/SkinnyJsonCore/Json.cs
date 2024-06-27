@@ -47,6 +47,13 @@ namespace SkinnyJson
 
             return ToJson(obj, settings);
         }
+        
+        /// <summary> Turn an object into a JSON string encoded to a byte array </summary>
+        public static byte[] FreezeToBytes(object? obj, JsonSettings? settings = null)
+        {
+            settings ??= JsonSettings.Default;
+            return settings.StreamEncoding.GetBytes(Freeze(obj, settings));
+        }
 
         /// <summary> Write an object to a stream as a JSON string </summary>
         public static void Freeze(object obj, Stream target, JsonSettings? settings = null)

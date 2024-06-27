@@ -18,6 +18,9 @@
         <member name="M:SkinnyJson.SJson.Freeze(System.Object,System.IO.Stream,SkinnyJson.JsonSettings)">
             <summary> Write an object to a stream as a JSON string </summary>
         </member>
+        <member name="M:SkinnyJson.SJson.FreezeToBytes(System.Object,SkinnyJson.JsonSettings)">
+            <summary> Turn an object into a JSON string encoded to a byte array </summary>
+        </member>
         <member name="M:SkinnyJson.SJson.Defrost(System.String,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON string into a detected object </summary>
         </member>
@@ -245,6 +248,9 @@
         </member>
         <member name="M:SkinnyJson.Json.Freeze(System.Object,SkinnyJson.JsonSettings)">
             <summary> Turn an object into a JSON string </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.FreezeToBytes(System.Object,SkinnyJson.JsonSettings)">
+            <summary> Turn an object into a JSON string encoded to a byte array </summary>
         </member>
         <member name="M:SkinnyJson.Json.Freeze(System.Object,System.IO.Stream,SkinnyJson.JsonSettings)">
             <summary> Write an object to a stream as a JSON string </summary>
