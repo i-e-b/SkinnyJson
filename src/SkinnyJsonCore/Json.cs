@@ -56,8 +56,9 @@ namespace SkinnyJson
         }
 
         /// <summary> Write an object to a stream as a JSON string </summary>
-        public static void Freeze(object obj, Stream target, JsonSettings? settings = null)
+        public static void Freeze(object? obj, Stream target, JsonSettings? settings = null)
         {
+            if (obj == null) return;
             settings ??= JsonSettings.Default;
 
             if (obj is DynamicWrapper dyn) {

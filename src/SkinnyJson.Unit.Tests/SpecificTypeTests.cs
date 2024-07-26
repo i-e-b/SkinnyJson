@@ -244,7 +244,28 @@ namespace SkinnyJson.Unit.Tests
             Console.WriteLine(Json.Beautify(Json.Freeze(defrosted)));
         }
 
+        [Test]
+        public void wide_number_to_dictionary_target()
+        {
+            var source = "{\"Dict\":{\"assetbase\":0.0651903,\"loadewcfirmware\":0.0059502,\"initialisegadwallcomms\":5.3E-06,\"updateeseyestatus\":2.7918511,\"updateiotshadow\":0.3504659,\"initialisecomms\":3.1423673,\"loadsettingsxml\":1.6207291,\"loaddatalogfromdb\":0.0932174}," +
+                         "\"Arr\":[0.0651903, 0.0059502, 5.3E-06, 2.7918511, 0]}";
+
+            var result = Json.Defrost<WideNumberTarget>(source);
+
+            Assert.That(result.Dict.Count, Is.Not.Zero);
+            Assert.That(result.Dict["initialisegadwallcomms"], Is.EqualTo(5.3E-06));
+            Assert.That(result.Dict["assetbase"], Is.EqualTo(0.0651903));
+            Assert.That(result.Arr[1], Is.EqualTo(0.0059502));
+            Assert.That(result.Arr[4], Is.EqualTo(0.0));
+        }
+
         private static string Quote(string src) => src.Replace('\'', '"');
+    }
+
+    public class WideNumberTarget
+    {
+        public Dictionary<string, double> Dict { get; set; }
+        public List<double> Arr { get; set; }
     }
 
     public class LargeNumericValues

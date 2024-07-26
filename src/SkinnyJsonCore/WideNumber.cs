@@ -7,7 +7,7 @@ namespace SkinnyJson
     /// Holds a representation of various numeric types.
     /// Handles casting to target types
     /// </summary>
-    internal class WideNumber
+    internal class WideNumber :IConvertible
     {
         private readonly double _doubleValue;
         private readonly bool _doubleOk;
@@ -161,5 +161,135 @@ namespace SkinnyJson
             if (_longOk) return _longValue;
             throw new Exception("Could not convert numeric value to 'double' type");
         }
+
+        #region IConvertable
+        public TypeCode GetTypeCode()
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool ToBoolean(IFormatProvider provider)
+        {
+            if (_longOk) return _longValue != 0;
+            if (_doubleOk) return (_doubleValue != 0) ;
+            if (_decimalOk) return (_decimalValue != 0);
+            return !string.IsNullOrEmpty(_original);
+        }
+
+        public byte ToByte(IFormatProvider provider)
+        {
+            if (_longOk) return (byte)_longValue;
+            if (_doubleOk) return (byte)_doubleValue;
+            if (_decimalOk) return (byte)_decimalValue;
+            return 0;
+        }
+
+        public char ToChar(IFormatProvider provider)
+        {
+            if (_longOk) return (char)_longValue;
+            if (_doubleOk) return (char)_doubleValue;
+            if (_decimalOk) return (char)_decimalValue;
+            return (char)0;
+        }
+
+        public DateTime ToDateTime(IFormatProvider provider)
+        {
+            if (_longOk) return new DateTime(ticks:_longValue);
+            if (_doubleOk) return new DateTime(ticks:(long)_doubleValue);
+            if (_decimalOk) return new DateTime(ticks:(long)_decimalValue);
+            return DateTime.MinValue;
+        }
+
+        public decimal ToDecimal(IFormatProvider provider)
+        {
+            if (_longOk) return _longValue;
+            if (_doubleOk) return (decimal)_doubleValue;
+            if (_decimalOk) return _decimalValue;
+            return 0m;
+        }
+
+        public double ToDouble(IFormatProvider provider)
+        {
+            if (_longOk) return _longValue;
+            if (_doubleOk) return _doubleValue;
+            if (_decimalOk) return (double)_decimalValue;
+            return 0;
+        }
+
+        public short ToInt16(IFormatProvider provider)
+        {
+            if (_longOk) return (short)_longValue;
+            if (_doubleOk) return (short)_doubleValue;
+            if (_decimalOk) return (short)_decimalValue;
+            return 0;
+        }
+
+        public int ToInt32(IFormatProvider provider)
+        {
+            if (_longOk) return (int)_longValue;
+            if (_doubleOk) return (int)_doubleValue;
+            if (_decimalOk) return (int)_decimalValue;
+            return 0;
+        }
+
+        public long ToInt64(IFormatProvider provider)
+        {
+            if (_longOk) return _longValue;
+            if (_doubleOk) return (long)_doubleValue;
+            if (_decimalOk) return (long)_decimalValue;
+            return 0;
+        }
+
+        public sbyte ToSByte(IFormatProvider provider)
+        {
+            if (_longOk) return (sbyte)_longValue;
+            if (_doubleOk) return (sbyte)_doubleValue;
+            if (_decimalOk) return (sbyte)_decimalValue;
+            return 0;
+        }
+
+        public float ToSingle(IFormatProvider provider)
+        {
+            if (_longOk) return _longValue;
+            if (_doubleOk) return (float)_doubleValue;
+            if (_decimalOk) return (float)_decimalValue;
+            return 0;
+        }
+
+        public string ToString(IFormatProvider provider)
+        {
+            return _original;
+        }
+
+        public object ToType(Type conversionType, IFormatProvider provider)
+        {
+            if (conversionType == typeof(string)) return _original;
+            return CastTo(conversionType, out _) ?? throw new Exception($"Cannot cast numeric type to {conversionType.Name}");
+        }
+
+        public ushort ToUInt16(IFormatProvider provider)
+        {
+            if (_longOk) return (ushort)_longValue;
+            if (_doubleOk) return (ushort)_doubleValue;
+            if (_decimalOk) return (ushort)_decimalValue;
+            return 0;
+        }
+
+        public uint ToUInt32(IFormatProvider provider)
+        {
+            if (_longOk) return (uint)_longValue;
+            if (_doubleOk) return (uint)_doubleValue;
+            if (_decimalOk) return (uint)_decimalValue;
+            return 0;
+        }
+
+        public ulong ToUInt64(IFormatProvider provider)
+        {
+            if (_longOk) return (ulong)_longValue;
+            if (_doubleOk) return (ulong)_doubleValue;
+            if (_decimalOk) return (ulong)_decimalValue;
+            return 0;
+        }
+        #endregion IConvertible
     }
 }

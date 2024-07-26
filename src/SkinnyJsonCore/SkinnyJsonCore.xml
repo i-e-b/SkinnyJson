@@ -683,6 +683,28 @@
             Add a key/value pair only if the key is not already present
             </summary>
         </member>
+        <member name="T:SkinnyJson.Sync">
+            <summary>
+            Helper class to properly wait for async tasks
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Sync.Run``1(System.Func{System.Threading.Tasks.Task{``0}})">
+            <summary>
+            Run an async function synchronously and return the result
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Sync.Run(System.Func{System.Threading.Tasks.Task})">
+            <summary>
+            Run an async function synchronously
+            </summary>
+        </member>
+        <member name="T:SkinnyJson.SyncStreamWrapper">
+            <summary>
+            Wrapper that tries to use either sync or async methods of a base stream.
+            This prefers the synchronous methods, and falls back to a sync-runner-helper
+            if not supported.
+            </summary>
+        </member>
         <member name="F:SkinnyJson.TypeManager.CacheSet.NamedTypeCache">
             <summary> Used to map incoming <c>"$type"</c> keys to dotnet types </summary>
         </member>

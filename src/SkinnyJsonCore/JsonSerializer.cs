@@ -31,7 +31,7 @@ namespace SkinnyJson
         {
             if (!target.CanWrite) throw new Exception("Output stream must be writable");
 
-            _output = new StreamWriter(target, encoding);
+            _output = new StreamWriter(new SyncStreamWrapper(target), encoding);
             WriteValue(obj);
             _output.Flush();
         }

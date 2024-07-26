@@ -49,6 +49,7 @@
   <ItemGroup>
     <Compile Include="BeautifyTests.cs" />
     <Compile Include="CaseSensitivityTests.cs" />
+    <Compile Include="Helpers\NastyHttpStream.cs" />
     <Compile Include="SpecificNamingTests.cs" />
     <Compile Include="ChangingSettings.cs" />
     <Compile Include="ClarityTests.cs" />
@@ -58,7 +59,7 @@
     <Compile Include="DynamicTypeTests.cs" />
     <Compile Include="ErrorMessages.cs" />
     <Compile Include="ExampleData\RabbitMqClasses.cs" />
-    <Compile Include="FileStreamTests.cs" />
+    <Compile Include="StreamTests.cs" />
     <Compile Include="FillingObjectsTests.cs" />
     <Compile Include="Helpers\ChainedClass.cs" />
     <Compile Include="Helpers\ChainedInterface.cs" />
