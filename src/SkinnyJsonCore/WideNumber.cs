@@ -168,7 +168,7 @@ namespace SkinnyJson
             throw new NotImplementedException();
         }
 
-        public bool ToBoolean(IFormatProvider provider)
+        public bool ToBoolean(IFormatProvider? provider)
         {
             if (_longOk) return _longValue != 0;
             if (_doubleOk) return (_doubleValue != 0) ;
@@ -176,7 +176,7 @@ namespace SkinnyJson
             return !string.IsNullOrEmpty(_original);
         }
 
-        public byte ToByte(IFormatProvider provider)
+        public byte ToByte(IFormatProvider? provider)
         {
             if (_longOk) return (byte)_longValue;
             if (_doubleOk) return (byte)_doubleValue;
@@ -184,7 +184,7 @@ namespace SkinnyJson
             return 0;
         }
 
-        public char ToChar(IFormatProvider provider)
+        public char ToChar(IFormatProvider? provider)
         {
             if (_longOk) return (char)_longValue;
             if (_doubleOk) return (char)_doubleValue;
@@ -192,7 +192,7 @@ namespace SkinnyJson
             return (char)0;
         }
 
-        public DateTime ToDateTime(IFormatProvider provider)
+        public DateTime ToDateTime(IFormatProvider? provider)
         {
             if (_longOk) return new DateTime(ticks:_longValue);
             if (_doubleOk) return new DateTime(ticks:(long)_doubleValue);
@@ -200,7 +200,7 @@ namespace SkinnyJson
             return DateTime.MinValue;
         }
 
-        public decimal ToDecimal(IFormatProvider provider)
+        public decimal ToDecimal(IFormatProvider? provider)
         {
             if (_longOk) return _longValue;
             if (_doubleOk) return (decimal)_doubleValue;
@@ -208,7 +208,7 @@ namespace SkinnyJson
             return 0m;
         }
 
-        public double ToDouble(IFormatProvider provider)
+        public double ToDouble(IFormatProvider? provider)
         {
             if (_longOk) return _longValue;
             if (_doubleOk) return _doubleValue;
@@ -216,7 +216,7 @@ namespace SkinnyJson
             return 0;
         }
 
-        public short ToInt16(IFormatProvider provider)
+        public short ToInt16(IFormatProvider? provider)
         {
             if (_longOk) return (short)_longValue;
             if (_doubleOk) return (short)_doubleValue;
@@ -224,7 +224,7 @@ namespace SkinnyJson
             return 0;
         }
 
-        public int ToInt32(IFormatProvider provider)
+        public int ToInt32(IFormatProvider? provider)
         {
             if (_longOk) return (int)_longValue;
             if (_doubleOk) return (int)_doubleValue;
@@ -232,7 +232,7 @@ namespace SkinnyJson
             return 0;
         }
 
-        public long ToInt64(IFormatProvider provider)
+        public long ToInt64(IFormatProvider? provider)
         {
             if (_longOk) return _longValue;
             if (_doubleOk) return (long)_doubleValue;
@@ -240,7 +240,7 @@ namespace SkinnyJson
             return 0;
         }
 
-        public sbyte ToSByte(IFormatProvider provider)
+        public sbyte ToSByte(IFormatProvider? provider)
         {
             if (_longOk) return (sbyte)_longValue;
             if (_doubleOk) return (sbyte)_doubleValue;
@@ -248,7 +248,7 @@ namespace SkinnyJson
             return 0;
         }
 
-        public float ToSingle(IFormatProvider provider)
+        public float ToSingle(IFormatProvider? provider)
         {
             if (_longOk) return _longValue;
             if (_doubleOk) return (float)_doubleValue;
@@ -256,18 +256,18 @@ namespace SkinnyJson
             return 0;
         }
 
-        public string ToString(IFormatProvider provider)
+        public string ToString(IFormatProvider? provider)
         {
             return _original;
         }
 
-        public object ToType(Type conversionType, IFormatProvider provider)
+        public object ToType(Type conversionType, IFormatProvider? provider)
         {
             if (conversionType == typeof(string)) return _original;
             return CastTo(conversionType, out _) ?? throw new Exception($"Cannot cast numeric type to {conversionType.Name}");
         }
 
-        public ushort ToUInt16(IFormatProvider provider)
+        public ushort ToUInt16(IFormatProvider? provider)
         {
             if (_longOk) return (ushort)_longValue;
             if (_doubleOk) return (ushort)_doubleValue;
@@ -275,7 +275,7 @@ namespace SkinnyJson
             return 0;
         }
 
-        public uint ToUInt32(IFormatProvider provider)
+        public uint ToUInt32(IFormatProvider? provider)
         {
             if (_longOk) return (uint)_longValue;
             if (_doubleOk) return (uint)_doubleValue;
@@ -283,7 +283,7 @@ namespace SkinnyJson
             return 0;
         }
 
-        public ulong ToUInt64(IFormatProvider provider)
+        public ulong ToUInt64(IFormatProvider? provider)
         {
             if (_longOk) return (ulong)_longValue;
             if (_doubleOk) return (ulong)_doubleValue;

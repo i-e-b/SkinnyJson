@@ -798,7 +798,7 @@ namespace SkinnyJson
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to write value from json {v.GetType()} to target object {propertyInfo.changeType?.ToString() ?? "<unknown>"} on property {propertyInfo.Name}", ex);
+                throw new Exception($"Failed to write value from json {v.GetType()} via {setObj.GetType()} to target object {propertyInfo.changeType?.ToString() ?? "<unknown>"} on property {propertyInfo.Name}", ex);
             }
         }
 
@@ -859,13 +859,17 @@ namespace SkinnyJson
                 setObj = CastNumericType(inputValue, propertyInfo, out precisionLoss)
                          ?? throw new Exception($"Failed to map input type '{inputValue.GetType().Name}' to target '{propertyInfo.parameterType?.Name ?? "<null>"}'");
 
+            else if (propertyInfo.isByteArray)
+                setObj = ConvertBytes(inputValue);
+            else if (propertyInfo.isEnumerable && propertyInfo.bt == typeof(byte))
+                setObj = CreateGenericList(ConvertBytes(inputValue), propertyInfo.parameterType, propertyInfo.bt, globalTypes, settings);
+            else if (propertyInfo.changeType == typeof(Stream))
+                setObj = new MemoryStream(ConvertBytes(inputValue));
+            
             else if (propertyInfo.isString || propertyInfo.parameterType == typeof(string)) setObj = inputValue;
             else if (propertyInfo.isBool) setObj = InterpretBool(inputValue, settings);
             else if (propertyInfo.isGenericType && propertyInfo is { isValueType: false, isDictionary: false, isEnumerable: true } && inputValue is IEnumerable)
                 setObj = CreateGenericList((ArrayList)inputValue, propertyInfo.parameterType, propertyInfo.bt, globalTypes, settings);
-            
-            else if (propertyInfo.isByteArray)
-                setObj = ConvertBytes(inputValue);
 
             else if (propertyInfo is { isArray: true, isValueType: false })
                 setObj = CreateArray((ArrayList)inputValue, propertyInfo.bt, globalTypes, settings);
@@ -947,13 +951,35 @@ namespace SkinnyJson
         /// </summary>
         private static byte[] ConvertBytes(object inputValue)
         {
+            // Incoming value might be a list of numeric values, which we will assume are bytes
+            if (inputValue is ArrayList list)
+            {
+                var result = new List<byte>();
+                foreach (var item in list)
+                {
+                    if (item is WideNumber wn) result.Add(wn.ToByte(null));
+                    else throw new Exception("Input to byte array was not valid numeric list");
+                }
+                return result.ToArray();
+            }
+
+            // Otherwise, it should be a hex or base64 string.
+            var inputStr = inputValue.ToString().Trim();
+            if (string.IsNullOrWhiteSpace(inputStr)) return new byte[0];
+            
+            // If it has a hex marker, only accept hex
+            if (inputStr[0] == '$') {
+                return HexToByteArray(inputStr.Substring(1)) ?? throw new Exception("Input to byte array was not valid hex string");
+            }
+
+            // Otherwise, try reading as base64, and use hex as a back-up
             try
             {
-                return Convert.FromBase64String((string)inputValue);
+                return Convert.FromBase64String(inputStr);
             }
             catch
             {
-                return HexToByteArray((string)inputValue) ?? throw new Exception("Input to byte array was not valid Base64 or hex string");
+                return HexToByteArray(inputStr) ?? throw new Exception("Input to byte array was not valid Base64 or hex string");
             }
         }
 

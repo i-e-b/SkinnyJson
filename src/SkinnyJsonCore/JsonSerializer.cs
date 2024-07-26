@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -163,6 +164,9 @@ namespace SkinnyJson
 		                    WriteDataTable(table);
 		                    break;
 		                case byte[] bytes:
+                            WriteBytes(bytes);
+                            break;
+                        case IList<byte> bytes:
 		                    WriteBytes(bytes);
 		                    break;
 		                case Array _:
@@ -178,6 +182,9 @@ namespace SkinnyJson
 		                    break;
                         case Type typeDef:
                             WriteString(typeDef.FullName ?? typeDef.Name);
+                            break;
+                        case Stream stream:
+                            WriteStream(stream);
                             break;
 		                default:
 		                    WriteObject(obj, _settings);
@@ -209,9 +216,35 @@ namespace SkinnyJson
                 WriteBytes(g.ToByteArray());
         }
 
+        private void WriteBytes(IEnumerable<byte> byteList)
+        {
+            var bytes = byteList.ToArray();
+            WriteStringFast(Convert.ToBase64String(bytes, 0, bytes.Length, Base64FormattingOptions.None));
+        }
+        
         private void WriteBytes(byte[] bytes)
         {
             WriteStringFast(Convert.ToBase64String(bytes, 0, bytes.Length, Base64FormattingOptions.None));
+        }
+
+        private void WriteStream(Stream src)
+        {
+            if (!src.CanRead) return;
+            var stream = new SyncStreamWrapper(src);
+            var buffer = new byte[99]; // 3 bytes => 4 base62 chars, so we want all but the last chunk to be a multiple of 3
+
+            var sb = new StringBuilder();
+            while (true)
+            {
+                var read = stream.Read(buffer, 0, buffer.Length);
+                if (read > 0)
+                {
+                    sb.Append(Convert.ToBase64String(buffer, 0, read, Base64FormattingOptions.None));
+                }
+
+                if (read < buffer.Length) break;
+            }
+            WriteStringFast(sb.ToString());
         }
 
         private void WriteDateTime(DateTime dateTime)
@@ -484,7 +517,8 @@ namespace SkinnyJson
         }
 
         /// <summary>
-        /// Directly output strings we know won't need escape sequences
+        /// Directly output strings we know won't need escape sequences.
+        /// Otherwise use <see cref="WriteString"/>
         /// </summary>
         private void WriteStringFast(string? s)
         {

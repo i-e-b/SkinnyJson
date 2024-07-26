@@ -510,7 +510,8 @@
         </member>
         <member name="M:SkinnyJson.JsonSerializer.WriteStringFast(System.String)">
             <summary>
-            Directly output strings we know won't need escape sequences
+            Directly output strings we know won't need escape sequences.
+            Otherwise use <see cref="M:SkinnyJson.JsonSerializer.WriteString(System.String)"/>
             </summary>
         </member>
         <member name="M:SkinnyJson.JsonSerializer.WriteString(System.String)">
