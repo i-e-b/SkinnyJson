@@ -36,13 +36,19 @@ namespace SkinnyJson
         public static string WrapperType(object obj, JsonSettings? settings = null) => Json.WrapperType(obj, settings);
 
         /// <summary> Turn a JSON string into a specific object </summary>
-        public static T Defrost<[MeansImplicitUse] T>(string json, JsonSettings? settings = null) => Json.Defrost<T>(json, settings);
+        public static T Defrost
+            <[MeansImplicitUse(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature, ImplicitUseTargetFlags.WithMembers)]T>
+            (string json, JsonSettings? settings = null) => Json.Defrost<T>(json, settings);
 
         /// <summary> Turn a JSON data stream into a specific object </summary>
-        public static T Defrost<[MeansImplicitUse] T>(Stream json, JsonSettings? settings = null) => Json.Defrost<T>(json, settings);
+        public static T Defrost
+            <[MeansImplicitUse(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature, ImplicitUseTargetFlags.WithMembers)]T>
+            (Stream json, JsonSettings? settings = null) => Json.Defrost<T>(json, settings);
 
         /// <summary> Turn a JSON byte array into a specific object </summary>
-        public static T Defrost<[MeansImplicitUse] T>(byte[] json, JsonSettings? settings = null) => Json.Defrost<T>(json, settings);
+        public static T Defrost
+            <[MeansImplicitUse(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature, ImplicitUseTargetFlags.WithMembers)]T>
+            (byte[] json, JsonSettings? settings = null) => Json.Defrost<T>(json, settings);
 
         /// <summary> Turn a JSON string into a runtime type </summary>
         public static object Defrost(string json, Type runtimeType, JsonSettings? settings = null) => Json.Defrost(json, runtimeType, settings);
@@ -69,10 +75,14 @@ namespace SkinnyJson
         /// An empty path is equivalent to `Defrost&lt;T&gt;`</param>
         /// <param name="json">The JSON document string to read</param>
         /// <param name="settings">Json parsing settings</param>
-        public static IEnumerable<T> DefrostFromPath<[MeansImplicitUse] T>(string path, string json, JsonSettings? settings = null) => Json.DefrostFromPath<T>(path, json, settings);
+        public static IEnumerable<T> DefrostFromPath
+            <[MeansImplicitUse(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature, ImplicitUseTargetFlags.WithMembers)]T>
+            (string path, string json, JsonSettings? settings = null) => Json.DefrostFromPath<T>(path, json, settings);
 
         /// <summary> Create a copy of an object through serialisation </summary>
-        public static T Clone<[MeansImplicitUse] T>(T obj) => Json.Clone<T>(obj);
+        public static T Clone
+            <[MeansImplicitUse(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature, ImplicitUseTargetFlags.WithMembers)]T>
+            (T obj) => Json.Clone<T>(obj);
 
         /// <summary>Read a JSON object into an anonymous .Net object</summary>
         public static object Parse(string json, JsonSettings? settings = null) => Json.Parse(json, settings);
