@@ -409,6 +409,76 @@ namespace SkinnyJson.Unit.Tests {
 	        
         }
 
+        [Test]
+        public void Can_defrost_an_integer_to_an_enum_type()
+        {
+	        const string expected = "{\"Nullable\":1,\"Normal\":2}";
+	        var result = Json.Defrost<EnumContainer>(expected);
+
+	        Assert.That(result.Nullable, Is.EqualTo(ContainerEnum.One));
+	        Assert.That(result.Normal, Is.EqualTo(ContainerEnum.Two));
+        }
+
+        [Test]
+        public void Can_defrost_an_integer_string_to_an_enum_type()
+        {
+	        const string expected = "{\"Nullable\":\"2\",\"Normal\":\"3\"}";
+	        var result = Json.Defrost<EnumContainer>(expected);
+
+	        Assert.That(result.Nullable, Is.EqualTo(ContainerEnum.Two));
+	        Assert.That(result.Normal, Is.EqualTo((ContainerEnum)3));
+        }
+
+        [Test]
+        public void Can_defrost_a_string_to_an_enum_type()
+        {
+	        const string expected = "{\"Nullable\":\"One\",\"Normal\":\"Two\"}";
+	        var result = Json.Defrost<EnumContainer>(expected);
+
+	        Assert.That(result.Nullable, Is.EqualTo(ContainerEnum.One));
+	        Assert.That(result.Normal, Is.EqualTo(ContainerEnum.Two));
+        }
+
+        [Test]
+        public void matched_enum_type_freezes_to_a_string()
+        {
+	        var actual = Json.Freeze(new EnumContainer
+	        {
+		        Nullable = ContainerEnum.Two,
+		        Normal = ContainerEnum.One
+	        });
+
+	        const string expected = "{\"Nullable\":\"Two\",\"Normal\":\"One\"}";
+
+	        Assert.That(actual, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void unmatched_enum_type_freezes_to_base_type()
+        {
+	        var actual = Json.Freeze(new EnumContainer
+	        {
+		        Nullable = (ContainerEnum)3,
+		        Normal = (ContainerEnum)4
+	        });
+
+	        const string expected = "{\"Nullable\":\"3\",\"Normal\":\"4\"}";
+
+	        Assert.That(actual, Is.EqualTo(expected));
+        }
+
         private static string Quote(string str) => str.Replace('\'', '"');
     }
+}
+
+public class EnumContainer
+{
+	public ContainerEnum? Nullable { get; set; }
+	public ContainerEnum Normal { get; set; }
+}
+
+public enum ContainerEnum
+{
+	One = 1,
+	Two = 2
 }
