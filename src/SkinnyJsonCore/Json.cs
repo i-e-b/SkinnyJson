@@ -696,14 +696,14 @@ namespace SkinnyJson
             var targetType = targetObject?.GetType() ?? type;
             if (targetType is null) throw new Exception("Unable to determine type of object");
 
-            var props = GetProperties(targetType, targetType.Name, settings);
+            var props = GetProperties(targetType, targetType.Name, settings, warnings);
             if (!IsDictionary(targetType) && NoPropertiesMatch(props, jsonValues.Keys, settings))
             {
                 if (!settings.IgnoreCaseOnDeserialize &&
                     warnings is not null &&
                     PropertiesWouldMatchCaseInsensitive(props, jsonValues.Keys))
                 {
-                    warnings.Append($"; Properties would match if {nameof(settings.IgnoreCaseOnDeserialize)} was set to true");
+                    warnings.Append($"Properties would match if {nameof(settings.IgnoreCaseOnDeserialize)} was set to true");
                 }
 
                 if (jsonValues.Count > 0)
@@ -713,7 +713,7 @@ namespace SkinnyJson
                     {
                         // if we are doing strict matching (the default), then reject the mapping
                         // (otherwise we will continue and return whatever container we made)
-                        warnings?.Append($"; Expected to match at least one of [{string.Join(", ", jsonValues.Keys)}]");
+                        warnings?.Append($"Expected to match at least one of [{string.Join(", ", jsonValues.Keys)}]");
                         return null;
                     }
                     
@@ -1054,15 +1054,15 @@ namespace SkinnyJson
         /// Read the properties and public fields of a type.
         /// In special cases, this will also read private fields
         /// </summary>
-        private static SafeDictionary<string, TypePropertyInfo> GetProperties(Type type, string typename, JsonSettings settings)
+        private static SafeDictionary<string, TypePropertyInfo> GetProperties(Type type, string typename, JsonSettings settings, WarningSet? warnings)
         {
             var usePrivateFields = typename.StartsWith("Tuple`", StringComparison.Ordinal) || IsAnonymousType(type);
 
-            //if (_propertyCache.TryGetValue(typename, out SafeDictionary<string, TypePropertyInfo> sd)) return sd;
             if (TypeManager.GetPropertySet(type, settings, out var sd)) return sd;
             sd = new SafeDictionary<string, TypePropertyInfo>();
 
             var pr = new List<PropertyInfo>();
+            var getOnlyProperties = new List<PropertyInfo>();
 
             // Instance fields and static fields
             var fi = new List<FieldInfo>();
@@ -1109,13 +1109,42 @@ namespace SkinnyJson
                 var d = TypeManager.CreateMyProp(p.PropertyType, p.Name);
                 d.CanWrite = p.CanWrite;
                 d.setter = TypeManager.CreateSetMethod(p);
-                if (d.setter == null) continue;
+                if (d.setter == null)
+                {
+                    if (settings.SearchForBackingFields) getOnlyProperties.Add(p);
+                    else warnings?.Append($"Property '{p.Name}' has no 'set'");
+                    continue;
+                }
+
                 d.getter = TypeManager.CreateGetMethod(p);
                 sd.Add(p.Name, d);
                 if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(p.Name), d);
                 foreach (var alt in TypeManager.GetAlternativeNames(p)) sd.TryAdd(alt, d);
             }
-            
+
+            if (settings.SearchForBackingFields)
+            {
+                var potentialBackingFields = type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance).ToList();
+                foreach (var prop in getOnlyProperties)
+                {
+                    var nameGuess = "<" + prop.Name + ">"; // This is very dependent on C# compiler internals
+                    var candidate = potentialBackingFields.FirstOrDefault(f => f.Name.Contains(nameGuess));
+                    if (candidate is null)
+                    {
+                        warnings?.Append($"Property '{prop.Name}' has no 'set'");
+                    }
+                    else
+                    {
+                        var d = TypeManager.CreateMyProp(candidate.FieldType, candidate.Name);
+                        d.setter = TypeManager.CreateSetField(type, candidate);
+                        d.getter = TypeManager.CreateGetField(type, candidate);
+                        sd.Add(prop.Name, d);
+                        if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(prop.Name), d);
+                        foreach (var alt in TypeManager.GetAlternativeNames(prop)) sd.TryAdd(alt, d);
+                    }
+                }
+            }
+
             // Static properties are special
             var staticProps = type.GetProperties(BindingFlags.Public | BindingFlags.Static);
             foreach (var sp in staticProps)

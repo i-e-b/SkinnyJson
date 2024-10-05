@@ -9,13 +9,14 @@ namespace SkinnyJson
 
         public void Append(string msg)
         {
+            if (string.IsNullOrWhiteSpace(msg)) return;
             _messages.Add(msg);
         }
 
         public override string ToString()
         {
             if (_messages.Count < 1) return "";
-            return string.Join("; ", _messages);
+            return ": " + string.Join("; ", _messages);
         }
     }
 }

@@ -186,6 +186,11 @@ namespace SkinnyJson
         public bool EnableAnonymousTypes { get; init; } = true;
 
         /// <summary>
+        /// Default true. When set, the deserialiser will try to find and write to backing fields for get-only properties.
+        /// </summary>
+        public bool SearchForBackingFields { get; init; } = true;
+
+        /// <summary>
         /// Add type and schema information to output JSON, using $type, $types, $schema and $map properties.
         /// </summary>
         public bool UseTypeExtensions { get; init; } = false;

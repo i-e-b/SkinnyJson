@@ -76,6 +76,7 @@
     <Compile Include="SpecificTypeTests.cs" />
     <Compile Include="StaticClassTests.cs" />
     <Compile Include="FreezeAndDefrostStructs.cs" />
+    <Compile Include="TrickyTargets.cs" />
     <Compile Include="UnfreezeSubtypeTests.cs" />
   </ItemGroup>
   <ItemGroup>

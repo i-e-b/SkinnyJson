@@ -429,7 +429,7 @@
             If object is null, we will attempt to write to a static member.
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.GetProperties(System.Type,System.String,SkinnyJson.JsonSettings)">
+        <member name="M:SkinnyJson.Json.GetProperties(System.Type,System.String,SkinnyJson.JsonSettings,SkinnyJson.WarningSet)">
             <summary>
             Read the properties and public fields of a type.
             In special cases, this will also read private fields
@@ -640,6 +640,11 @@
             <p/>
             Overrides `UseExtensions` and `UsingGlobalTypes` 
             Directly serialising an anonymous type will use these settings for that call, without needing a global setting.
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonSettings.SearchForBackingFields">
+            <summary>
+            Default true. When set, the deserialiser will try to find and write to backing fields for get-only properties.
             </summary>
         </member>
         <member name="P:SkinnyJson.JsonSettings.UseTypeExtensions">
