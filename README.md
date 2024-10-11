@@ -1,13 +1,8 @@
 SkinnyJson
 ==========
-Based on FastJson: https://github.com/mgholam/fastJSON
 
-Nuget:
-
-* Default: https://www.nuget.org/packages/SkinnyJson/
-* Strong-named: https://www.nuget.org/packages/SkinnyJson_SN/
-
-The default is usually ahead of the strong-named version. If you need an updated version of the Strong-Named package, please open a Github issue.
+* NuGet: https://www.nuget.org/packages/SkinnyJson/
+* GitHub: https://github.com/i-e-b/SkinnyJson
 
 SkinnyJson has a simple interface, and handles interface based serialisation better than most other .Net json libraries.
 SkinnyJson was designed to handle Event Store messages, and is tuned to
@@ -62,3 +57,5 @@ string newJson = Json.Edit(oldJson, d => {
 ```
 
 See the test cases for deeper examples
+
+Based on FastJson: https://github.com/mgholam/fastJSON

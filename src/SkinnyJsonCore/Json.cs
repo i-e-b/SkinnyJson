@@ -1081,19 +1081,27 @@ namespace SkinnyJson
 
             foreach (var f in fi)
             {
-                var d = TypeManager.CreateMyProp(f.FieldType, f.Name);
-                d.setter = TypeManager.CreateSetField(type, f);
-                d.getter = TypeManager.CreateGetField(type, f);
+                try
+                {
+                    var d = TypeManager.CreateMyProp(f.FieldType, f.Name);
+                    d.setter = TypeManager.CreateSetField(type, f);
+                    d.getter = TypeManager.CreateGetField(type, f);
 
-                sd.Add(f.Name, d);
-                if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(f.Name), d);
-                if (usePrivateFields){
-                    var privateName = f.Name.Replace("m_", "");
-                    sd.Add(AnonFieldFilter(privateName), d);
-                    if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(privateName), d);
+                    sd.Add(f.Name, d);
+                    if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(f.Name), d);
+                    if (usePrivateFields)
+                    {
+                        var privateName = f.Name.Replace("m_", "");
+                        sd.Add(AnonFieldFilter(privateName), d);
+                        if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(privateName), d);
+                    }
+
+                    foreach (var alt in TypeManager.GetAlternativeNames(f)) sd.TryAdd(alt, d);
                 }
-                
-                foreach (var alt in TypeManager.GetAlternativeNames(f)) sd.TryAdd(alt, d);
+                catch
+                {
+                    // Ignore
+                }
             }
 
             // Instance properties
@@ -1106,42 +1114,63 @@ namespace SkinnyJson
 
             foreach (var p in pr)
             {
-                var d = TypeManager.CreateMyProp(p.PropertyType, p.Name);
-                d.CanWrite = p.CanWrite;
-                d.setter = TypeManager.CreateSetMethod(p);
-                if (d.setter == null)
+                try
                 {
-                    if (settings.SearchForBackingFields) getOnlyProperties.Add(p);
-                    else warnings?.Append($"Property '{p.Name}' has no 'set'");
-                    continue;
-                }
+                    var d = TypeManager.CreateMyProp(p.PropertyType, p.Name);
+                    d.CanWrite = p.CanWrite;
+                    d.setter = TypeManager.CreateSetMethod(p);
+                    if (d.setter == null)
+                    {
+                        if (settings.SearchForBackingFields) getOnlyProperties.Add(p);
+                        else warnings?.Append($"Property '{p.Name}' has no 'set'");
+                        continue;
+                    }
 
-                d.getter = TypeManager.CreateGetMethod(p);
-                sd.Add(p.Name, d);
-                if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(p.Name), d);
-                foreach (var alt in TypeManager.GetAlternativeNames(p)) sd.TryAdd(alt, d);
+                    d.getter = TypeManager.CreateGetMethod(p);
+                    sd.Add(p.Name, d);
+                    if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(p.Name), d);
+                    foreach (var alt in TypeManager.GetAlternativeNames(p)) sd.TryAdd(alt, d);
+                }
+                catch
+                {
+                    // Ignore
+                }
             }
 
             if (settings.SearchForBackingFields)
             {
-                var potentialBackingFields = type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance).ToList();
-                foreach (var prop in getOnlyProperties)
+                try
                 {
-                    var nameGuess = "<" + prop.Name + ">"; // This is very dependent on C# compiler internals
-                    var candidate = potentialBackingFields.FirstOrDefault(f => f.Name.Contains(nameGuess));
-                    if (candidate is null)
+                    var potentialBackingFields = type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance).ToList();
+                    foreach (var prop in getOnlyProperties)
                     {
-                        warnings?.Append($"Property '{prop.Name}' has no 'set'");
+                        try
+                        {
+                            var nameGuess = "<" + prop.Name + ">"; // This is very dependent on C# compiler internals
+                            var candidate = potentialBackingFields.FirstOrDefault(f => f.Name.Contains(nameGuess));
+                            if (candidate is null)
+                            {
+                                warnings?.Append($"Property '{prop.Name}' has no 'set'");
+                            }
+                            else
+                            {
+                                var d = TypeManager.CreateMyProp(candidate.FieldType, candidate.Name);
+                                d.setter = TypeManager.CreateSetField(type, candidate);
+                                d.getter = TypeManager.CreateGetField(type, candidate);
+                                sd.Add(prop.Name, d);
+                                if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(prop.Name), d);
+                                foreach (var alt in TypeManager.GetAlternativeNames(prop)) sd.TryAdd(alt, d);
+                            }
+                        }
+                        catch
+                        {
+                            //Ignore
+                        }
                     }
-                    else
-                    {
-                        var d = TypeManager.CreateMyProp(candidate.FieldType, candidate.Name);
-                        d.setter = TypeManager.CreateSetField(type, candidate);
-                        d.getter = TypeManager.CreateGetField(type, candidate);
-                        sd.Add(prop.Name, d);
-                        if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(prop.Name), d);
-                        foreach (var alt in TypeManager.GetAlternativeNames(prop)) sd.TryAdd(alt, d);
-                    }
+                }
+                catch
+                {
+                    // Ignore
                 }
             }
 
