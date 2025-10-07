@@ -753,9 +753,13 @@ namespace SkinnyJson
 
         private static bool NoPropertiesMatch(SafeDictionary<string, TypePropertyInfo> props, ICollection<string> jsonValuesKeys, JsonSettings settings)
         {
-            return settings.IgnoreCaseOnDeserialize
-                ? jsonValuesKeys.All(jsonKey => !props.HasKey(NormaliseCase(jsonKey))) 
-                : jsonValuesKeys.All(jsonKey => !props.HasKey(jsonKey));
+            if (settings.IgnoreCaseOnDeserialize)
+            {
+                var normProp = props.Keys.Select(NormaliseCase).ToList();
+                return jsonValuesKeys.All(jsonKey => !normProp.Contains(NormaliseCase(jsonKey)));
+            }
+
+            return jsonValuesKeys.All(jsonKey => !props.HasKey(jsonKey));
         }
 
         /// <summary>
