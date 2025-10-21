@@ -1012,6 +1012,34 @@ namespace SkinnyJson
             throw new Exception("Can't interpret '"+o+"' as a boolean");
         }
 
+        private static object TryConvertToTarget(object incomingValue, Type? targetType)
+        {
+            if (targetType is null) return incomingValue;
+
+            var nativeType = incomingValue.GetType();
+
+            // Directly return correct types
+            if (nativeType == targetType) return incomingValue;
+
+            // Try doing a direct conversion
+            if (incomingValue is IConvertible convSrc)
+            {
+                try
+                {
+                    var converted = convSrc.ToType(targetType, null);
+                    // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+                    if (converted is not null) return converted;
+                }
+                catch
+                {
+                    // Ignore
+                }
+            }
+
+            // Return the type itself and hope for the best
+            return incomingValue;
+        }
+
         /// <summary>
         /// Inject a value into an object's property.
         /// If object is null, we will attempt to write to a static member.
@@ -1019,21 +1047,23 @@ namespace SkinnyJson
         private static void WriteValueToTypeInstance(string name, Type? type, object? targetObject, TypePropertyInfo pi, object objSet) {
             try
             {
-                var typ = targetObject?.GetType() ?? type;
-                if (typ is null) throw new Exception("No type information survived into WriteValueToTypeInstance");
+                var containerType = targetObject?.GetType() ?? type;
+                if (containerType is null) throw new Exception("No type information survived into WriteValueToTypeInstance");
 
-                if (typ.IsValueType)
+                var targetType = pi.bt ?? pi.parameterType ?? pi.changeType;
+
+                if (containerType.IsValueType) // Target is a primitive field or property
                 {
-                    var fi = typ.GetField(pi.Name);
+                    var fi = containerType.GetField(pi.Name);
                     if (fi != null)
                     {
-                        fi.SetValue(targetObject!, objSet);
+                        fi.SetValue(targetObject!, TryConvertToTarget(objSet, fi.FieldType));
                         return;
                     }
-                    var pr = typ.GetProperty(pi.Name, BindingFlags.Instance | BindingFlags.Public);
+                    var pr = containerType.GetProperty(pi.Name, BindingFlags.Instance | BindingFlags.Public);
                     if (pr != null)
                     {
-                        pr.SetValue(targetObject!, objSet, null!);
+                        pr.SetValue(targetObject!, TryConvertToTarget(objSet, pr.PropertyType), null!);
                         return;
                     }
                 }
@@ -1044,7 +1074,7 @@ namespace SkinnyJson
                 }
                 else // use reflection name
                 {
-                    pi.setter?.Invoke(targetObject!, objSet, pi.Name);
+                    pi.setter?.Invoke(targetObject!, TryConvertToTarget(objSet, targetType), pi.Name);
                 }
 
             }

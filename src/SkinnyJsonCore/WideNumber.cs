@@ -7,20 +7,20 @@ namespace SkinnyJson
     /// Holds a representation of various numeric types.
     /// Handles casting to target types
     /// </summary>
-    internal class WideNumber :IConvertible
+    internal class WideNumber : IConvertible
     {
         private readonly double _doubleValue;
-        private readonly bool _doubleOk;
-        
+        private readonly bool   _doubleOk;
+
         private readonly decimal _decimalValue;
-        private readonly bool _decimalOk;
-        
+        private readonly bool    _decimalOk;
+
         private readonly ulong _ulongValue;
-        private readonly bool _ulongOk;
-        
+        private readonly bool  _ulongOk;
+
         private readonly long _longValue;
         private readonly bool _longOk;
-        
+
         private readonly string _original;
 
         /// <summary>
@@ -30,9 +30,9 @@ namespace SkinnyJson
         public static bool TryParse(string str, out WideNumber result)
         {
             result = new WideNumber(str);
-            return result._doubleOk||result._decimalOk||result._ulongOk||result._longOk;
+            return result._doubleOk || result._decimalOk || result._ulongOk || result._longOk;
         }
-        
+
         private WideNumber(string str)
         {
             _original = str;
@@ -53,7 +53,7 @@ namespace SkinnyJson
         {
             precisionLoss = false;
             if (type is null) return null;
-            
+
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
                 type = type.GetGenericArguments().FirstOrDefault() ?? throw new Exception("Invalid type definition: nullable wrapper with no internal type defined");
 
@@ -61,14 +61,16 @@ namespace SkinnyJson
             {
                 if (_longOk) return (sbyte)_longValue;
                 if (!_decimalOk) return null;
-                precisionLoss = true; return (sbyte)_decimalValue;
+                precisionLoss = true;
+                return (sbyte)_decimalValue;
             }
 
             if (type == typeof(short))
             {
                 if (_longOk) return (short)_longValue;
                 if (!_decimalOk) return null;
-                precisionLoss = true; return (short)_decimalValue;
+                precisionLoss = true;
+                return (short)_decimalValue;
             }
 
             if (type == typeof(int))
@@ -132,15 +134,22 @@ namespace SkinnyJson
                 precisionLoss = true;
                 return (double)_decimalValue;
             }
-            
+
+            if (type == typeof(string))
+            {
+                return _original;
+            }
+
             return null;
         }
-        
-        public static implicit operator long(WideNumber src) {
+
+        public static implicit operator long(WideNumber src)
+        {
             return src.ToLong();
         }
-        
-        public static implicit operator double(WideNumber src) {
+
+        public static implicit operator double(WideNumber src)
+        {
             return src.ToDouble();
         }
 
@@ -163,6 +172,7 @@ namespace SkinnyJson
         }
 
         #region IConvertable
+
         public TypeCode GetTypeCode()
         {
             throw new NotImplementedException();
@@ -171,7 +181,7 @@ namespace SkinnyJson
         public bool ToBoolean(IFormatProvider? provider)
         {
             if (_longOk) return _longValue != 0;
-            if (_doubleOk) return (_doubleValue != 0) ;
+            if (_doubleOk) return (_doubleValue != 0);
             if (_decimalOk) return (_decimalValue != 0);
             return !string.IsNullOrEmpty(_original);
         }
@@ -194,9 +204,9 @@ namespace SkinnyJson
 
         public DateTime ToDateTime(IFormatProvider? provider)
         {
-            if (_longOk) return new DateTime(ticks:_longValue);
-            if (_doubleOk) return new DateTime(ticks:(long)_doubleValue);
-            if (_decimalOk) return new DateTime(ticks:(long)_decimalValue);
+            if (_longOk) return new DateTime(ticks: _longValue);
+            if (_doubleOk) return new DateTime(ticks: (long)_doubleValue);
+            if (_decimalOk) return new DateTime(ticks: (long)_decimalValue);
             return DateTime.MinValue;
         }
 
@@ -290,6 +300,7 @@ namespace SkinnyJson
             if (_decimalOk) return (ulong)_decimalValue;
             return 0;
         }
+
         #endregion IConvertible
     }
 }

@@ -29,6 +29,19 @@ namespace SkinnyJson.Unit.Tests
 
             Assert.That(defrosted.AssetId, Is.EqualTo("2138"));
         }
+
+        [Test]
+        public void wide_number_to_string()
+        {
+            var defrosted = Json.Defrost<WideNumberConfusionType>("{\"BigNumber\": 2305843009213693952}");
+
+            Assert.That(defrosted.BigNumber, Is.EqualTo("2305843009213693952"));
+        }
+    }
+
+    public class WideNumberConfusionType
+    {
+        public string BigNumber { get; set; } = "";
     }
 
     public class ReadOnlyProperties
