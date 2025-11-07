@@ -874,43 +874,23 @@ namespace SkinnyJson
                 }
                 if (dataSources.Length < 1) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' cannot be used: No 'ReadOnlySpan<byte>' type found");
 
-                // public unsafe ReadOnlySpan(T[] array)
+                // TODO: Get JSON version of the property value (or spoof Utf8JsonReader internals?)
                 var rawData        = Encoding.UTF8.GetBytes("\"Collected\"");
+
+                // public unsafe ReadOnlySpan(T[] array)
                 var dataSourceType = dataSources[0].MakeGenericType(typeof(byte));
                 var dataSource     = Activator.CreateInstance(dataSourceType, new object[] { rawData });
 
+                // Create Utf8JsonReader
                 var reader = Activator.CreateInstance(readerType, new object?[] { dataSource, null });
+                // Must call read on the Utf8JsonReader first: public bool Read()
+                var readCall = readerType.GetMethod("Read", BindingFlags.Public | BindingFlags.Instance);
+                readCall?.Invoke(reader, null);
 
                 try
                 {
                     // result = Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
                     return readMethod.Invoke(serialiser, new[] { reader, targetType, preset });
-                    /*
-        public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        {
-            switch (reader.TokenType)
-            {
-                case JsonTokenType.String when (_converterOptions & EnumConverterOptions.AllowStrings) != 0:
-                    if (TryParseEnumFromString(ref reader, out T result))
-                    {
-                        return result;
-                    }
-                    break;
-
-                case JsonTokenType.Number when (_converterOptions & EnumConverterOptions.AllowNumbers) != 0:
-                    switch (s_enumTypeCode)
-                    {
-                        case TypeCode.Int32 when reader.TryGetInt32(out int int32): return Unsafe.As<int, T>(ref int32);
-                        case TypeCode.UInt32 when reader.TryGetUInt32(out uint uint32): return Unsafe.As<uint, T>(ref uint32);
-                        case TypeCode.Int64 when reader.TryGetInt64(out long int64): return Unsafe.As<long, T>(ref int64);
-                        case TypeCode.UInt64 when reader.TryGetUInt64(out ulong uint64): return Unsafe.As<ulong, T>(ref uint64);
-                        case TypeCode.Byte when reader.TryGetByte(out byte ubyte8): return Unsafe.As<byte, T>(ref ubyte8);
-                        case TypeCode.SByte when reader.TryGetSByte(out sbyte byte8): return Unsafe.As<sbyte, T>(ref byte8);
-                        case TypeCode.Int16 when reader.TryGetInt16(out short int16): return Unsafe.As<short, T>(ref int16);
-                        case TypeCode.UInt16 when reader.TryGetUInt16(out ushort uint16): return Unsafe.As<ushort, T>(ref uint16);
-                    }
-                    break;
-            }*/
                 }
                 catch (Exception ex)
                 {

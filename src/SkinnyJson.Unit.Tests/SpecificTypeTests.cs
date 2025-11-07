@@ -264,6 +264,25 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(result.Arr[4], Is.EqualTo(0.0));
         }
 
+        [Test]
+        public void temp_test()
+        {
+            var data = new ReadOnlySpan<byte>(Encoding.UTF8.GetBytes("\"Collected\""));
+            var src  = new Utf8JsonReader(data);
+
+            var ok = src.Read();
+            Console.WriteLine(src.TokenType.ToString());
+            Assert.That(ok, Is.True);
+
+            var subject   = new JsonStringEnumConverter<EwcSlotCommandPhase>(JsonNamingPolicy.CamelCase, true);
+            var converter = subject.CreateConverter(typeof(EwcSlotCommandPhase), JsonSerializerOptions.Web) as JsonConverter<EwcSlotCommandPhase>;
+            //EnumConverterOptions.AllowNumbers | EnumConverterOptions.AllowStrings
+
+            var result = converter.Read(ref src, typeof(EwcSlotCommandPhase), JsonSerializerOptions.Web);
+
+            Console.WriteLine(result);
+        }
+
         [Test] // Note, we only use the name in [DataMember], [JsonName], or [JsonProperty], other settings are ignored
         public void should_recognise_and_use_common_custom_converters()
         {
@@ -313,7 +332,7 @@ namespace SkinnyJson.Unit.Tests
         /// <inheritdoc />
         public override TEnum Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            return SpecialSerialisingType.FromName<TEnum>(reader.GetString()!, ignoreCase: true);
+           return SpecialSerialisingType.FromName<TEnum>(reader.GetString()!, ignoreCase: true);
         }
 
         /// <inheritdoc />
