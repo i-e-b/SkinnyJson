@@ -12,21 +12,24 @@ namespace SkinnyJson.Unit.Tests
     [TestFixture]
     public class SpecificNamingTests
     {
-        [Test] // Note, we only use the name in [DataMember] or [JsonProperty], other settings are ignored
+        [Test] // Note, we only use the name in [DataMember], [JsonName], or [JsonProperty], other settings are ignored
         public void should_recognise_and_use_common_property_name_overrides()
         {
             var defrosted = Json.Defrost<OverridePropertyType>(
-                "{\"custom-name-one\":\"Value one\", \"custom name two\":\"Value two\", \"CUSTOM_name_THREE\":\"Value three\", \"OriginalNameFour\":\"Value four\"}");
+                "{\"custom-name-one\":\"Value one\", \"custom name two\":\"Value two\", \"CUSTOM_name_THREE\":\"Value three\"," +
+                " \"OriginalNameFour\":\"Value four\", \"Custom_name_five\":\"Value five\"}");
             
             Assert.That(defrosted.OriginalNameOne, Is.EqualTo("Value one"));
             Assert.That(defrosted.OriginalNameTwo, Is.EqualTo("Value two"));
             Assert.That(defrosted.OriginalNameThree, Is.EqualTo("Value three"));
             Assert.That(defrosted.OriginalNameFour, Is.EqualTo("Value four"));
+            Assert.That(defrosted.OriginalNameFive, Is.EqualTo("Value five"));
 
             var frozen = Json.Freeze(defrosted);
             Console.WriteLine(frozen);
 
-            Assert.That(frozen, Is.EqualTo("{\"custom-name-one\":\"Value one\",\"custom name two\":\"Value two\",\"CUSTOM_name_THREE\":\"Value three\",\"OriginalNameFour\":\"Value four\"}"));
+            Assert.That(frozen, Is.EqualTo("{\"custom-name-one\":\"Value one\",\"custom name two\":\"Value two\"," +
+                                           "\"CUSTOM_name_THREE\":\"Value three\",\"OriginalNameFour\":\"Value four\",\"Custom_name_five\":\"Value five\"}"));
         }
         
         
@@ -42,6 +45,9 @@ namespace SkinnyJson.Unit.Tests
             public string? OriginalNameThree { get; set; }
             
             public string? OriginalNameFour { get; set; }
+
+            [JsonName("Custom_name_five")]
+            public string? OriginalNameFive { get; set; }
         }
         
     }

@@ -145,6 +145,50 @@
             This is used to improve error messages
             </summary>
         </member>
+        <member name="T:SkinnyJson.CustomJsonConverterAttribute">
+            <summary>
+            Instructs the serializer to use the specified converter when serialising the decorated property
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.CustomJsonConverterAttribute.ConverterType">
+            <summary>
+            Gets the converter to use
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.CustomJsonConverterAttribute.ConverterParameters">
+            <summary>
+            The parameter list to use when constructing the JsonConverter described by <see cref="P:SkinnyJson.CustomJsonConverterAttribute.ConverterType"/>.
+            If <c>null</c>, the default constructor is used.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.CustomJsonConverterAttribute.#ctor(System.Type)">
+            <summary>
+            Initializes a new instance of the <see cref="T:SkinnyJson.CustomJsonConverterAttribute"/> class.
+            </summary>
+            <param name="converterType">Type of the JsonConverter.</param>
+        </member>
+        <member name="M:SkinnyJson.CustomJsonConverterAttribute.#ctor(System.Type,System.Object[])">
+            <summary>
+            Initializes a new instance of the <see cref="T:SkinnyJson.CustomJsonConverterAttribute"/> class.
+            </summary>
+            <param name="converterType">Type of the converter.</param>
+            <param name="converterParameters">Parameter list to use when constructing the converter. Can be <c>null</c>.</param>
+        </member>
+        <member name="T:SkinnyJson.JsonNameAttribute">
+            <summary>
+            Set a custom name for given property or field.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.JsonNameAttribute.#ctor(System.String)">
+            <summary>
+            Create a new custom name attribute
+            </summary>
+        </member>
+        <member name="P:SkinnyJson.JsonNameAttribute.Name">
+            <summary>
+            Custom name
+            </summary>
+        </member>
         <member name="T:SkinnyJson.DynamicProxy">
             <summary>
             Generates run-time types for Interfaces
@@ -409,6 +453,11 @@
         <member name="M:SkinnyJson.Json.MapJsonValueToObject(System.String,System.Type,System.Object,System.Collections.Generic.IDictionary{System.String,System.Object},System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.SafeDictionary{System.String,SkinnyJson.TypePropertyInfo},SkinnyJson.WarningSet,SkinnyJson.JsonSettings)">
             <summary>
             Map json value dictionary to the properties and fields of a target object instance.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.GetSettableObjectWithCustomSerialiser(System.Type,System.Object,SkinnyJson.TypePropertyInfo,System.Object,SkinnyJson.WarningSet)">
+            <summary>
+            Try to use a custom serialiser declared in a custom attribute
             </summary>
         </member>
         <member name="M:SkinnyJson.Json.MakeSettableObject(System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.TypePropertyInfo,System.Object,SkinnyJson.WarningSet,SkinnyJson.JsonSettings)">
@@ -782,7 +831,7 @@
             or the name of the member directly if not overridden.
             </summary>
         </member>
-        <member name="M:SkinnyJson.TypeManager.CreateMyProp(System.Type,System.String)">
+        <member name="M:SkinnyJson.TypeManager.CreateMyProp(System.String,System.Type,System.String,System.Collections.Generic.IEnumerable{System.Reflection.CustomAttributeData})">
             <summary>
             Read reflection data for a type
             </summary>
@@ -825,6 +874,16 @@
         <member name="T:SkinnyJson.TypePropertyInfo">
             <summary>
             Record of reflected type info for fields and properties on objects
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.TypePropertyInfo.PropertyType">
+            <summary>
+            Type of the property or field
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.TypePropertyInfo.elementType">
+            <summary>
+            Array element type, or enumerable generic item type
             </summary>
         </member>
         <member name="T:SkinnyJson.WideNumber">

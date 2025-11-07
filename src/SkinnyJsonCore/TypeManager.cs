@@ -11,6 +11,7 @@ namespace SkinnyJson
 {
     internal static class TypeManager
     {
+        // ReSharper disable once UseArrayEmptyMethod
         private static readonly object[] _emptyObjectArray = new object[0];
 
         private class CacheSet
@@ -270,53 +271,95 @@ namespace SkinnyJson
         /// <summary>
         /// Read reflection data for a type
         /// </summary>
-        internal static TypePropertyInfo CreateMyProp(Type t, string name)
+        internal static TypePropertyInfo CreateMyProp(string containerName, Type propertyType, string name, IEnumerable<CustomAttributeData>? customAttrs)
         {
             var d = new TypePropertyInfo { 
                 filled = true,
                 Name = name,
+                ContainerName = containerName,
                 CanWrite = true,
-                parameterType = t,
-                isDictionary = t.Name.Contains("Dictionary")
+                PropertyType = propertyType,
+                isDictionary = propertyType.Name.Contains("Dictionary")
             };
-            
-            if (d.isDictionary) d.GenericTypes = t.GetGenericArguments();
+
+            try
+            {
+                TryFindCustomSerialiser(customAttrs, d);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex); // TODO: remove this.
+            }
+
+            if (d.isDictionary) d.GenericTypes = propertyType.GetGenericArguments();
             if (d is { isDictionary: true, GenericTypes: { Length: > 0 } } && d.GenericTypes[0] == typeof(string))
                 d.isStringDictionary = true;
 
-            d.isInterface = t.IsInterface;
-            d.isValueType = t.IsValueType;
-            d.isEnumerable = t.GetInterfaces().Contains(typeof(IEnumerable));
+            d.isInterface = propertyType.IsInterface;
+            d.isValueType = propertyType.IsValueType;
+            d.isEnumerable = propertyType.GetInterfaces().Contains(typeof(IEnumerable));
             
-            d.isGenericType = t.IsGenericType;
-            if (d.isGenericType) d.bt = t.GetGenericArguments().FirstOrDefault();
+            d.isGenericType = propertyType.IsGenericType;
+            if (d.isGenericType) d.elementType = propertyType.GetGenericArguments().FirstOrDefault();
             
-            d.isArray = t.IsArray;
-            if (d.isArray) d.bt = t.GetElementType();
+            d.isArray = propertyType.IsArray;
+            if (d.isArray) d.elementType = propertyType.GetElementType();
             
-            d.isByteArray = t == typeof(byte[]);
-            d.isHashtable = t == typeof(Hashtable);
-            d.isDataSet = t == typeof(DataSet);
-            d.isDataTable = t == typeof(DataTable);
-            d.changeType = GetChangeType(t);
+            d.isByteArray = propertyType == typeof(byte[]);
+            d.isHashtable = propertyType == typeof(Hashtable);
+            d.isDataSet = propertyType == typeof(DataSet);
+            d.isDataTable = propertyType == typeof(DataTable);
+            d.changeType = GetChangeType(propertyType);
             
-            d.isEnum = t.IsEnum;
-            d.isClass = t.IsClass;
+            d.isEnum = propertyType.IsEnum;
+            d.isClass = propertyType.IsClass;
             
-            if (IsNullableWrapper(t)) t = t.GetGenericArguments().FirstOrDefault() ?? t;
+            if (IsNullableWrapper(propertyType)) propertyType = propertyType.GetGenericArguments().FirstOrDefault() ?? propertyType;
             
-            d.isGuid = t == typeof(Guid);
-            d.isDateTime = t == typeof(DateTime);
-            d.isTimeSpan = t == typeof(TimeSpan);
-            d.isString = t == typeof(string);
-            d.isBool = t == typeof(bool);
+            d.isGuid = propertyType == typeof(Guid);
+            d.isDateTime = propertyType == typeof(DateTime);
+            d.isTimeSpan = propertyType == typeof(TimeSpan);
+            d.isString = propertyType == typeof(string);
+            d.isBool = propertyType == typeof(bool);
             
             // Check for number types
-            d.isNumeric = t == typeof(sbyte)   || t == typeof(short)  || t == typeof(int)  || t == typeof(long)
-                          || t == typeof(byte)    || t == typeof(ushort) || t == typeof(uint) || t == typeof(ulong)
-                          || t == typeof(decimal) || t == typeof(float)  || t == typeof(double);
+            d.isNumeric = propertyType == typeof(sbyte)   || propertyType == typeof(short)  || propertyType == typeof(int)  || propertyType == typeof(long)
+                          || propertyType == typeof(byte)    || propertyType == typeof(ushort) || propertyType == typeof(uint) || propertyType == typeof(ulong)
+                          || propertyType == typeof(decimal) || propertyType == typeof(float)  || propertyType == typeof(double);
 
             return d;
+        }
+
+        private static void TryFindCustomSerialiser(IEnumerable<CustomAttributeData>? customAttrs, TypePropertyInfo propInfo)
+        {
+            if (customAttrs is null) return;
+
+            foreach (var attr in customAttrs)
+            {
+                var type = attr.AttributeType;
+                switch (type.Name)
+                {
+                    case "JsonConverterAttribute":
+                    {
+                        if (type.Namespace is "Newtonsoft.Json" or "System.Text.Json.Serialization")
+                        {
+                            propInfo.customSerialiser = attr.ConstructorArguments.FirstOrDefault(a => a.ArgumentType == typeof(Type)).Value as Type;
+                            propInfo.customSerialiserParams = attr.ConstructorArguments.FirstOrDefault(a => a.ArgumentType == typeof(object[])).Value as object[];
+                        }
+                        break;
+                    }
+                    case "CustomJsonConverterAttribute":
+                    {
+                        if (type.Namespace != "SkinnyJson") continue;
+
+                        propInfo.customSerialiser = attr.ConstructorArguments.FirstOrDefault(a => a.ArgumentType == typeof(Type)).Value as Type;
+                        propInfo.customSerialiserParams = attr.ConstructorArguments.FirstOrDefault(a => a.ArgumentType == typeof(object[])).Value as object[];
+
+                        break;
+                    }
+                    default: continue;
+                }
+            }
         }
 
         /// <summary>
@@ -457,6 +500,13 @@ namespace SkinnyJson
                     {
                         if (type.Namespace != "Newtonsoft.Json") continue;
                         var name = type.GetProperty("PropertyName")?.GetValue(attr).ToString();
+                        if (!string.IsNullOrWhiteSpace(name)) yield return name!;
+                        break;
+                    }
+                    case "JsonNameAttribute":
+                    {
+                        if (type.Namespace != "SkinnyJson") continue;
+                        var name = type.GetProperty("Name")?.GetValue(attr).ToString();
                         if (!string.IsNullOrWhiteSpace(name)) yield return name!;
                         break;
                     }
