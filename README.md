@@ -58,4 +58,4 @@ string newJson = Json.Edit(oldJson, d => {
 
 See the test cases for deeper examples
 
-Based on FastJson: https://github.com/mgholam/fastJSON
+Originally based on FastJson: https://github.com/mgholam/fastJSON
