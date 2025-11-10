@@ -145,6 +145,22 @@
             This is used to improve error messages
             </summary>
         </member>
+        <member name="T:SkinnyJson.ICustomJsonConverter`1">
+            <summary>
+            Base class for custom JSON converters
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.ICustomJsonConverter`1.FromJson(System.Object)">
+            <summary>
+            Convert an object extracted from the source JSON into the target type
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.ICustomJsonConverter`1.ToJson(`0)">
+            <summary>
+            Convert a value to a JSON object.
+            This should return an object value that will be converted to JSON normally
+            </summary>
+        </member>
         <member name="T:SkinnyJson.CustomJsonConverterAttribute">
             <summary>
             Instructs the serializer to use the specified converter when serialising the decorated property
@@ -163,7 +179,13 @@
         </member>
         <member name="M:SkinnyJson.CustomJsonConverterAttribute.#ctor(System.Type)">
             <summary>
-            Initializes a new instance of the <see cref="T:SkinnyJson.CustomJsonConverterAttribute"/> class.
+            <p>Initializes a new instance of the <see cref="T:SkinnyJson.CustomJsonConverterAttribute"/> class.</p>
+            The <paramref name="converterType"/> should be one of:
+            <ul>
+            <li><c>System.Text.Json.Serialization.JsonConverter&lt;T&gt;</c></li>
+            <li><c>System.Text.Json.Serialization.JsonConverter</c></li>
+            <li><c>SkinnyJson.CustomJsonConverter&lt;T&gt;</c></li>
+            </ul>
             </summary>
             <param name="converterType">Type of the JsonConverter.</param>
         </member>
@@ -484,7 +506,7 @@
             <summary>
             Try to use a custom serialiser declared in a custom attribute
             </summary>
-            <seealso cref="M:SkinnyJson.JsonSerializer.GetJsonStringWithCustomSerialiser(System.Type,SkinnyJson.TypePropertyInfo,System.Object)"/>
+            <seealso cref="M:SkinnyJson.JsonSerializer.GetJsonStringWithCustomSerialiser(SkinnyJson.TypePropertyInfo,System.Object)"/>
         </member>
         <member name="M:SkinnyJson.Json.GetUtf8JsonReaderForValue(SkinnyJson.TypePropertyInfo,System.Object,System.Type)">
             <summary>
@@ -516,7 +538,7 @@
         </member>
         <member name="M:SkinnyJson.Json.TryGetDouble(System.Collections.Generic.Dictionary{System.String,System.Object},System.String,SkinnyJson.JsonSettings)">
             <summary>
-            Try to get a keyed value as a double, or return zero. 
+            Try to get a keyed value as a double, or return zero.
             </summary>
         </member>
         <member name="T:SkinnyJson.JsonParser">
@@ -577,7 +599,7 @@
             This is the root of the serialiser.
             </summary>
         </member>
-        <member name="M:SkinnyJson.JsonSerializer.GetJsonStringWithCustomSerialiser(System.Type,SkinnyJson.TypePropertyInfo,System.Object)">
+        <member name="M:SkinnyJson.JsonSerializer.GetJsonStringWithCustomSerialiser(SkinnyJson.TypePropertyInfo,System.Object)">
             <summary>
             Try to use a custom serialiser declared in a custom attribute
             </summary>
@@ -904,6 +926,11 @@
             Read reflection data for a type
             </summary>
         </member>
+        <member name="M:SkinnyJson.TypeManager.IsSkinnyCustomConverter(System.Type)">
+            <summary>
+            Return <c>true</c> if the given type is a <c>ICustomJsonConverter</c>
+            </summary>
+        </member>
         <member name="M:SkinnyJson.TypeManager.IsNullableWrapper(System.Type)">
             <summary>
             <c>true</c> if the type is <c>Nullable&lt;T&gt;</c>
@@ -968,6 +995,11 @@
         <member name="F:SkinnyJson.TypePropertyInfo.elementType">
             <summary>
             Array element type, or enumerable generic item type
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.TypePropertyInfo.changeType">
+            <summary>
+            Type of the property or field after removing known wrapper types (such as <c>Nullable&lt;T&gt;</c>)
             </summary>
         </member>
         <member name="T:SkinnyJson.WideNumber">

@@ -421,7 +421,7 @@ namespace SkinnyJson
 
                 if (propInfo?.customSerialiser is not null)
                 {
-                    var customStr = GetJsonStringWithCustomSerialiser(sourceType, propInfo, valueToWrite);
+                    var customStr = GetJsonStringWithCustomSerialiser(propInfo, valueToWrite);
                     WritePairRaw(property.Name, customStr);
                 }
                 else
@@ -452,13 +452,25 @@ namespace SkinnyJson
         /// Try to use a custom serialiser declared in a custom attribute
         /// </summary>
         /// <seealso cref="Json.GetSettableObjectWithCustomSerialiser"/>
-        private string? GetJsonStringWithCustomSerialiser(Type sourceType, TypePropertyInfo propertyInfo, object? valueToWrite)
+        private string GetJsonStringWithCustomSerialiser(TypePropertyInfo propertyInfo, object? valueToWrite)
         {
             var type  = propertyInfo.customSerialiser!;
             var param = propertyInfo.customSerialiserParams ?? new object[0];
 
             var serialiser = Activator.CreateInstance(type, param);
             if (serialiser is null) throw new Exception($"Invalid custom serialiser '{type.Name}'");
+
+
+            // Is this one of ours?
+            if (TypeManager.IsSkinnyCustomConverter(type))
+            {
+                var toJsonMethod = type.GetMethod("ToJson", BindingFlags.Public | BindingFlags.Instance);
+                if (toJsonMethod is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' does not have a 'ToJson' method");
+                var toSerialise = toJsonMethod.Invoke(serialiser, new[] { valueToWrite });
+
+                var temp = new JsonSerializer(_settings);
+                return temp.ConvertToJson(toSerialise);
+            }
 
             var preset = TypeManager.GetJsonSerializerOptions(propertyInfo, type);
 

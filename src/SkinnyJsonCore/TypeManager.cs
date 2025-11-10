@@ -69,14 +69,13 @@ namespace SkinnyJson
         /// <summary>
         /// Try to build (by reflection) a <c>JsonSerializerOptions</c> to feed to System.Text.Json methods
         /// </summary>
-        internal static object GetJsonSerializerOptions(TypePropertyInfo propertyInfo, Type type)
+        internal static object? GetJsonSerializerOptions(TypePropertyInfo propertyInfo, Type type)
         {
             if (_systemTextJsonSerializerOptions is not null) return _systemTextJsonSerializerOptions;
 
             // get static property: JsonSerializerOptions.Web
             var jsOpts = FindTypeByReflection("JsonSerializerOptions", null);
-
-            if (jsOpts is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' is a 'JsonConverterFactory', but could not find 'JsonSerializerOptions' type.");
+            if (jsOpts is null) return null; // if this is the Newtonsoft version
 
             var presetSrc = jsOpts.GetProperty("Web", BindingFlags.Public | BindingFlags.Static) ?? jsOpts.GetProperty("Default", BindingFlags.Public | BindingFlags.Static);
 
@@ -437,6 +436,17 @@ namespace SkinnyJson
                     default: continue;
                 }
             }
+        }
+
+
+        /// <summary>
+        /// Return <c>true</c> if the given type is a <c>ICustomJsonConverter</c>
+        /// </summary>
+        public static bool IsSkinnyCustomConverter(Type type)
+        {
+            return type.GetInterfaces().Any(x =>
+                x.IsGenericType &&
+                x.GetGenericTypeDefinition() == typeof(ICustomJsonConverter<>));
         }
 
         /// <summary>

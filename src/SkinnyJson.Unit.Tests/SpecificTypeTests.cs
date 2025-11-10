@@ -288,11 +288,12 @@ namespace SkinnyJson.Unit.Tests
         public void should_recognise_and_use_common_custom_converters()
         {
             var defrosted = Json.Defrost<SpecificConvertersType>(
-                "{\"Item1\":\"Collected\", \"Item2\":\"Value two\", \"Item3\":\"Value three\"}");
+                "{\"Item1\":\"Collected\", \"Item2\":\"Value two\", \"Item3\":\"Value three\", \"Item4\":\"Value four\"}");
 
             Assert.That(defrosted.Item1, Is.EqualTo(EwcSlotCommandPhase.Collected));
             Assert.That(defrosted.Item2.Name, Is.EqualTo("Value two"));
             Assert.That(defrosted.Item3.Name, Is.EqualTo("Value three"));
+            Assert.That(defrosted.Item4.Name, Is.EqualTo("Value four"));
 
             var frozen = Json.Freeze(defrosted);
             Console.WriteLine(frozen);
@@ -304,7 +305,7 @@ namespace SkinnyJson.Unit.Tests
             writer.WriteStringValue("Test");
             writer.Flush();
 
-            Assert.That(frozen, Is.EqualTo("{\"Item1\":\"Collected\",\"Item2\":\"Value two\",\"Item3\":\"Value three\"}"));
+            Assert.That(frozen, Is.EqualTo("{\"Item1\":\"Collected\",\"Item2\":\"Value two\",\"Item3\":\"Value three\",\"Item4\":\"Value four\"}"));
 
         }
 
@@ -321,6 +322,9 @@ namespace SkinnyJson.Unit.Tests
 
         [CustomJsonConverter(typeof(SmartEnumNameConverter<SpecialSerialisingType, string>))]
         public SpecialSerialisingType Item3 { get; set; }
+
+        [CustomJsonConverter(typeof(SkinnyCustomConverter))]
+        public SpecialSerialisingType Item4 { get; set; }
     }
 
     public class SpecialSerialisingType
@@ -331,6 +335,19 @@ namespace SkinnyJson.Unit.Tests
             where TEnum : SpecialSerialisingType
         {
             return (TEnum)(new SpecialSerialisingType { Name = getString });
+        }
+    }
+
+    public class SkinnyCustomConverter : ICustomJsonConverter<SpecialSerialisingType>
+    {
+        public SpecialSerialisingType? FromJson(object value)
+        {
+            return new SpecialSerialisingType { Name = value.ToString() };
+        }
+
+        public object? ToJson(SpecialSerialisingType? source)
+        {
+            return source.Name;
         }
     }
 

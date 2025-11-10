@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinnyJsonCore", "src\Skinn
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinnyJson.NetCore.UnitTests", "SkinnyJson.NetCore.UnitTests\SkinnyJson.NetCore.UnitTests.csproj", "{0595DE60-B34A-4B61-A43E-134ACDA50B04}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinnyJson.NewtonSoftCompat.Tests", "SkinnyJson.NewtonSoftCompat.Tests\SkinnyJson.NewtonSoftCompat.Tests.csproj", "{C6690802-0146-4B1E-9E46-42325E583038}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,6 +34,10 @@ Global
 		{0595DE60-B34A-4B61-A43E-134ACDA50B04}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0595DE60-B34A-4B61-A43E-134ACDA50B04}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0595DE60-B34A-4B61-A43E-134ACDA50B04}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C6690802-0146-4B1E-9E46-42325E583038}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C6690802-0146-4B1E-9E46-42325E583038}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C6690802-0146-4B1E-9E46-42325E583038}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C6690802-0146-4B1E-9E46-42325E583038}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

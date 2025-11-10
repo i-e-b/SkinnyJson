@@ -22,10 +22,10 @@ namespace SkinnyJson
         /*
          * IMPORTANT: If you change, remove, or add to any of the methods here,
          *            make sure to update the `SJson` alias to match.
-         * 
+         *
          */
-        
-        
+
+
         /// <summary> Turn an object into a JSON string </summary>
         public static string Freeze(object? obj, JsonSettings? settings = null)
         {
@@ -42,13 +42,13 @@ namespace SkinnyJson
             }
 
             if (!IsAnonymousTypedObject(obj)) return ToJson(obj, settings);
-            
+
             // If we are passed an anon type, turn off type information -- it will all be junk.
             if (settings.UseTypeExtensions || !settings.EnableAnonymousTypes) settings = settings.WithAnonymousTypes();
 
             return ToJson(obj, settings);
         }
-        
+
         /// <summary> Turn an object into a JSON string encoded to a byte array </summary>
         public static byte[] FreezeToBytes(object? obj, JsonSettings? settings = null)
         {
@@ -65,10 +65,10 @@ namespace SkinnyJson
             if (obj is DynamicWrapper dyn) {
                 Freeze(dyn.Parsed, target);
             }
-            
+
             // If we are passed an anon type, turn off type information -- it will all be junk.
             if (IsAnonymousTypedObject(obj)) settings = settings.WithAnonymousTypes();
-            
+
             ToJsonStream(obj, target, settings);
         }
 
@@ -83,12 +83,12 @@ namespace SkinnyJson
         {
             return ToObject(json, null, settings);
         }
-        
+
         /// <summary> Turn a JSON data stream into a detected object </summary>
         public static object Defrost(Stream json, JsonSettings? settings = null)
         {
             settings ??= JsonSettings.Default;
-            
+
             return ToObject(json, null, settings);
         }
 
@@ -108,27 +108,27 @@ namespace SkinnyJson
             settings ??= JsonSettings.Default;
             return (T)ToObject(json, typeof(T), settings);
         }
-        
+
         /// <summary> Turn a JSON data stream into a specific object </summary>
         public static T Defrost
             <[MeansImplicitUse(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature, ImplicitUseTargetFlags.WithMembers)]T>
             (Stream json, JsonSettings? settings = null)
         {
             settings ??= JsonSettings.Default;
-            
+
             return (T)ToObject(json, typeof(T), settings);
         }
-        
+
         /// <summary> Turn a JSON byte array into a specific object </summary>
         public static T Defrost
             <[MeansImplicitUse(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature, ImplicitUseTargetFlags.WithMembers)]T>
             (byte[] json, JsonSettings? settings = null)
         {
             settings ??= JsonSettings.Default;
-            
+
             return (T)ToObject(json, typeof(T), settings);
         }
-        
+
         /// <summary> Turn a JSON string into a runtime type </summary>
         public static object Defrost(string json, Type runtimeType, JsonSettings? settings = null)
         {
@@ -152,7 +152,7 @@ namespace SkinnyJson
         {
             return new DynamicWrapper(Parse(json, settings));
         }
-        
+
         /// <summary> Turn a JSON string into an object containing properties found </summary>
         public static dynamic DefrostDynamic(Stream json, JsonSettings? settings = null)
         {
@@ -175,7 +175,7 @@ namespace SkinnyJson
             if (string.IsNullOrWhiteSpace(path)) {
                 return new[] { Defrost<T>(json) };
             }
-            
+
             settings ??= JsonSettings.Default;
             return SelectObjects<T>(json, path, null, settings);
         }
@@ -194,7 +194,7 @@ namespace SkinnyJson
         {
             return new JsonParser(json, settings).Decode() ?? new {};
         }
-        
+
         /// <summary>
         /// Deserialise a string, perform some edits then reform as a new string
         /// </summary>
@@ -214,7 +214,7 @@ namespace SkinnyJson
         {
             return Formatter.PrettyPrint(input);
         }
-        
+
         /// <summary>
         /// Pretty print a JSON data stream to another stream.
         /// This is done without value parsing or buffering, so very large streams can be processed.
@@ -226,7 +226,7 @@ namespace SkinnyJson
         {
             Formatter.PrettyStream(input, inputEncoding, output, outputEncoding);
         }
-        
+
         /// <summary>Fill the members of an .Net object from a JSON object string</summary>
         /// <remarks>Alias for <see cref="FillObject"/></remarks>
         public static object? DefrostInto(object input, string json, JsonSettings? settings = null)
@@ -257,11 +257,11 @@ namespace SkinnyJson
         public static byte[]? HexToByteArray(string? hex)
         {
             if (hex is null || string.IsNullOrWhiteSpace(hex)) return null;
-            
+
             var temp = new List<byte>(hex.Length / 2);
             var shift = 4; // byte position
             var v = 0;
-            
+
             foreach (var c in hex)
             {
                 switch (c)
@@ -272,7 +272,7 @@ namespace SkinnyJson
                     case '-': case ' ': continue; // accept spaces and hyphens as separators
                     default: return null; // invalid character
                 }
-                
+
                 shift = 4 - shift;
                 if (shift != 4) continue;
                 temp.Add((byte)v);
@@ -287,7 +287,7 @@ namespace SkinnyJson
         {
             return TypeManager.IsAnonymousType(obj?.GetType());
         }
-        
+
         /// <summary>
         /// Read public static properties and fields from a type, output as JSON
         /// </summary>
@@ -305,7 +305,7 @@ namespace SkinnyJson
         {
             new JsonSerializer(param).ConvertToJson(obj, target, param.StreamEncoding);
         }
-        
+
         /// <summary>
         /// Pick items out of a parsed object using dotted string path
         /// </summary>
@@ -326,7 +326,7 @@ namespace SkinnyJson
         private static IEnumerable<T> PathWalk<T>(object? rawObject, Dictionary<string, object> globalTypes, string[] pathParts, int pathIndex, bool parentIsArray, WarningSet? warnings, JsonSettings settings)
         {
             if (rawObject == null) yield break;
-            
+
             var type = typeof(T);
             if (pathIndex >= pathParts.Length) {
                 var container = StrengthenType(type, rawObject, globalTypes, warnings, settings); // Really, convert the raw object to the target and output it
@@ -337,18 +337,18 @@ namespace SkinnyJson
                 } else {
                     yield break;
                 }
-                    
+
                 yield break;
             }
             var step = pathParts[pathIndex];
             var isIndexed = false;
             var index = 0;
-            
+
             // check for indexing in the path element
             if (step.EndsWith("]"))
             {
                 var bits = step.Split('[');
-                
+
                 var indexStr = bits[1].Trim(']');
                 if (indexStr == "*") // special "[*]" syntax to cope with arrays-inside-arrays
                 {
@@ -363,7 +363,7 @@ namespace SkinnyJson
 
                 step = bits[0]; // trim name
                 isIndexed = true; // set index flag
-                
+
                 // now, if we have an element name, we expect to step into a dictionary and find an array
                 if (step != "")
                 {
@@ -496,7 +496,7 @@ namespace SkinnyJson
         {
             settings ??= JsonSettings.Default;
             var globalTypes = new Dictionary<string, object>();
-			
+
             var parser = ParserFromStreamOrStringOrBytes(json, settings);
 
             var decodedObject = parser.Decode();
@@ -542,7 +542,7 @@ namespace SkinnyJson
                     else
                     {
                         var containedType = (type?.GetGenericArguments().SingleOrDefault() ?? type) ?? typeof(object);
-                        
+
                         var setType = GenericSetInterfaceType(containedType);
                         if (type == setType) return ConvertToSet(containedType, globalTypes, arrayList, warnings, settings);
                         return ConvertToList(containedType, globalTypes, arrayList, warnings, settings);
@@ -575,7 +575,7 @@ namespace SkinnyJson
             if (obj == null) return obj;
             if (obj.GetType().IsAssignableFrom(elementType)) return obj;
             if (obj is WideNumber wide) return wide.CastTo(elementType, out _);
-            
+
             // a complex type?
             var dict = obj as Dictionary<string, object>;
             if (dict == null) throw new Exception($"Element {obj.GetType().Name} not assignable to the array type {elementType.Name}");
@@ -590,7 +590,7 @@ namespace SkinnyJson
             foreach (var obj in arrayList)
             {
                 if (obj == null) continue;
-                
+
                 var toAdd = ConvertItem(elementType, globalTypes, obj, warnings, settings);
                 adder.Invoke(set, new []{toAdd});
             }
@@ -633,7 +633,7 @@ namespace SkinnyJson
             Type[] typeArgs = { containedType };
             return d1.MakeGenericType(typeArgs);
         }
-        
+
         /// <summary>
         /// Make an ISet˂T˃() instance for a runtime type
         /// </summary>
@@ -644,7 +644,7 @@ namespace SkinnyJson
             Type[] typeArgs = { containedType };
             return d1.MakeGenericType(typeArgs);
         }
-        
+
         /// <summary>
         /// Make an HashSet˂T˃() instance for a runtime type
         /// </summary>
@@ -656,7 +656,7 @@ namespace SkinnyJson
             return d1.MakeGenericType(typeArgs);
         }
 
-        
+
         /// <summary>
         /// Read a weakly-typed dictionary tree into a strong type. If the keys do not match exactly,
         /// all matching field/properties will be filled.
@@ -711,7 +711,7 @@ namespace SkinnyJson
                         warnings?.Append($"Expected to match at least one of [{string.Join(", ", jsonValues.Keys)}]");
                         return null;
                     }
-                    
+
                 }
             }
 
@@ -733,7 +733,7 @@ namespace SkinnyJson
         {
             if (!jsonValues.TryGetValue("$types", out var tn)) return;
             if (globalTypes == null) return;
-            
+
             var dic = (Dictionary<string, object>)tn!;
             foreach (var kvp in dic)
             {
@@ -830,12 +830,68 @@ namespace SkinnyJson
             var param = propertyInfo.customSerialiserParams ?? new object[0];
 
             var serialiser = Activator.CreateInstance(type, param);
-
             if (serialiser is null) throw new Exception($"Invalid custom serialiser '{type.Name}'");
 
-            var preset = TypeManager.GetJsonSerializerOptions(propertyInfo, type);
+            // Is this one of ours?
+            if (TypeManager.IsSkinnyCustomConverter(type))
+            {
+                var fromJsonMethod = type.GetMethod("FromJson", BindingFlags.Public | BindingFlags.Instance);
+                if (fromJsonMethod is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' does not have a 'FromJson' method");
+                return fromJsonMethod.Invoke(serialiser, new[] { value });
+            }
 
-            // Try to use JsonConverterFactory to get at a real converter
+            // Not our `CustomJsonConverter`. Look for either 'System.Text.Json' or 'Newtonsoft.Json' options.
+
+            // See if there are any Newtonsoft read methods (generic-typed and object-typed have the same name)
+            var nsWriteMethods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                                     .Where(m=>m.Name == "ReadJson").ToList(); // From Newtonsoft.Json.JsonConverter<T> or Newtonsoft.Json.JsonConverter
+            if (nsWriteMethods.Count > 0)
+            {
+                try
+                {
+                    // Get a text reader ready
+                    var readerType = TypeManager.FindTypeByReflection("JsonTextReader", "Newtonsoft.Json");
+                    if (readerType is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' failed: Could not find JsonTextReader type");
+
+                    var target = new StringReader(Freeze(value));
+                    var reader = Activator.CreateInstance(readerType, target); // public JsonTextWriter(TextWriter textWriter)
+
+                    // Read the re-created JSON
+                    var readerReadMethod = readerType.GetMethod("Read", BindingFlags.Public | BindingFlags.Instance); // public abstract bool Read();
+                    var ok = readerReadMethod?.Invoke(reader, new object[0]) as bool?;
+                    if (ok == false) warnings?.Append("Newtonsoft.Json.JsonTextReader.Read() failed");
+
+                    var nsJsType = TypeManager.FindTypeByReflection("JsonSerializer", "Newtonsoft.Json");
+                    if (nsJsType is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' failed: Could not find JsonSerializer type");
+                    var nsSerialiser = Activator.CreateInstance(nsJsType); // public JsonSerializer()
+
+                    // Generic-type:
+                    // T ReadJson(Newtonsoft.Json.JsonReader reader,
+                    //            Type objectType,
+                    //            NewtonsoftJsonNamed? existingValue,
+                    //            bool hasExistingValue,
+                    //            Newtonsoft.Json.JsonSerializer serializer)
+                    // Object-type:
+                    // object? ReadJson(Newtonsoft.Json.JsonReader reader,
+                    //                  Type objectType,
+                    //                  object? existingValue,
+                    //                  Newtonsoft.Json.JsonSerializer serializer)
+                    object resultObj;
+                    var    generic = nsWriteMethods.FirstOrDefault(m => m.GetParameters().Length > 4 && m.GetParameters()[2].ParameterType != typeof(object));
+                    if (generic is not null) resultObj = generic.Invoke(serialiser, new[] { reader, propertyInfo.PropertyType, /*value, true*/ null, false, nsSerialiser });
+                    else resultObj = nsWriteMethods[0].Invoke(serialiser, new[] { reader, propertyInfo.PropertyType, /*value*/ null, nsSerialiser });
+
+                    return resultObj;
+                } catch (Exception ex){
+                    warnings?.Append($"Custom serialiser '{type.Name}' for '{propertyInfo}' failed: {ex}");
+                    return null;
+                }
+            }
+
+            // No, needs to be a System.Text.Json
+
+            // See if we need to use System.Text.Json.JsonConverterFactory to get at a real converter
+            var preset  = TypeManager.GetJsonSerializerOptions(propertyInfo, type);
             var factory = type.GetMethod("CreateConverter", BindingFlags.Public | BindingFlags.Instance); // From System.Text.Json.Serialization.JsonConverterFactory
             if (factory is not null)
             {
@@ -848,15 +904,14 @@ namespace SkinnyJson
 
             // Hopefully we have a converter now.
 
-            // Build a reader that has a re-stringified version of the object
-            var reader = GetUtf8JsonReaderForValue(propertyInfo, value, type);
-
             // Try using 'Read' from System.Text.Json.Serialization.JsonConverter<T>
             var readMethod  = type.GetMethod("Read", BindingFlags.Public | BindingFlags.Instance);
             if (readMethod is not null)
             {
                 try
                 {
+                    // Build a reader that contains a re-stringified version of the object
+                    var reader = GetUtf8JsonReaderForValue(propertyInfo, value, type);
                     // result = Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
                     return readMethod.Invoke(serialiser, new[] { reader, targetType, preset });
                 }
@@ -872,6 +927,8 @@ namespace SkinnyJson
             if (readObjectMethod is not null) {
                 try
                 {
+                    // Build a reader that contains a re-stringified version of the object
+                    var reader = GetUtf8JsonReaderForValue(propertyInfo, value, type);
                     // result = ReadAsObject(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options);
                     return readObjectMethod.Invoke(serialiser, new[] { reader, targetType, preset });
                 }
@@ -977,7 +1034,7 @@ namespace SkinnyJson
                 setObj = CreateGenericList(ConvertBytes(inputValue), propertyInfo.PropertyType, propertyInfo.elementType, globalTypes, settings);
             else if (propertyInfo.changeType == typeof(Stream))
                 setObj = new MemoryStream(ConvertBytes(inputValue));
-            
+
             else if (propertyInfo.isString || propertyInfo.PropertyType == typeof(string)) setObj = inputValue;
             else if (propertyInfo.isBool) setObj = InterpretBool(inputValue, settings);
             else if (propertyInfo.isGenericType && propertyInfo is { isValueType: false, isDictionary: false, isEnumerable: true } && inputValue is IEnumerable)
@@ -1078,7 +1135,7 @@ namespace SkinnyJson
             // Otherwise, it should be a hex or base64 string.
             var inputStr = inputValue.ToString().Trim();
             if (string.IsNullOrWhiteSpace(inputStr)) return new byte[0];
-            
+
             // If it has a hex marker, only accept hex
             if (inputStr[0] == '$') {
                 return HexToByteArray(inputStr.Substring(1)) ?? throw new Exception("Input to byte array was not valid hex string");
@@ -1188,7 +1245,7 @@ namespace SkinnyJson
                 throw new Exception("Writing value failed [co/contra]variance checks", vex);
             }
         }
-        
+
         /// <summary>
         /// Convert between runtime types
         /// </summary>
@@ -1217,7 +1274,7 @@ namespace SkinnyJson
                 var p = props[kv.Key];
                 var o = p.getter?.Invoke(obj);
                 var t = Type.GetType((string)kv.Value);
-                
+
                 var s = o as string;
                 if (s == null) continue;
                 if (t == typeof(Guid)) p.setter?.Invoke(obj, CreateGuid(s), null);
@@ -1269,11 +1326,11 @@ namespace SkinnyJson
             if (pt == null) throw new Exception("Invalid property type");
             return Enum.Parse(pt, v);
         }
-        
+
         private static object NumberToEnum(Type? pt, WideNumber wn)
         {
             if (pt == null) throw new Exception("Invalid property type");
-            
+
             return Enum.ToObject(pt, wn.ToLong());
         }
 
@@ -1311,10 +1368,10 @@ namespace SkinnyJson
         {
             var asTicks = new DateTime(value);
             if (asTicks.Year is > 1900 and < 3000) return asTicks;
-            
+
             var asUnixMs = new DateTime(1970,1,1,0,0,0, DateTimeKind.Utc).AddMilliseconds(value);
             if (asUnixMs.Year is > 1980 and < 3000) return asUnixMs;
-            
+
             var asUnixSeconds = new DateTime(1970,1,1,0,0,0, DateTimeKind.Utc).AddSeconds(value);
             return asUnixSeconds;
         }
@@ -1330,10 +1387,10 @@ namespace SkinnyJson
                 // So we pick it apart manually.
                 if (objects.TryGetValue("Ticks", out var ticks1)) return new TimeSpan(ticks: CreateLong(ticks1));
                 if (objects.TryGetValue("ticks", out var ticks2)) return new TimeSpan(ticks: CreateLong(ticks2));
-                
+
                 if (objects.TryGetValue("TotalSeconds", out var seconds1)) return TimeSpan.FromSeconds(CreateDouble(seconds1));
                 if (objects.TryGetValue("total_seconds", out var seconds2)) return TimeSpan.FromSeconds(CreateDouble(seconds2));
-                
+
                 var days = (int)TryGetDouble(objects, "Days", settings);
                 var hours = (int)TryGetDouble(objects, "Hours", settings);
                 var minutes = (int)TryGetDouble(objects, "Minutes", settings);
@@ -1341,12 +1398,12 @@ namespace SkinnyJson
                 var milliseconds = (int)TryGetDouble(objects, "Milliseconds", settings);
                 return new TimeSpan(days, hours, minutes, seconds, milliseconds);
             }
-            
+
             throw new Exception("Failed to map to TimeSpan");
         }
 
         /// <summary>
-        /// Try to get a keyed value as a double, or return zero. 
+        /// Try to get a keyed value as a double, or return zero.
         /// </summary>
         private static double TryGetDouble(Dictionary<string,object> objects, string key, JsonSettings settings)
         {
@@ -1358,12 +1415,12 @@ namespace SkinnyJson
             }
 
             if (settings.IgnoreCaseOnDeserialize != true) return 0.0;
-            
+
             // do a case insensitive search
             foreach (var objKey in objects.Keys)
             {
                 if (!EqualsInNormaliseCase(objKey,key)) continue;
-                
+
                 var obj = objects[objKey];
                 if (obj is double d) return d;
                 if (obj is string s && double.TryParse(s, out var dVal)) return dVal;
@@ -1500,7 +1557,7 @@ namespace SkinnyJson
 
             var schema = reader["$schema"];
             if (schema == null) return false;
-            
+
             if (schema is string s)
             {
                 TextReader tr = new StringReader(s);
@@ -1515,15 +1572,15 @@ namespace SkinnyJson
                 {
                     var info = ms.Info[i];
                     if (info == null) continue;
-                    
+
                     if (ds.Tables.Contains(info) == false) ds.Tables.Add(info);
-                    
+
                     var info1 = ms.Info[i + 1];
                     var info2 = ms.Info[i + 2];
                     if (info1 == null || info2 == null) continue;
                     var type = Type.GetType(info2);
                     if (type == null) continue;
-                    
+
                     ds.Tables[info]?.Columns.Add(info1, type);
                 }
             }
@@ -1533,7 +1590,7 @@ namespace SkinnyJson
         private static void ReadDataTable(IEnumerable rows, DataTable? dt, JsonSettings settings)
         {
             if (dt == null) return;
-            
+
             dt.BeginInit();
             dt.BeginLoadData();
             var guidCols = new List<int>();
@@ -1613,7 +1670,7 @@ namespace SkinnyJson
                 if (pair.Key == null || pair.Key == "$type" || pair.Key == "$schema") continue;
 
                 var rows = pair.Value as ArrayList;
-                
+
                 if (rows == null) continue;
                 if (dt.TableName?.Equals(pair.Key, StringComparison.InvariantCultureIgnoreCase) != true) continue;
 
@@ -1622,7 +1679,7 @@ namespace SkinnyJson
 
             return dt;
         }
-        
+
         #endregion Internal
     }
 }

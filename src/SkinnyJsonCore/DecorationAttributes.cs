@@ -20,7 +20,13 @@ namespace SkinnyJson
         public object[]? ConverterParameters { get; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CustomJsonConverterAttribute"/> class.
+        /// <p>Initializes a new instance of the <see cref="CustomJsonConverterAttribute"/> class.</p>
+        /// The <paramref name="converterType"/> should be one of:
+        /// <ul>
+        /// <li><c>System.Text.Json.Serialization.JsonConverter&lt;T&gt;</c></li>
+        /// <li><c>System.Text.Json.Serialization.JsonConverter</c></li>
+        /// <li><c>SkinnyJson.CustomJsonConverter&lt;T&gt;</c></li>
+        /// </ul>
         /// </summary>
         /// <param name="converterType">Type of the JsonConverter.</param>
         public CustomJsonConverterAttribute(Type converterType)

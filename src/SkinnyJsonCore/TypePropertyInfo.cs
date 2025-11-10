@@ -25,6 +25,9 @@ namespace SkinnyJson
         /// </summary>
         public Type?                      elementType;
 
+        /// <summary>
+        /// Type of the property or field after removing known wrapper types (such as <c>Nullable&lt;T&gt;</c>)
+        /// </summary>
         public Type?                      changeType;
         public bool                       isDictionary;
         public bool                       isInterface;
