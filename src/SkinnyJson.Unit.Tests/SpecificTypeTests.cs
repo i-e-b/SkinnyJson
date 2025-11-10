@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -289,14 +290,22 @@ namespace SkinnyJson.Unit.Tests
             var defrosted = Json.Defrost<SpecificConvertersType>(
                 "{\"Item1\":\"Collected\", \"Item2\":\"Value two\", \"Item3\":\"Value three\"}");
 
-            Assert.That(defrosted.Item1, Is.EqualTo("Collected"));
-            Assert.That(defrosted.Item2, Is.EqualTo("Value two"));
-            Assert.That(defrosted.Item3, Is.EqualTo("Value three"));
+            Assert.That(defrosted.Item1, Is.EqualTo(EwcSlotCommandPhase.Collected));
+            Assert.That(defrosted.Item2.Name, Is.EqualTo("Value two"));
+            Assert.That(defrosted.Item3.Name, Is.EqualTo("Value three"));
 
             var frozen = Json.Freeze(defrosted);
             Console.WriteLine(frozen);
 
+            Stream ms     = new MemoryStream();
+            var    opts   = new JsonWriterOptions();
+            var    writer = new Utf8JsonWriter(ms, opts);
+
+            writer.WriteStringValue("Test");
+            writer.Flush();
+
             Assert.That(frozen, Is.EqualTo("{\"Item1\":\"Collected\",\"Item2\":\"Value two\",\"Item3\":\"Value three\"}"));
+
         }
 
         private static string Quote(string src) => src.Replace('\'', '"');

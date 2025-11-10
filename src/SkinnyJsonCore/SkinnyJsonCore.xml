@@ -285,6 +285,31 @@
             Cast path to a string value
             </summary>
         </member>
+        <member name="F:SkinnyJson.Getters.Name">
+            <summary>
+            Preferred name from type of custom attributes
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.Getters.Getter">
+            <summary>
+            Method to extract serialisable value
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.Getters.PropertyType">
+            <summary>
+            Type of the field or property
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.Getters.FieldInfo">
+            <summary>
+            Field info from reflection, if this is a field (not a property)
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.Getters.OriginalName">
+            <summary>
+            The original name from type
+            </summary>
+        </member>
         <member name="T:SkinnyJson.Json">
             <summary>
             SkinnyJson entry point. Use the static methods of this class to interact with JSON data
@@ -455,9 +480,15 @@
             Map json value dictionary to the properties and fields of a target object instance.
             </summary>
         </member>
-        <member name="M:SkinnyJson.Json.GetSettableObjectWithCustomSerialiser(System.Type,System.Object,SkinnyJson.TypePropertyInfo,System.Object,SkinnyJson.WarningSet)">
+        <member name="M:SkinnyJson.Json.GetSettableObjectWithCustomSerialiser(System.Type,SkinnyJson.TypePropertyInfo,System.Object,SkinnyJson.WarningSet)">
             <summary>
             Try to use a custom serialiser declared in a custom attribute
+            </summary>
+            <seealso cref="M:SkinnyJson.JsonSerializer.GetJsonStringWithCustomSerialiser(System.Type,SkinnyJson.TypePropertyInfo,System.Object)"/>
+        </member>
+        <member name="M:SkinnyJson.Json.GetUtf8JsonReaderForValue(SkinnyJson.TypePropertyInfo,System.Object,System.Type)">
+            <summary>
+            Try to find (by reflection) and generate a <c>Utf8JsonReader</c> to feed to System.Text.Json methods
             </summary>
         </member>
         <member name="M:SkinnyJson.Json.MakeSettableObject(System.Collections.Generic.IDictionary{System.String,System.Object},SkinnyJson.TypePropertyInfo,System.Object,SkinnyJson.WarningSet,SkinnyJson.JsonSettings)">
@@ -476,17 +507,6 @@
             <summary>
             Inject a value into an object's property.
             If object is null, we will attempt to write to a static member.
-            </summary>
-        </member>
-        <member name="M:SkinnyJson.Json.GetProperties(System.Type,System.String,SkinnyJson.JsonSettings,SkinnyJson.WarningSet)">
-            <summary>
-            Read the properties and public fields of a type.
-            In special cases, this will also read private fields
-            </summary>
-        </member>
-        <member name="M:SkinnyJson.Json.NormaliseCase(System.String)">
-            <summary>
-            Convert a string to lower case, removing a set of joining and non-printing characters
             </summary>
         </member>
         <member name="M:SkinnyJson.Json.ChangeType(System.Object,System.Type)">
@@ -555,6 +575,17 @@
         <member name="M:SkinnyJson.JsonSerializer.WriteValue(System.Object)">
             <summary>
             This is the root of the serialiser.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.JsonSerializer.GetJsonStringWithCustomSerialiser(System.Type,SkinnyJson.TypePropertyInfo,System.Object)">
+            <summary>
+            Try to use a custom serialiser declared in a custom attribute
+            </summary>
+            <seealso cref="M:SkinnyJson.Json.GetSettableObjectWithCustomSerialiser(System.Type,SkinnyJson.TypePropertyInfo,System.Object,SkinnyJson.WarningSet)"/>
+        </member>
+        <member name="M:SkinnyJson.JsonSerializer.GetUtf8JsonWriterForValue(SkinnyJson.TypePropertyInfo,System.IO.Stream,System.Type)">
+            <summary>
+            Try to find (by reflection) and generate a <c>Utf8JsonWriter</c> to feed to System.Text.Json methods
             </summary>
         </member>
         <member name="M:SkinnyJson.JsonSerializer.WriteStringFast(System.String)">
@@ -701,6 +732,11 @@
             Add type and schema information to output JSON, using $type, $types, $schema and $map properties.
             </summary>
         </member>
+        <member name="P:SkinnyJson.JsonSettings.MaxDepth">
+            <summary>
+            Maximum recursion depth during serialisation
+            </summary>
+        </member>
         <member name="M:SkinnyJson.JsonSettings.WithAnonymousTypes">
             <summary>
             Copy of these settings, but with type extensions disabled and anonymous types enabled
@@ -720,6 +756,11 @@
         <member name="M:SkinnyJson.JsonSettings.WithCaseSensitivity">
             <summary>
             Add case sensitive matching to these parameters
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.JsonSettings.WithMaximumRecursionDepth(System.Int32)">
+            <summary>
+            Set maximum recursion depth during serialisation
             </summary>
         </member>
         <member name="M:SkinnyJson.JsonSettings.ParameterKey">
@@ -765,6 +806,33 @@
         </member>
         <member name="F:SkinnyJson.TypeManager._caches">
             <summary> Per-settings caches of type info</summary>
+        </member>
+        <member name="F:SkinnyJson.TypeManager._reflectedTypes">
+            <summary>
+            Type definitions found by reflection.
+            These do not need to be stored per-setting-set.
+            </summary>
+        </member>
+        <member name="F:SkinnyJson.TypeManager._systemTextJsonSerializerOptions">
+            <summary> Cached configuration for System.Text.Json methods </summary>
+        </member>
+        <member name="F:SkinnyJson.TypeManager._systemTextJsonWriterOptions">
+            <summary> Cached configuration for System.Text.Json methods </summary>
+        </member>
+        <member name="M:SkinnyJson.TypeManager.FindTypeByReflection(System.String,System.String)">
+            <summary>
+            Try to find a type by name in any loaded assemblies
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.TypeManager.GetJsonSerializerOptions(SkinnyJson.TypePropertyInfo,System.Type)">
+            <summary>
+            Try to build (by reflection) a <c>JsonSerializerOptions</c> to feed to System.Text.Json methods
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.TypeManager.GetJsonWriterOptions(SkinnyJson.TypePropertyInfo,System.Type)">
+            <summary>
+            Try to build (by reflection) a <c>JsonWriterOptions</c> to feed to System.Text.Json methods
+            </summary>
         </member>
         <member name="M:SkinnyJson.TypeManager.Cache(SkinnyJson.JsonSettings)">
             <summary>
@@ -859,6 +927,22 @@
         <member name="M:SkinnyJson.TypeManager.CreateSetField(System.Type,System.Reflection.FieldInfo)">
             <summary>
             Create a value-setting proxy for an object field
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.TypeManager.AnonFieldFilter(System.String)">
+            <summary>
+            Anonymous fields like "A" will be named like "&lt;A&gt;i__Field" in the type def; so we filter them here.
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.TypeManager.NormaliseCase(System.String)">
+            <summary>
+            Convert a string to lower case, removing a set of joining and non-printing characters
+            </summary>
+        </member>
+        <member name="M:SkinnyJson.TypeManager.GetProperties(System.Type,System.String,SkinnyJson.JsonSettings,SkinnyJson.WarningSet)">
+            <summary>
+            Read the properties and public fields of a type.
+            In special cases, this will also read private fields
             </summary>
         </member>
         <member name="M:SkinnyJson.TypeManager.CreateGetMethod(System.Reflection.PropertyInfo)">

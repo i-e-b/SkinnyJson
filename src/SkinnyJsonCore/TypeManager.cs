@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
+using System.Text;
 
 namespace SkinnyJson
 {
@@ -27,6 +28,82 @@ namespace SkinnyJson
         
         /// <summary> Per-settings caches of type info</summary>
         private static readonly SafeDictionary<int, CacheSet> _caches = new ();
+
+        /// <summary>
+        /// Type definitions found by reflection.
+        /// These do not need to be stored per-setting-set.
+        /// </summary>
+        private static readonly Dictionary<string, Type> _reflectedTypes = new();
+
+        /// <summary> Cached configuration for System.Text.Json methods </summary>
+        private static object? _systemTextJsonSerializerOptions = null;
+        /// <summary> Cached configuration for System.Text.Json methods </summary>
+        private static object? _systemTextJsonWriterOptions = null;
+
+        /// <summary>
+        /// Try to find a type by name in any loaded assemblies
+        /// </summary>
+        internal static Type? FindTypeByReflection(string name, string? nameSpace)
+        {
+            var key = $"{nameSpace}:{name}";
+            if (_reflectedTypes.TryGetValue(key, out var type)) return type;
+
+            var everyone = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var assembly in everyone)
+            {
+                var dataSources = assembly
+                                  .GetTypes()
+                                  .Where(t => t.Name == name
+                                           && (nameSpace is null || t.Namespace == nameSpace)).ToArray();
+
+                if (dataSources.Length > 0)
+                {
+                    if (!_reflectedTypes.ContainsKey(key)) _reflectedTypes.Add(key, dataSources[0]);
+                    return dataSources[0];
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Try to build (by reflection) a <c>JsonSerializerOptions</c> to feed to System.Text.Json methods
+        /// </summary>
+        internal static object GetJsonSerializerOptions(TypePropertyInfo propertyInfo, Type type)
+        {
+            if (_systemTextJsonSerializerOptions is not null) return _systemTextJsonSerializerOptions;
+
+            // get static property: JsonSerializerOptions.Web
+            var jsOpts = FindTypeByReflection("JsonSerializerOptions", null);
+
+            if (jsOpts is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' is a 'JsonConverterFactory', but could not find 'JsonSerializerOptions' type.");
+
+            var presetSrc = jsOpts.GetProperty("Web", BindingFlags.Public | BindingFlags.Static) ?? jsOpts.GetProperty("Default", BindingFlags.Public | BindingFlags.Static);
+
+            if (presetSrc is null) throw new Exception($"Cannot use custom serialiser '{type.Name}' for '{propertyInfo}'. 'JsonSerializerOptions' has no presets");
+
+            var preset = presetSrc.GetValue(null);
+            _systemTextJsonSerializerOptions = preset;
+
+            return preset;
+        }
+
+        /// <summary>
+        /// Try to build (by reflection) a <c>JsonWriterOptions</c> to feed to System.Text.Json methods
+        /// </summary>
+        internal static object GetJsonWriterOptions(TypePropertyInfo propertyInfo, Type serialiserType)
+        {
+            if (_systemTextJsonWriterOptions is not null) return _systemTextJsonWriterOptions;
+
+            // get static property: JsonSerializerOptions.Web
+            var jsOpts = FindTypeByReflection("JsonWriterOptions", null);
+            if (jsOpts is null) throw new Exception($"Custom serialiser '{serialiserType.Name}' for '{propertyInfo}' is a 'JsonConverterFactory', but could not find 'JsonWriterOptions' type.");
+
+            var preset = Activator.CreateInstance(jsOpts);
+            _systemTextJsonWriterOptions = preset;
+
+            return preset;
+        }
 
         /// <summary>
         /// Get caches for setting spec. Creates a new set if needed.
@@ -265,7 +342,7 @@ namespace SkinnyJson
         private static Getters MakePropertyGetterWithPreferredName(PropertyInfo property, GenericGetter getMethod)
         {
             var name = GetAlternativeNames(property).FirstOrDefault() ?? property.Name;
-            return new Getters { Name = name, Getter = getMethod, PropertyType = property.PropertyType };
+            return new Getters { Name = name, Getter = getMethod, PropertyType = property.PropertyType, OriginalName = property.Name };
         }
 
         /// <summary>
@@ -286,9 +363,9 @@ namespace SkinnyJson
             {
                 TryFindCustomSerialiser(customAttrs, d);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine(ex); // TODO: remove this.
+                // Ignore
             }
 
             if (d.isDictionary) d.GenericTypes = propertyType.GetGenericArguments();
@@ -431,6 +508,189 @@ namespace SkinnyJson
             return (GenericSetter)dynamicSet.CreateDelegate(typeof(GenericSetter));
         }
 
+
+        public static bool IsAnonymousType(Type? type)
+        {
+            if (type == null) return false;
+            return (type.Name.StartsWith("<>") || type.Name.StartsWith("VB$")) && (type.Attributes.HasFlag(TypeAttributes.NotPublic));
+        }
+
+        /// <summary>
+        /// Anonymous fields like "A" will be named like "&lt;A&gt;i__Field" in the type def; so we filter them here.
+        /// </summary>
+        private static string AnonFieldFilter(string name)
+        {
+            if (name[0] != '<') return name;
+            var idx = name.IndexOf('>', 2);
+            if (idx < 2) return name;
+            return name.Substring(1, idx - 1);
+        }
+
+        /// <summary>
+        /// Convert a string to lower case, removing a set of joining and non-printing characters
+        /// </summary>
+        public static string NormaliseCase(string? src)
+        {
+            if (src is null || src.Length < 1) return "";
+            var sb = new StringBuilder();
+
+            foreach (var c in src)
+            {
+                if (c <= ' ') continue;
+                if (c == '_') continue;
+                if (c == '-') continue;
+                if (char.IsControl(c)) continue;
+                if (char.IsWhiteSpace(c)) continue;
+                if (char.IsSeparator(c)) continue;
+                sb.Append(char.ToLowerInvariant(c));
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Read the properties and public fields of a type.
+        /// In special cases, this will also read private fields
+        /// </summary>
+        public static SafeDictionary<string, TypePropertyInfo> GetProperties(Type type, string typename, JsonSettings settings, WarningSet? warnings)
+        {
+            var usePrivateFields = typename.StartsWith("Tuple`", StringComparison.Ordinal) || IsAnonymousType(type);
+
+            if (GetPropertySet(type, settings, out var sd)) return sd;
+            sd = new SafeDictionary<string, TypePropertyInfo>();
+
+            var pr = new List<PropertyInfo>();
+            var getOnlyProperties = new List<PropertyInfo>();
+
+            // Instance fields and static fields
+            var fi = new List<FieldInfo>();
+            fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Instance));
+            fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Static));
+
+            if (usePrivateFields)
+            {
+                fi.AddRange(type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance));
+            }
+
+            foreach (var typeInterface in type.GetInterfaces())
+            {
+                fi.AddRange(typeInterface.GetFields(BindingFlags.Public | BindingFlags.Instance));
+            }
+
+            foreach (var f in fi)
+            {
+                try
+                {
+                    var d = CreateMyProp(typename, f.FieldType, f.Name, f.CustomAttributes);
+                    d.setter = CreateSetField(type, f);
+                    d.getter = CreateGetField(type, f);
+
+                    sd.Add(f.Name, d);
+                    if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(f.Name), d);
+                    if (usePrivateFields)
+                    {
+                        var privateName = f.Name.Replace("m_", "");
+                        sd.Add(AnonFieldFilter(privateName), d);
+                        if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(privateName), d);
+                    }
+
+                    foreach (var alt in GetAlternativeNames(f)) sd.TryAdd(alt, d);
+                }
+                catch
+                {
+                    // Ignore
+                }
+            }
+
+            // Instance properties
+            pr.AddRange(type.GetProperties(BindingFlags.Public | BindingFlags.Instance));
+            foreach (var prop in type.GetInterfaces()
+                         .SelectMany(i => i.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                             .Where(prop => pr.All(p => p.Name != prop.Name)))) {
+                pr.Add(prop);
+            }
+
+            foreach (var p in pr)
+            {
+                try
+                {
+                    var d = CreateMyProp(typename, p.PropertyType, p.Name, p.CustomAttributes);
+                    d.CanWrite = p.CanWrite;
+                    d.setter = CreateSetMethod(p);
+                    if (d.setter == null)
+                    {
+                        if (settings.SearchForBackingFields) getOnlyProperties.Add(p);
+                        else warnings?.Append($"Property '{p.Name}' has no 'set'");
+                        continue;
+                    }
+
+                    d.getter = CreateGetMethod(p);
+                    sd.Add(p.Name, d);
+                    if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(p.Name), d);
+                    foreach (var alt in GetAlternativeNames(p)) sd.TryAdd(alt, d);
+                }
+                catch
+                {
+                    // Ignore
+                }
+            }
+
+            if (settings.SearchForBackingFields)
+            {
+                try
+                {
+                    var potentialBackingFields = type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance).ToList();
+                    foreach (var prop in getOnlyProperties)
+                    {
+                        try
+                        {
+                            var nameGuess = "<" + prop.Name + ">"; // This is very dependent on C# compiler internals
+                            var candidate = potentialBackingFields.FirstOrDefault(f => f.Name.Contains(nameGuess));
+                            if (candidate is null)
+                            {
+                                warnings?.Append($"Property '{prop.Name}' has no 'set'");
+                            }
+                            else
+                            {
+                                var d = CreateMyProp(typename, candidate.FieldType, candidate.Name, candidate.CustomAttributes);
+                                d.setter = CreateSetField(type, candidate);
+                                d.getter = CreateGetField(type, candidate);
+                                sd.Add(prop.Name, d);
+                                if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(prop.Name), d);
+                                foreach (var alt in GetAlternativeNames(prop)) sd.TryAdd(alt, d);
+                            }
+                        }
+                        catch
+                        {
+                            //Ignore
+                        }
+                    }
+                }
+                catch
+                {
+                    // Ignore
+                }
+            }
+
+            // Static properties are special
+            var staticProps = type.GetProperties(BindingFlags.Public | BindingFlags.Static);
+            foreach (var sp in staticProps)
+            {
+                var d = CreateMyProp(typename, sp.PropertyType, sp.Name, sp.CustomAttributes);
+                d.CanWrite = sp.CanWrite;
+                d.setter = (_, value, _) => sp.SetValue(null!, value);
+                d.getter = _ => sp.GetValue(null!)!;
+
+                sd.Add(sp.Name, d);
+                if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(sp.Name), d);
+                foreach (var alt in GetAlternativeNames(sp)) sd.TryAdd(alt, d);
+            }
+
+            if (type.GetGenericArguments().Length < 1) {
+                AddToPropertyCache(type, sd, settings);
+            }
+            return sd;
+        }
         
         /// <summary>
         /// Try to create a value-reading proxy for an object property
@@ -515,7 +775,7 @@ namespace SkinnyJson
             }
         }
 
-        public static bool GetPropertySet(Type type, JsonSettings settings, out SafeDictionary<string, TypePropertyInfo> sd)
+        private static bool GetPropertySet(Type type, JsonSettings settings, out SafeDictionary<string, TypePropertyInfo> sd)
         {
             var cache = Cache(settings);
             return cache.PropertyCache.TryGetValue(type, out sd);

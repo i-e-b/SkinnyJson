@@ -311,7 +311,23 @@ namespace SkinnyJson.Unit.Tests {
 			Assert.That(double_defrosted, Is.InstanceOf<ITopLevel>());
 		}
 
-        [Test]
+		[Test]
+		public void can_set_custom_recursion_depth()
+		{
+			var settings = JsonSettings.Default.WithMaximumRecursionDepth(1);
+
+			try
+			{
+				Json.Freeze(new { one = "one", two = new { three = "three", four = new { five = "five" } } }, settings);
+				Assert.Fail("Recursion depth was not respected");
+			}
+			catch
+			{
+				Assert.Pass();
+			}
+		}
+
+		[Test]
         public void Can_use_base_simple_objects_with_no_schema() {
             
             var str = "{ \"TEST\":\"test2\", \"signupId\": 4259648, \"postcode\": \"NP10 8UH\" }";

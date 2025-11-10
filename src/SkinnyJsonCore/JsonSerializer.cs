@@ -7,13 +7,12 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+// ReSharper disable UseArrayEmptyMethod
 
 namespace SkinnyJson
 {
     internal class JsonSerializer
     {
-    	const int MaxDepth = 10;
-        
         private TextWriter? _output;
     	int _currentDepth;
         private readonly Dictionary<string, int> _globalTypes = new Dictionary<string, int>();
@@ -68,7 +67,7 @@ namespace SkinnyJson
         /// Output a .Net object as a JSON string.
         /// Supports global types
         /// </summary>
-        public string ConvertToJson(object obj)
+        public string ConvertToJson(object? obj)
         {
             var sb = new StringBuilder();
             _output = new StringWriter(sb);
@@ -130,7 +129,7 @@ namespace SkinnyJson
 		            WriteString((string)obj);
 		            break;
                 case WideNumber wn:
-                    Append(wn.ToString());
+                    Append(wn.ToString(CultureInfo.InvariantCulture));
                     break;
 		        case Guid guid:
 		            WriteGuid(guid);
@@ -143,6 +142,9 @@ namespace SkinnyJson
                     {
                         Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo));
                     }
+                    /*else if (propertyInfo.customSerialiser is not null)
+                    {
+                    }*/
                     else switch (obj)
 		            {
 		                case DateTime time:
@@ -379,20 +381,20 @@ namespace SkinnyJson
 
 			_typesWritten = true;
 			_currentDepth++;
-            if (_currentDepth > MaxDepth)
-                throw new Exception("Serialiser encountered maximum depth of " + MaxDepth);
+            if (_currentDepth > settings.MaxDepth)
+                throw new Exception("Serialiser exceeded maximum depth of " + settings.MaxDepth);
 
 
             var map = new Dictionary<string, string>();
-            var t = obj.GetType();
+            var sourceType = obj.GetType();
             var append = false;
             if (_settings.UseTypeExtensions)
             {
                 if (_settings.UsingGlobalTypes == false)
-                    WritePairFast("$type", TypeManager.GetTypeAssemblyName(t, settings));
+                    WritePairFast("$type", TypeManager.GetTypeAssemblyName(sourceType, settings));
                 else
                 {
-                    var ct = TypeManager.GetTypeAssemblyName(t, settings);
+                    var ct = TypeManager.GetTypeAssemblyName(sourceType, settings);
                     if (_globalTypes.TryGetValue(ct, out var dt) == false)
                     {
                         dt = _globalTypes.Count + 1;
@@ -403,18 +405,33 @@ namespace SkinnyJson
                 append = true;
             }
 
-            var readableProperties = TypeManager.GetGetters(t, settings);
+            var allPropertyInfo    = TypeManager.GetProperties(sourceType, sourceType.Name, settings, null);
+            var readableProperties = TypeManager.GetGetters(sourceType, settings);
+
             foreach (var property in readableProperties)
             {
                 if (property.Name == null) continue;
-                var o = GetInstanceValue(obj, t, property);
-                if ((o == null || o is DBNull) && _settings.SerializeNullValues == false) continue;
+
+                if (!allPropertyInfo.TryGetValue(property.OriginalName, out var propInfo)) { propInfo = null; }
+
+                var valueToWrite = GetInstanceValue(obj, sourceType, property);
+                if ((valueToWrite == null || valueToWrite is DBNull) && _settings.SerializeNullValues == false) continue;
 
                 if (append) Append(',');
-                WritePair(property.Name, o);
-                if (o != null && _settings.UseTypeExtensions)
+
+                if (propInfo?.customSerialiser is not null)
                 {
-                    var tt = o.GetType();
+                    var customStr = GetJsonStringWithCustomSerialiser(sourceType, propInfo, valueToWrite);
+                    WritePairRaw(property.Name, customStr);
+                }
+                else
+                {
+                    WritePair(property.Name, valueToWrite);
+                }
+
+                if (valueToWrite != null && _settings.UseTypeExtensions)
+                {
+                    var tt = valueToWrite.GetType();
                     if (tt == typeof(object)) map.Add(property.Name, tt.ToString());
                 }
 
@@ -431,7 +448,98 @@ namespace SkinnyJson
 
         }
 
-    	static object? GetInstanceValue(object obj, Type t, Getters p) {
+        /// <summary>
+        /// Try to use a custom serialiser declared in a custom attribute
+        /// </summary>
+        /// <seealso cref="Json.GetSettableObjectWithCustomSerialiser"/>
+        private string? GetJsonStringWithCustomSerialiser(Type sourceType, TypePropertyInfo propertyInfo, object? valueToWrite)
+        {
+            var type  = propertyInfo.customSerialiser!;
+            var param = propertyInfo.customSerialiserParams ?? new object[0];
+
+            var serialiser = Activator.CreateInstance(type, param);
+            if (serialiser is null) throw new Exception($"Invalid custom serialiser '{type.Name}'");
+
+            var preset = TypeManager.GetJsonSerializerOptions(propertyInfo, type);
+
+            // Try to use JsonConverterFactory to get at a real converter
+            var factory = type.GetMethod("CreateConverter", BindingFlags.Public | BindingFlags.Instance); // From System.Text.Json.Serialization.JsonConverterFactory
+            if (factory is not null)
+            {
+                serialiser = factory.Invoke(serialiser, new[] { propertyInfo.PropertyType, preset });
+
+                if (serialiser is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' returned null from 'CreateConverter' method");
+
+                type = serialiser.GetType();
+            }
+
+            // Hopefully we have a converter now.
+
+            // Build up the objects needed to capture the
+            var ms          = new MemoryStream();
+            var writer      = GetUtf8JsonWriterForValue(propertyInfo, ms, type);
+            var flushMethod = writer.GetType().GetMethod("Flush", BindingFlags.Public | BindingFlags.Instance);
+
+            // Try using 'Write' from System.Text.Json.Serialization.JsonConverter<T>
+            var writeMethod  = type.GetMethod("Write", BindingFlags.Public | BindingFlags.Instance);
+            if (writeMethod is not null)
+            {
+                try
+                {
+                    // void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
+                    writeMethod.Invoke(serialiser, new[] { writer, valueToWrite, preset });
+                    flushMethod?.Invoke(writer, new object[0]);
+                    return Encoding.UTF8.GetString(ms.ToArray());
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' failed", ex);
+                }
+            }
+
+            // Try using 'WriteAsObject' from System.Text.Json.Serialization.JsonConverter
+            var writeObjectMethod  = type.GetMethod("WriteAsObject", BindingFlags.Public | BindingFlags.Instance);
+            if (writeObjectMethod is not null) {
+                try
+                {
+                    // void WriteAsObject(Utf8JsonWriter writer, object? value, JsonSerializerOptions options);
+                    writeObjectMethod.Invoke(serialiser, new[] { writer, valueToWrite, preset });
+                    flushMethod?.Invoke(writer, new object[0]);
+                    return Encoding.UTF8.GetString(ms.ToArray());
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' failed", ex);
+                }
+            }
+
+            // Now need to write from 'ms' into our stream.
+            var str = Encoding.UTF8.GetString(ms.ToArray());
+            Console.WriteLine(str);
+
+            throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' does not implement methods 'WriteAsObject' or 'Write'.");
+        }
+
+        /// <summary>
+        /// Try to find (by reflection) and generate a <c>Utf8JsonWriter</c> to feed to System.Text.Json methods
+        /// </summary>
+        private static object GetUtf8JsonWriterForValue(TypePropertyInfo propertyInfo, Stream target, Type serialiserType)
+        {
+            // Try to find Utf8JsonReader
+            var readerType = TypeManager.FindTypeByReflection("Utf8JsonWriter", "System.Text.Json");
+            if (readerType is null) throw new Exception($"Custom serialiser '{serialiserType.Name}' for '{propertyInfo}' cannot be used: No 'Utf8JsonWriter' type found");
+
+            var opts   = TypeManager.GetJsonWriterOptions(propertyInfo, serialiserType);
+
+            // Create Utf8JsonReader
+            var reader = Activator.CreateInstance(readerType, target, opts);
+            // Must call read on the Utf8JsonReader first: public bool Read()
+            var readCall = readerType.GetMethod("Read", BindingFlags.Public | BindingFlags.Instance);
+            readCall?.Invoke(reader, null);
+            return reader;
+        }
+
+        static object? GetInstanceValue(object obj, Type t, Getters p) {
     		if (t.IsValueType && p.FieldInfo != null) {
 				return p.FieldInfo.GetValue(obj);
 			}
@@ -441,9 +549,18 @@ namespace SkinnyJson
     		return p.Getter?.Invoke(obj);
     	}
 
+        private void WritePairRaw(string name, string? value)
+        {
+            if (value is null && !_settings.SerializeNullValues) return;
+
+            WriteStringFast(name);
+            Append(':');
+            Append(value);
+        }
+
     	private void WritePairFast(string name, string? value)
         {
-            if ((value == null) && _settings.SerializeNullValues == false)
+            if (value is null && !_settings.SerializeNullValues)
                 return;
             WriteStringFast(name);
 

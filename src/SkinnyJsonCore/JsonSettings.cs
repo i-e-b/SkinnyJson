@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace SkinnyJson
@@ -194,6 +195,11 @@ namespace SkinnyJson
         /// Add type and schema information to output JSON, using $type, $types, $schema and $map properties.
         /// </summary>
         public bool UseTypeExtensions { get; init; } = false;
+
+        /// <summary>
+        /// Maximum recursion depth during serialisation
+        /// </summary>
+        public int MaxDepth { get; init; } = 10;
         // ReSharper restore RedundantDefaultFieldInitializer
         #endregion Settings
         
@@ -217,7 +223,8 @@ namespace SkinnyJson
                 UseUtcDateTime = UseUtcDateTime,
                 StrictMatching = StrictMatching,
                 StreamEncoding = StreamEncoding,
-                DateFormats = DateFormats
+                DateFormats = DateFormats,
+                MaxDepth = MaxDepth
             };
         }
 
@@ -239,7 +246,8 @@ namespace SkinnyJson
                 UseOptimizedDatasetSchema = UseOptimizedDatasetSchema,
                 UseUtcDateTime = UseUtcDateTime,
                 StrictMatching = StrictMatching,
-                DateFormats = DateFormats
+                DateFormats = DateFormats,
+                MaxDepth = MaxDepth
             };
         }
         
@@ -262,7 +270,8 @@ namespace SkinnyJson
                 UseFastGuid = UseFastGuid,
                 UseOptimizedDatasetSchema = UseOptimizedDatasetSchema,
                 UseUtcDateTime = UseUtcDateTime,
-                StrictMatching = StrictMatching
+                StrictMatching = StrictMatching,
+                MaxDepth = MaxDepth
             };
         }
         
@@ -284,7 +293,33 @@ namespace SkinnyJson
                 UseFastGuid = UseFastGuid,
                 UseOptimizedDatasetSchema = UseOptimizedDatasetSchema,
                 UseUtcDateTime = UseUtcDateTime,
-                StrictMatching = StrictMatching
+                StrictMatching = StrictMatching,
+                MaxDepth = MaxDepth
+            };
+        }
+
+        /// <summary>
+        /// Set maximum recursion depth during serialisation
+        /// </summary>
+        public JsonSettings WithMaximumRecursionDepth(int depth)
+        {
+            if (depth < 1) throw new Exception("Invalid recursion depth");
+            
+            return new JsonSettings {
+                IgnoreCaseOnDeserialize = false,
+
+                DateFormats = DateFormats,
+                StreamEncoding = StreamEncoding,
+                EnableAnonymousTypes = EnableAnonymousTypes,
+                UsingGlobalTypes = UsingGlobalTypes,
+                UseTypeExtensions = UseTypeExtensions,
+                SerializeNullValues = SerializeNullValues,
+                ShowReadOnlyProperties = ShowReadOnlyProperties,
+                UseFastGuid = UseFastGuid,
+                UseOptimizedDatasetSchema = UseOptimizedDatasetSchema,
+                UseUtcDateTime = UseUtcDateTime,
+                StrictMatching = StrictMatching,
+                MaxDepth = MaxDepth
             };
         }
 

@@ -285,13 +285,7 @@ namespace SkinnyJson
         #region Internal
         private static bool IsAnonymousTypedObject(object? obj)
         {
-            return IsAnonymousType(obj?.GetType());
-        }
-
-        private static bool IsAnonymousType(Type? type)
-        {
-            if (type == null) return false;
-            return (type.Name.StartsWith("<>") || type.Name.StartsWith("VB$")) && (type.Attributes.HasFlag(TypeAttributes.NotPublic));
+            return TypeManager.IsAnonymousType(obj?.GetType());
         }
         
         /// <summary>
@@ -302,7 +296,7 @@ namespace SkinnyJson
             return new JsonSerializer(param).ConvertStaticsToJson(type);
         }
 
-        private static string ToJson(object obj, JsonSettings param)
+        private static string ToJson(object? obj, JsonSettings param)
         {
             return new JsonSerializer(param).ConvertToJson(obj);
         }
@@ -478,10 +472,10 @@ namespace SkinnyJson
             if (!settings.IgnoreCaseOnDeserialize) return false;
 
             // Try to find first match in normalised case
-            var key = NormaliseCase(step);
+            var key = TypeManager.NormaliseCase(step);
             foreach (var kvp in objects)
             {
-                if (NormaliseCase(kvp.Key) == key)
+                if (TypeManager.NormaliseCase(kvp.Key) == key)
                 {
                     next = kvp.Value;
                     return true;
@@ -697,7 +691,7 @@ namespace SkinnyJson
             var targetType = targetObject?.GetType() ?? type;
             if (targetType is null) throw new Exception("Unable to determine type of object");
 
-            var props = GetProperties(targetType, targetType.Name, settings, warnings);
+            var props = TypeManager.GetProperties(targetType, targetType.Name, settings, warnings);
             if (!IsDictionary(targetType) && NoPropertiesMatch(props, jsonValues.Keys, settings))
             {
                 if (!settings.IgnoreCaseOnDeserialize &&
@@ -731,8 +725,8 @@ namespace SkinnyJson
 
         private static bool PropertiesWouldMatchCaseInsensitive(SafeDictionary<string,TypePropertyInfo> props, ICollection<string> jsonValuesKeys)
         {
-            var normalKeys = props.Keys.Select(NormaliseCase);
-            return jsonValuesKeys.Any(jsonKey => normalKeys.Contains(NormaliseCase(jsonKey)));
+            var normalKeys = props.Keys.Select(TypeManager.NormaliseCase);
+            return jsonValuesKeys.Any(jsonKey => normalKeys.Contains(TypeManager.NormaliseCase(jsonKey)));
         }
 
         private static void TryFillGlobalTypes(IDictionary<string, object> jsonValues, IDictionary<string, object>? globalTypes)
@@ -756,8 +750,8 @@ namespace SkinnyJson
         {
             if (settings.IgnoreCaseOnDeserialize)
             {
-                var normProp = props.Keys.Select(NormaliseCase).ToList();
-                return jsonValuesKeys.All(jsonKey => !normProp.Contains(NormaliseCase(jsonKey)));
+                var normProp = props.Keys.Select(TypeManager.NormaliseCase).ToList();
+                return jsonValuesKeys.All(jsonKey => !normProp.Contains(TypeManager.NormaliseCase(jsonKey)));
             }
 
             return jsonValuesKeys.All(jsonKey => !props.HasKey(jsonKey));
@@ -770,7 +764,7 @@ namespace SkinnyJson
             SafeDictionary<string, TypePropertyInfo> props, WarningSet? warnings, JsonSettings settings)
         {
             var name = objectKey;
-            if (settings.IgnoreCaseOnDeserialize) name = NormaliseCase(name);
+            if (settings.IgnoreCaseOnDeserialize) name = TypeManager.NormaliseCase(name);
             if (name == "$map" && targetObject is not null)
             {
                 ProcessMap(targetObject, props, jsonValues[name] as Dictionary<string, object>);
@@ -789,14 +783,12 @@ namespace SkinnyJson
 
             if (value == null) return;
 
-            object setObj;
-
-
+            object? setObj;
             try
             {
                 if (propertyInfo.customSerialiser is not null)
                 {
-                    setObj = GetSettableObjectWithCustomSerialiser(targetType, targetObject, propertyInfo, value, warnings);
+                    setObj = GetSettableObjectWithCustomSerialiser(targetType, propertyInfo, value, warnings);
                 }
                 else
                 {
@@ -823,7 +815,7 @@ namespace SkinnyJson
             catch (Exception ex)
             {
                 throw new Exception(
-                    $"Failed to write value from json {value.GetType()} via {setObj.GetType()} to target object {propertyInfo.changeType?.ToString() ?? "<unknown>"} on property {propertyInfo.Name}",
+                    $"Failed to write value from json {value.GetType()} via {setObj?.GetType()} to target object {propertyInfo.changeType?.ToString() ?? "<unknown>"} on property {propertyInfo.Name}",
                     ex);
             }
         }
@@ -831,9 +823,9 @@ namespace SkinnyJson
         /// <summary>
         /// Try to use a custom serialiser declared in a custom attribute
         /// </summary>
-        private static object GetSettableObjectWithCustomSerialiser(Type? targetType, object? targetObject, TypePropertyInfo propertyInfo, object value, WarningSet? warnings)
+        /// <seealso cref="JsonSerializer.GetJsonStringWithCustomSerialiser"/>
+        private static object? GetSettableObjectWithCustomSerialiser(Type? targetType, TypePropertyInfo propertyInfo, object value, WarningSet? warnings)
         {
-            // TODO: cache the custom serialisers if we can.
             var type  = propertyInfo.customSerialiser!;
             var param = propertyInfo.customSerialiserParams ?? new object[0];
 
@@ -841,7 +833,7 @@ namespace SkinnyJson
 
             if (serialiser is null) throw new Exception($"Invalid custom serialiser '{type.Name}'");
 
-            var preset = GetJsonSerializerOptions(propertyInfo, type);
+            var preset = TypeManager.GetJsonSerializerOptions(propertyInfo, type);
 
             // Try to use JsonConverterFactory to get at a real converter
             var factory = type.GetMethod("CreateConverter", BindingFlags.Public | BindingFlags.Instance); // From System.Text.Json.Serialization.JsonConverterFactory
@@ -855,38 +847,14 @@ namespace SkinnyJson
             }
 
             // Hopefully we have a converter now.
-            var readMethod  = type.GetMethod("Read", BindingFlags.Public | BindingFlags.Instance); // From System.Text.Json.Serialization.JsonConverter<T>
+
+            // Build a reader that has a re-stringified version of the object
+            var reader = GetUtf8JsonReaderForValue(propertyInfo, value, type);
+
+            // Try using 'Read' from System.Text.Json.Serialization.JsonConverter<T>
+            var readMethod  = type.GetMethod("Read", BindingFlags.Public | BindingFlags.Instance);
             if (readMethod is not null)
             {
-                // Try to find Utf8JsonReader
-                var readers = type.Assembly.GetTypes().Where(t => t.Name.Contains("Utf8JsonReader")).ToArray();
-                if (readers.Length < 1) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' cannot be used: No 'Utf8JsonReader' type found");
-
-                var readerType = readers[0];
-
-                // Try to find ReadOnlySpan<byte>
-                var everyone = AppDomain.CurrentDomain.GetAssemblies();
-                Type[] dataSources = Type.EmptyTypes;
-                foreach (var assembly in everyone)
-                {
-                    dataSources = assembly.GetTypes().Where(t => t.Name.Contains("ReadOnlySpan") && t.Namespace == "System").ToArray();
-                    if (dataSources.Length > 0) break;
-                }
-                if (dataSources.Length < 1) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' cannot be used: No 'ReadOnlySpan<byte>' type found");
-
-                // TODO: Get JSON version of the property value (or spoof Utf8JsonReader internals?)
-                var rawData        = Encoding.UTF8.GetBytes("\"Collected\"");
-
-                // public unsafe ReadOnlySpan(T[] array)
-                var dataSourceType = dataSources[0].MakeGenericType(typeof(byte));
-                var dataSource     = Activator.CreateInstance(dataSourceType, new object[] { rawData });
-
-                // Create Utf8JsonReader
-                var reader = Activator.CreateInstance(readerType, new object?[] { dataSource, null });
-                // Must call read on the Utf8JsonReader first: public bool Read()
-                var readCall = readerType.GetMethod("Read", BindingFlags.Public | BindingFlags.Instance);
-                readCall?.Invoke(reader, null);
-
                 try
                 {
                     // result = Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -894,65 +862,56 @@ namespace SkinnyJson
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex); // TODO: remove
+                    warnings?.Append($"Custom serialiser '{type.Name}' for '{propertyInfo}' failed: {ex}");
+                    return null;
                 }
             }
 
-            /*var writeMethod = type.GetMethod("Write", BindingFlags.Public | BindingFlags.Instance);
-            if (writeMethod is not null) // This is a From System.Text.Json.Serialization.JsonConverter<T>
-            {
-                // public override void Write(Utf8JsonWriter writer, TEnum value, JsonSerializerOptions options)
-                writeMethod.Invoke(serialiser, new []{writer, value, preset});
-                return;
-            }*/
+            // Try using 'ReadAsObject' from System.Text.Json.Serialization.JsonConverter
+            var readObjectMethod  = type.GetMethod("ReadAsObject", BindingFlags.Public | BindingFlags.Instance);
+            if (readObjectMethod is not null) {
+                try
+                {
+                    // result = ReadAsObject(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options);
+                    return readObjectMethod.Invoke(serialiser, new[] { reader, targetType, preset });
+                }
+                catch (Exception ex)
+                {
+                    warnings?.Append($"Custom serialiser '{type.Name}' for '{propertyInfo}' failed: {ex}");
+                    return null;
+                }
+            }
 
-            throw new Exception("Not yet implemented");
-
-            /*
-        internal abstract object? ReadAsObject(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options);
-        internal abstract bool OnTryReadAsObject(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options, scoped ref ReadStack state, out object? value);
-        internal abstract bool TryReadAsObject(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options, scoped ref ReadStack state, out object? value);
-        internal abstract object? ReadAsPropertyNameAsObject(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options);
-        internal abstract object? ReadAsPropertyNameCoreAsObject(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options);
-        internal abstract object? ReadNumberWithCustomHandlingAsObject(ref Utf8JsonReader reader, JsonNumberHandling handling, JsonSerializerOptions options);
-
-        internal abstract void WriteAsObject(Utf8JsonWriter writer, object? value, JsonSerializerOptions options);
-        internal abstract bool OnTryWriteAsObject(Utf8JsonWriter writer, object? value, JsonSerializerOptions options, ref WriteStack state);
-        internal abstract bool TryWriteAsObject(Utf8JsonWriter writer, object? value, JsonSerializerOptions options, ref WriteStack state);
-        internal abstract void WriteAsPropertyNameAsObject(Utf8JsonWriter writer, object? value, JsonSerializerOptions options);
-        internal abstract void WriteAsPropertyNameCoreAsObject(Utf8JsonWriter writer, object? value, JsonSerializerOptions options, bool isWritingExtensionDataProperty);
-        internal abstract void WriteNumberWithCustomHandlingAsObject(Utf8JsonWriter writer, object? value, JsonNumberHandling handling);
-             */
-
-            // JsonConverter (no <T>)
-            //internal abstract object? ReadAsObject(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options);
-            //internal abstract void WriteAsObject(Utf8JsonWriter writer, object? value, JsonSerializerOptions options);
-
-            // public sealed override JsonConverter? CreateConverter(Type typeToConvert, JsonSerializerOptions options)
-            /*
-        public override TEnum Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-            => SpecialSerialisingType.FromName<TEnum>(reader.GetString()!, ignoreCase: true);
-
-        /// <inheritdoc />
-        public override void Write(Utf8JsonWriter writer, TEnum value, JsonSerializerOptions options)
-            => writer.WriteStringValue(value.Name);*/
+            throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' does not implement methods 'ReadAsObject' or 'Read'.");
         }
 
-        private static object GetJsonSerializerOptions(TypePropertyInfo propertyInfo, Type type)
+        /// <summary>
+        /// Try to find (by reflection) and generate a <c>Utf8JsonReader</c> to feed to System.Text.Json methods
+        /// </summary>
+        private static object GetUtf8JsonReaderForValue(TypePropertyInfo propertyInfo, object value, Type type)
         {
-            // get static property: JsonSerializerOptions.Web
-            var jsOpts = type.Assembly.GetTypes().Where(t => t.Name.Contains("JsonSerializerOptions")).ToArray();
+            // Try to find Utf8JsonReader
+            var readerType = TypeManager.FindTypeByReflection("Utf8JsonReader", "System.Text.Json");
+            if (readerType is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' cannot be used: No 'Utf8JsonReader' type found");
 
-            if (jsOpts.Length < 1) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' is a 'JsonConverterFactory', but could not find 'JsonSerializerOptions' type.");
+            // Try to find ReadOnlySpan<byte>
+            var readOnlySpanType = TypeManager.FindTypeByReflection("ReadOnlySpan`1", "System");
+            if (readOnlySpanType is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' cannot be used: No 'ReadOnlySpan<byte>' type found");
 
-            var jso = jsOpts[0];
+            // Get JSON version of the property value ("value" should be one of our JSON parsed values)
+            var stringValue = Freeze(value);
+            var rawData     = Encoding.UTF8.GetBytes(stringValue);
 
-            var presetSrc = jso.GetProperty("Web", BindingFlags.Public | BindingFlags.Static) ?? jso.GetProperty("Default", BindingFlags.Public | BindingFlags.Static);
+            // public unsafe ReadOnlySpan(T[] array)
+            var dataSourceType = readOnlySpanType.MakeGenericType(typeof(byte));
+            var dataSource     = Activator.CreateInstance(dataSourceType, rawData);
 
-            if (presetSrc is null) throw new Exception($"Cannot use custom serialiser '{type.Name}' for '{propertyInfo}'. 'JsonSerializerOptions' has no presets");
-
-            var preset = presetSrc.GetValue(null);
-            return preset;
+            // Create Utf8JsonReader
+            var reader = Activator.CreateInstance(readerType, dataSource, null);
+            // Must call read on the Utf8JsonReader first: public bool Read()
+            var readCall = readerType.GetMethod("Read", BindingFlags.Public | BindingFlags.Instance);
+            readCall?.Invoke(reader, null);
+            return reader;
         }
 
         private static bool GetProp(SafeDictionary<string,TypePropertyInfo> props, string key1, string key2, out TypePropertyInfo prop)
@@ -969,13 +928,13 @@ namespace SkinnyJson
             return null;
         }
 
-        private static void AddToDictionary(string key, object value, object? target, JsonSettings settings)
+        private static void AddToDictionary(string key, object? value, object? target, JsonSettings settings)
         {
             if (target is null) throw new Exception("Target dictionary was null");
 
             if (target is Dictionary<string, object> simple)
             {
-                simple.Add(key, value);
+                simple.Add(key, value!);
             }
             else if (target is Dictionary<string, string> shallow)
             {
@@ -1141,7 +1100,7 @@ namespace SkinnyJson
             if (o is bool b) return b;
             if (o is string s)
             {
-                if (settings.IgnoreCaseOnDeserialize) s = NormaliseCase(s);
+                if (settings.IgnoreCaseOnDeserialize) s = TypeManager.NormaliseCase(s);
                 switch (s)
                 {
                     case "true": return true;
@@ -1151,9 +1110,13 @@ namespace SkinnyJson
             throw new Exception("Can't interpret '"+o+"' as a boolean");
         }
 
-        private static object TryConvertToTarget(object incomingValue, Type? targetType)
+        private static object TryConvertToTarget(object? incomingValue, Type? targetType)
         {
-            if (targetType is null) return incomingValue;
+            if (targetType is null) return incomingValue!;
+            if (incomingValue is null)
+            {
+                return targetType.IsValueType ? Activator.CreateInstance(targetType) : null!;
+            }
 
             var nativeType = incomingValue.GetType();
 
@@ -1183,7 +1146,7 @@ namespace SkinnyJson
         /// Inject a value into an object's property.
         /// If object is null, we will attempt to write to a static member.
         /// </summary>
-        private static void WriteValueToTypeInstance(string name, Type? type, object? targetObject, TypePropertyInfo propertyInfo, object objSet) {
+        private static void WriteValueToTypeInstance(string name, Type? type, object? targetObject, TypePropertyInfo propertyInfo, object? objSet) {
             try
             {
                 var containerType = targetObject?.GetType() ?? type;
@@ -1199,17 +1162,20 @@ namespace SkinnyJson
                         fi.SetValue(targetObject!, TryConvertToTarget(objSet, fi.FieldType));
                         return;
                     }
-                    var pr = containerType.GetProperty(propertyInfo.Name, BindingFlags.Instance | BindingFlags.Public);
-                    if (pr != null)
+
                     {
-                        pr.SetValue(targetObject!, TryConvertToTarget(objSet, pr.PropertyType), null!);
-                        return;
+                        var pr = containerType.GetProperty(propertyInfo.Name!, BindingFlags.Instance | BindingFlags.Public);
+                        if (pr != null)
+                        {
+                            pr.SetValue(targetObject!, TryConvertToTarget(objSet, pr.PropertyType), null!);
+                            return;
+                        }
                     }
                 }
 
                 if (propertyInfo.isDictionary || propertyInfo.isHashtable) // use display name
                 {
-                    propertyInfo.setter?.Invoke(targetObject!, objSet, name);
+                    propertyInfo.setter?.Invoke(targetObject!, objSet!, name);
                 }
                 else // use reflection name
                 {
@@ -1221,182 +1187,6 @@ namespace SkinnyJson
             {
                 throw new Exception("Writing value failed [co/contra]variance checks", vex);
             }
-        }
-
-        /// <summary>
-        /// Read the properties and public fields of a type.
-        /// In special cases, this will also read private fields
-        /// </summary>
-        private static SafeDictionary<string, TypePropertyInfo> GetProperties(Type type, string typename, JsonSettings settings, WarningSet? warnings)
-        {
-            var usePrivateFields = typename.StartsWith("Tuple`", StringComparison.Ordinal) || IsAnonymousType(type);
-
-            if (TypeManager.GetPropertySet(type, settings, out var sd)) return sd;
-            sd = new SafeDictionary<string, TypePropertyInfo>();
-
-            var pr = new List<PropertyInfo>();
-            var getOnlyProperties = new List<PropertyInfo>();
-
-            // Instance fields and static fields
-            var fi = new List<FieldInfo>();
-            fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Instance));
-            fi.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Static));
-
-            if (usePrivateFields)
-            {
-                fi.AddRange(type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance));
-            }
-
-            foreach (var typeInterface in type.GetInterfaces())
-            {
-                fi.AddRange(typeInterface.GetFields(BindingFlags.Public | BindingFlags.Instance));
-            }
-
-            foreach (var f in fi)
-            {
-                try
-                {
-                    var d = TypeManager.CreateMyProp(typename, f.FieldType, f.Name, f.CustomAttributes);
-                    d.setter = TypeManager.CreateSetField(type, f);
-                    d.getter = TypeManager.CreateGetField(type, f);
-
-                    sd.Add(f.Name, d);
-                    if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(f.Name), d);
-                    if (usePrivateFields)
-                    {
-                        var privateName = f.Name.Replace("m_", "");
-                        sd.Add(AnonFieldFilter(privateName), d);
-                        if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(privateName), d);
-                    }
-
-                    foreach (var alt in TypeManager.GetAlternativeNames(f)) sd.TryAdd(alt, d);
-                }
-                catch
-                {
-                    // Ignore
-                }
-            }
-
-            // Instance properties
-            pr.AddRange(type.GetProperties(BindingFlags.Public | BindingFlags.Instance));
-            foreach (var prop in type.GetInterfaces()
-                         .SelectMany(i => i.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                             .Where(prop => pr.All(p => p.Name != prop.Name)))) {
-                pr.Add(prop);
-            }
-
-            foreach (var p in pr)
-            {
-                try
-                {
-                    var d = TypeManager.CreateMyProp(typename, p.PropertyType, p.Name, p.CustomAttributes);
-                    d.CanWrite = p.CanWrite;
-                    d.setter = TypeManager.CreateSetMethod(p);
-                    if (d.setter == null)
-                    {
-                        if (settings.SearchForBackingFields) getOnlyProperties.Add(p);
-                        else warnings?.Append($"Property '{p.Name}' has no 'set'");
-                        continue;
-                    }
-
-                    d.getter = TypeManager.CreateGetMethod(p);
-                    sd.Add(p.Name, d);
-                    if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(p.Name), d);
-                    foreach (var alt in TypeManager.GetAlternativeNames(p)) sd.TryAdd(alt, d);
-                }
-                catch
-                {
-                    // Ignore
-                }
-            }
-
-            if (settings.SearchForBackingFields)
-            {
-                try
-                {
-                    var potentialBackingFields = type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance).ToList();
-                    foreach (var prop in getOnlyProperties)
-                    {
-                        try
-                        {
-                            var nameGuess = "<" + prop.Name + ">"; // This is very dependent on C# compiler internals
-                            var candidate = potentialBackingFields.FirstOrDefault(f => f.Name.Contains(nameGuess));
-                            if (candidate is null)
-                            {
-                                warnings?.Append($"Property '{prop.Name}' has no 'set'");
-                            }
-                            else
-                            {
-                                var d = TypeManager.CreateMyProp(typename, candidate.FieldType, candidate.Name, candidate.CustomAttributes);
-                                d.setter = TypeManager.CreateSetField(type, candidate);
-                                d.getter = TypeManager.CreateGetField(type, candidate);
-                                sd.Add(prop.Name, d);
-                                if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(prop.Name), d);
-                                foreach (var alt in TypeManager.GetAlternativeNames(prop)) sd.TryAdd(alt, d);
-                            }
-                        }
-                        catch
-                        {
-                            //Ignore
-                        }
-                    }
-                }
-                catch
-                {
-                    // Ignore
-                }
-            }
-
-            // Static properties are special
-            var staticProps = type.GetProperties(BindingFlags.Public | BindingFlags.Static);
-            foreach (var sp in staticProps)
-            {
-                var d = TypeManager.CreateMyProp(typename, sp.PropertyType, sp.Name, sp.CustomAttributes);
-                d.CanWrite = sp.CanWrite;
-                d.setter = (_, value, _) => sp.SetValue(null!, value);
-                d.getter = _ => sp.GetValue(null!)!;
-                
-                sd.Add(sp.Name, d);
-                if (settings.IgnoreCaseOnDeserialize) sd.TryAdd(NormaliseCase(sp.Name), d);
-                foreach (var alt in TypeManager.GetAlternativeNames(sp)) sd.TryAdd(alt, d);
-            }
-
-            if (type.GetGenericArguments().Length < 1) {
-                TypeManager.AddToPropertyCache(type, sd, settings);
-            }
-            return sd;
-        }
-
-        /// <summary>
-        /// Convert a string to lower case, removing a set of joining and non-printing characters
-        /// </summary>
-        private static string NormaliseCase(string? src)
-        {
-            if (src is null || src.Length < 1) return "";
-            var sb = new StringBuilder();
-
-            foreach (var c in src)
-            {
-                if (c <= ' ') continue;
-                if (c == '_') continue;
-                if (c == '-') continue;
-                if (char.IsControl(c)) continue;
-                if (char.IsWhiteSpace(c)) continue;
-                if (char.IsSeparator(c)) continue;
-                sb.Append(char.ToLowerInvariant(c));
-            }
-
-            return sb.ToString();
-        }
-
-        // Anonymous fields like "A" will be named like "<A>i__Field" in the type def.
-        // so we filter them here:
-        private static string AnonFieldFilter(string name)
-        {
-            if (name[0] != '<') return name;
-            var idx = name.IndexOf('>', 2);
-            if (idx < 2) return name;
-            return name.Substring(1, idx - 1);
         }
         
         /// <summary>
@@ -1585,7 +1375,7 @@ namespace SkinnyJson
         {
             if (a == b) return true;
             if (a.Equals(b, StringComparison.InvariantCultureIgnoreCase)) return true;
-            return NormaliseCase(a) == NormaliseCase(b);
+            return TypeManager.NormaliseCase(a) == TypeManager.NormaliseCase(b);
         }
 
         private static object CreateArray(IEnumerable data, Type? elementType, IDictionary<string, object>? globalTypes, JsonSettings settings)
