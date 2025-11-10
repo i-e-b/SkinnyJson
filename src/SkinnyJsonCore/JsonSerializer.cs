@@ -460,7 +460,6 @@ namespace SkinnyJson
             var serialiser = Activator.CreateInstance(type, param);
             if (serialiser is null) throw new Exception($"Invalid custom serialiser '{type.Name}'");
 
-
             // Is this one of ours?
             if (TypeManager.IsSkinnyCustomConverter(type))
             {
@@ -470,6 +469,46 @@ namespace SkinnyJson
 
                 var temp = new JsonSerializer(_settings);
                 return temp.ConvertToJson(toSerialise);
+            }
+
+            // Not our `CustomJsonConverter`. Look for either 'System.Text.Json' or 'Newtonsoft.Json' options.
+
+            // See if there are any Newtonsoft read methods (generic-typed and object-typed have the same name)
+            var nsWriteMethods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                                     .Where(m => m.Name == "WriteJson").ToList(); // From Newtonsoft.Json.JsonConverter<T> or Newtonsoft.Json.JsonConverter
+            if (nsWriteMethods.Count > 0)
+            {
+                try
+                {
+                    // Get a text writer ready
+                    var writerType = TypeManager.FindTypeByReflection("JsonTextWriter", "Newtonsoft.Json");
+                    if (writerType is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' failed: Could not find JsonTextWriter type");
+
+                    using var target = new StringWriter();
+                    var writer = Activator.CreateInstance(writerType, target); // public JsonTextWriter(TextWriter textWriter)
+
+                    var nsJsType = TypeManager.FindTypeByReflection("JsonSerializer", "Newtonsoft.Json");
+                    if (nsJsType is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' failed: Could not find JsonSerializer type");
+                    var nsSerialiser = Activator.CreateInstance(nsJsType); // public JsonSerializer()
+
+                    var generic = nsWriteMethods.FirstOrDefault(m => m.GetParameters().Length > 2 && m.GetParameters()[1].ParameterType != typeof(object));
+                    if (generic is not null) generic.Invoke(serialiser, new[] { writer, valueToWrite, nsSerialiser });
+                    else nsWriteMethods[0].Invoke(serialiser, new[] { writer, valueToWrite, nsSerialiser });
+
+                    // Generic-type:
+                    /* void WriteJson(Newtonsoft.Json.JsonWriter writer,
+                                      NewtonsoftJsonNamed? value,
+                                      Newtonsoft.Json.JsonSerializer serializer)*/
+                    // Object-type:
+                    /* void WriteJson(Newtonsoft.Json.JsonWriter writer,
+                                      object? value,
+                                      Newtonsoft.Json.JsonSerializer serializer)*/
+                    return target.ToString();
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' failed", ex);
+                }
             }
 
             var preset = TypeManager.GetJsonSerializerOptions(propertyInfo, type);
@@ -487,10 +526,8 @@ namespace SkinnyJson
 
             // Hopefully we have a converter now.
 
-            // Build up the objects needed to capture the
-            var ms          = new MemoryStream();
-            var writer      = GetUtf8JsonWriterForValue(propertyInfo, ms, type);
-            var flushMethod = writer.GetType().GetMethod("Flush", BindingFlags.Public | BindingFlags.Instance);
+            // Make a stream to capture output
+            var ms = new MemoryStream();
 
             // Try using 'Write' from System.Text.Json.Serialization.JsonConverter<T>
             var writeMethod  = type.GetMethod("Write", BindingFlags.Public | BindingFlags.Instance);
@@ -498,6 +535,8 @@ namespace SkinnyJson
             {
                 try
                 {
+                    var writer      = GetUtf8JsonWriterForValue(propertyInfo, ms, type);
+                    var flushMethod = writer.GetType().GetMethod("Flush", BindingFlags.Public | BindingFlags.Instance);
                     // void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
                     writeMethod.Invoke(serialiser, new[] { writer, valueToWrite, preset });
                     flushMethod?.Invoke(writer, new object[0]);
@@ -514,6 +553,8 @@ namespace SkinnyJson
             if (writeObjectMethod is not null) {
                 try
                 {
+                    var writer      = GetUtf8JsonWriterForValue(propertyInfo, ms, type);
+                    var flushMethod = writer.GetType().GetMethod("Flush", BindingFlags.Public | BindingFlags.Instance);
                     // void WriteAsObject(Utf8JsonWriter writer, object? value, JsonSerializerOptions options);
                     writeObjectMethod.Invoke(serialiser, new[] { writer, valueToWrite, preset });
                     flushMethod?.Invoke(writer, new object[0]);

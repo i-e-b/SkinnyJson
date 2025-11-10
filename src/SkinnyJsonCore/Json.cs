@@ -843,9 +843,9 @@ namespace SkinnyJson
             // Not our `CustomJsonConverter`. Look for either 'System.Text.Json' or 'Newtonsoft.Json' options.
 
             // See if there are any Newtonsoft read methods (generic-typed and object-typed have the same name)
-            var nsWriteMethods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            var nsReadMethods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
                                      .Where(m=>m.Name == "ReadJson").ToList(); // From Newtonsoft.Json.JsonConverter<T> or Newtonsoft.Json.JsonConverter
-            if (nsWriteMethods.Count > 0)
+            if (nsReadMethods.Count > 0)
             {
                 try
                 {
@@ -853,8 +853,8 @@ namespace SkinnyJson
                     var readerType = TypeManager.FindTypeByReflection("JsonTextReader", "Newtonsoft.Json");
                     if (readerType is null) throw new Exception($"Custom serialiser '{type.Name}' for '{propertyInfo}' failed: Could not find JsonTextReader type");
 
-                    var target = new StringReader(Freeze(value));
-                    var reader = Activator.CreateInstance(readerType, target); // public JsonTextWriter(TextWriter textWriter)
+                    using var target = new StringReader(Freeze(value));
+                    var reader = Activator.CreateInstance(readerType, target); // public JsonTextReader(TextReader textReader)
 
                     // Read the re-created JSON
                     var readerReadMethod = readerType.GetMethod("Read", BindingFlags.Public | BindingFlags.Instance); // public abstract bool Read();
@@ -866,20 +866,20 @@ namespace SkinnyJson
                     var nsSerialiser = Activator.CreateInstance(nsJsType); // public JsonSerializer()
 
                     // Generic-type:
-                    // T ReadJson(Newtonsoft.Json.JsonReader reader,
-                    //            Type objectType,
-                    //            NewtonsoftJsonNamed? existingValue,
-                    //            bool hasExistingValue,
-                    //            Newtonsoft.Json.JsonSerializer serializer)
+                    /* T ReadJson(Newtonsoft.Json.JsonReader reader,
+                                  Type objectType,
+                                  NewtonsoftJsonNamed? existingValue,
+                                  bool hasExistingValue,
+                                  Newtonsoft.Json.JsonSerializer serializer)*/
                     // Object-type:
-                    // object? ReadJson(Newtonsoft.Json.JsonReader reader,
-                    //                  Type objectType,
-                    //                  object? existingValue,
-                    //                  Newtonsoft.Json.JsonSerializer serializer)
+                    /* object? ReadJson(Newtonsoft.Json.JsonReader reader,
+                                        Type objectType,
+                                        object? existingValue,
+                                        Newtonsoft.Json.JsonSerializer serializer)*/
                     object resultObj;
-                    var    generic = nsWriteMethods.FirstOrDefault(m => m.GetParameters().Length > 4 && m.GetParameters()[2].ParameterType != typeof(object));
+                    var    generic = nsReadMethods.FirstOrDefault(m => m.GetParameters().Length > 4 && m.GetParameters()[2].ParameterType != typeof(object));
                     if (generic is not null) resultObj = generic.Invoke(serialiser, new[] { reader, propertyInfo.PropertyType, /*value, true*/ null, false, nsSerialiser });
-                    else resultObj = nsWriteMethods[0].Invoke(serialiser, new[] { reader, propertyInfo.PropertyType, /*value*/ null, nsSerialiser });
+                    else resultObj = nsReadMethods[0].Invoke(serialiser, new[] { reader, propertyInfo.PropertyType, /*value*/ null, nsSerialiser });
 
                     return resultObj;
                 } catch (Exception ex){
