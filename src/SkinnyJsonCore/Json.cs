@@ -1026,7 +1026,7 @@ namespace SkinnyJson
 
             if (propertyInfo.isNumeric)
                 setObj = CastNumericType(inputValue, propertyInfo, out precisionLoss)
-                         ?? throw new Exception($"Failed to map input type '{inputValue.GetType().Name}' to target '{propertyInfo.PropertyType?.Name ?? "<null>"}'");
+                         ?? throw new Exception($"Failed to map input type '{inputValue.GetType().Name}' to numeric target '{propertyInfo.PropertyType?.Name ?? "<null>"}'");
 
             else if (propertyInfo.isByteArray)
                 setObj = ConvertBytes(inputValue);
@@ -1108,6 +1108,12 @@ namespace SkinnyJson
             if (inputValue is double)
             {
                 precisionLost = false; // could be...?
+                return ChangeType(inputValue, p.PropertyType);
+            }
+
+            if (inputValue is string)
+            {
+                precisionLost = true; // assume it is
                 return ChangeType(inputValue, p.PropertyType);
             }
 
@@ -1300,7 +1306,8 @@ namespace SkinnyJson
         private static long ParseLong(IEnumerable<char> s)
         {
             long num = 0;
-            var neg = false;
+            var  neg = false;
+            var  end = false;
             foreach (char cc in s)
             {
                 switch (cc)
@@ -1311,11 +1318,16 @@ namespace SkinnyJson
                     case '+':
                         neg = false;
                         break;
+                    case '.':
+                        end = true;
+                        break;
                     default:
                         num *= 10;
                         num += cc - '0';
                         break;
                 }
+
+                if (end) break;
             }
 
             return neg ? -num : num;

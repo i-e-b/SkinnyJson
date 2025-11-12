@@ -37,11 +37,24 @@ namespace SkinnyJson.Unit.Tests
 
             Assert.That(defrosted.BigNumber, Is.EqualTo("2305843009213693952"));
         }
+
+        [Test]
+        public void strings_to_numbers()
+        {
+            var defrosted = Json.Defrost<WideNumberConfusionType>("{\"DoubleType\": \"1000.01\", \"DecimalType\": \"1000.01\", \"IntegerType\": \"1000.01\"}");
+
+            Assert.That(defrosted.DoubleType, Is.EqualTo(1000.01), "double parsed incorrectly");
+            Assert.That(defrosted.DecimalType, Is.EqualTo(1000.01m), "decimal parsed incorrectly");
+            Assert.That(defrosted.IntegerType, Is.EqualTo(1000), "integer parsed incorrectly");
+        }
     }
 
     public class WideNumberConfusionType
     {
         public string BigNumber { get; set; } = "";
+        public double DoubleType { get; set; }
+        public decimal DecimalType { get; set; }
+        public long IntegerType { get; set; }
     }
 
     public class ReadOnlyProperties
