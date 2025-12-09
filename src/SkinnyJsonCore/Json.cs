@@ -1491,7 +1491,11 @@ namespace SkinnyJson
                 var key = values.Key;
                 if (key == null) continue;
                 object? val;
-                if (values.Value is Dictionary<string, object> objects)
+                if (values.Value is null)
+                {
+                    val = null;
+                }
+                else if (values.Value is Dictionary<string, object> objects)
                 {
                     val = ParseDictionary(objects, globalTypes, t2, null, null, settings);
                 }
@@ -1499,7 +1503,7 @@ namespace SkinnyJson
                 {
                     val = ChangeType(values.Value, t2) ?? throw new Exception("Failed to change type");
                 }
-                if (val == null) continue;
+                if (t2?.IsValueType == true && val == null) continue;
                 col.Add(key, val);
             }
 

@@ -309,6 +309,17 @@ namespace SkinnyJson.Unit.Tests
 
         }
 
+        [Test]
+        public void dictionary_type_conversion()
+        {
+            const string sample = "{\"installedParts\":[{\"partInstanceId\":\"01fcd509-0e86-473c-9913-26ccf194ce11\",\"partId\":\"4a30dccc-3af4-4726-851d-8c00934234ec\",\"partTypeId\":\"87b2fde3-011a-4f1e-8bc0-e624bf2ec799\",\"assetId\":1583,\"serialNumber\":\"868714040436609\",\"partInstanceDetails\":{\"iccid\":null}}],\"success\":true,\"errorMessage\":null}";
+            var          result = Json.Defrost<ListInstalledPartsResponse>(sample);
+
+            Console.WriteLine(Json.Freeze(result));
+
+            Assert.That(result, Is.Not.Null);
+        }
+
         private static string Quote(string src) => src.Replace('\'', '"');
     }
 
@@ -744,6 +755,28 @@ namespace SkinnyJson.Unit.Tests
         /// </summary>
         /// <remarks>See State.DataModels.EwcMemoryState.EwcSwapOccurred</remarks>
         Reset = 16
+    }
+
+    public class InstalledPart
+    {
+        public Guid PartInstanceId { get; set; }
+        public Guid PartId { get; set; }
+        public Guid PartTypeId { get; set; }
+        public int? AssetId { get; set; }
+        public string? SerialNumber { get; set; }
+        public Dictionary<string, string?>? PartInstanceDetails { get; set; }
+    }
+    /// <summary>A simple success, or fail+message response</summary>
+    public class GenericResponse
+    {
+        /// <summary>True if action worked, false otherwise</summary>
+        public bool Success { get; set; }
+        /// <summary>Optional: Error message, if any</summary>
+        public string? ErrorMessage { get; set; }
+    }
+    public class ListInstalledPartsResponse : GenericResponse
+    {
+        public List<InstalledPart> InstalledParts { get; set; } = new List<InstalledPart>();
     }
 }
 
