@@ -32,7 +32,7 @@ namespace SkinnyJson
             if (!target.CanWrite) throw new Exception("Output stream must be writable");
 
             _output = new StreamWriter(new SyncStreamWrapper(target), encoding);
-            WriteValue(obj);
+            WriteValue(obj, null);
             _output.Flush();
         }
 
@@ -71,7 +71,7 @@ namespace SkinnyJson
         {
             var sb = new StringBuilder();
             _output = new StringWriter(sb);
-            WriteValue(obj);
+            WriteValue(obj, null);
             _output.Flush();
 
             if (!_settings.UsingGlobalTypes)
@@ -116,7 +116,7 @@ namespace SkinnyJson
 		/// <summary>
 		/// This is the root of the serialiser.
 		/// </summary>
-        private void WriteValue(object? obj)
+        private void WriteValue(object? obj, object? parent)
 		{
 		    switch (obj)
 		    {
@@ -142,9 +142,6 @@ namespace SkinnyJson
                     {
                         Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo));
                     }
-                    /*else if (propertyInfo.customSerialiser is not null)
-                    {
-                    }*/
                     else switch (obj)
 		            {
 		                case DateTime time:
@@ -154,16 +151,19 @@ namespace SkinnyJson
                             WriteTimeSpan(timeSpan);
                             break;
 		                case IDictionary dictionary when dictionary.GetType().IsGenericType && dictionary.GetType().GetGenericArguments()[0] == typeof(string):
-		                    WriteStringDictionary(dictionary);
+		                    WriteStringDictionary(dictionary, parent);
 		                    break;
-		                case IDictionary dictionary1:
-		                    WriteDictionary(dictionary1);
+                        case IDictionary dictionary when dictionary.GetType().IsGenericType && IsPrimitiveNumeric(dictionary.GetType().GetGenericArguments()[0]):
+                            WriteNumericDictionary(dictionary, parent);
+                            break;
+		                case IDictionary unknownDictionary:
+		                    WriteDictionary(unknownDictionary, parent);
 		                    break;
 		                case DataSet set:
-		                    WriteDataset(set);
+		                    WriteDataset(set, parent);
 		                    break;
 		                case DataTable table:
-		                    WriteDataTable(table);
+		                    WriteDataTable(table, parent);
 		                    break;
 		                case byte[] bytes:
                             WriteBytes(bytes);
@@ -174,10 +174,10 @@ namespace SkinnyJson
 		                case Array _:
 		                case IList _:
 		                case ICollection _:
-		                    WriteArray((IEnumerable)obj);
+		                    WriteArray((IEnumerable)obj, parent);
 		                    break;
 		                case IEnumerable enumerable:
-		                    WriteArray(enumerable);
+		                    WriteArray(enumerable, parent);
 		                    break;
 		                case Enum enumeration:
 		                    WriteEnum(enumeration);
@@ -189,14 +189,23 @@ namespace SkinnyJson
                             WriteStream(stream);
                             break;
 		                default:
-		                    WriteObject(obj, _settings);
+		                    WriteObject(obj, parent, _settings);
 		                    break;
 		            }
 		            break;
 		    }
 		}
 
-	    static bool IsNumericPrimitive(object obj)
+        private static bool IsPrimitiveNumeric(Type t)
+        {
+            return t == typeof(int) || t == typeof(long) || t == typeof(double) ||
+                   t == typeof(decimal) || t == typeof(float) ||
+                   t == typeof(byte) || t == typeof(short) ||
+                   t == typeof(sbyte) || t == typeof(ushort) ||
+                   t == typeof(uint) || t == typeof(ulong);
+        }
+
+        private static bool IsNumericPrimitive(object obj)
 	    {
 		    return obj is int || obj is long || obj is double ||
 		           obj is decimal || obj is float ||
@@ -316,12 +325,12 @@ namespace SkinnyJson
             return dt.ToString();
         }
 
-        private void WriteDataset(DataSet ds)
+        private void WriteDataset(DataSet ds, object? parent)
         {
             Append('{');
             if ( _settings.UseTypeExtensions)
             {
-                WritePair("$schema", _settings.UseOptimizedDatasetSchema ? GetSchema(ds) : ds.GetXmlSchema());
+                WritePair("$schema", _settings.UseOptimizedDatasetSchema ? GetSchema(ds) : ds.GetXmlSchema(), parent);
                 Append(',');
             }
             var tableSep = false;
@@ -329,12 +338,12 @@ namespace SkinnyJson
             {
                 if (tableSep) Append(",");
                 tableSep = true;
-                WriteDataTableData(table);
+                WriteDataTableData(table, parent);
             }
             Append('}');
         }
 
-        private void WriteDataTableData(DataTable table)
+        private void WriteDataTableData(DataTable table, object? parent)
         {
             Append('\"');
             Append(table.TableName);
@@ -351,7 +360,7 @@ namespace SkinnyJson
                 foreach (DataColumn column in cols)
                 {
                     if (pendingSeparator) Append(',');
-                    WriteValue(row[column]);
+                    WriteValue(row[column], parent);
                     pendingSeparator = true;
                 }
                 Append(']');
@@ -360,24 +369,24 @@ namespace SkinnyJson
             Append(']');
         }
 
-        void WriteDataTable(DataTable dt)
+        void WriteDataTable(DataTable dt, object? parent)
         {
             Append('{');
             if (_settings.UseTypeExtensions)
             {
-                WritePair("$schema", _settings.UseOptimizedDatasetSchema ? GetSchema(dt) : GetXmlSchema(dt));
+                WritePair("$schema", _settings.UseOptimizedDatasetSchema ? GetSchema(dt) : GetXmlSchema(dt), parent);
                 Append(',');
             }
 
-            WriteDataTableData(dt);
+            WriteDataTableData(dt, parent);
             Append('}');
         }
 
         bool _typesWritten;
-        private void WriteObject(object obj, JsonSettings settings)
+        private void WriteObject(object obj, object? parent, JsonSettings settings)
         {
-            if (_settings.UsingGlobalTypes == false) Append('{');
-			else Append(_typesWritten == false ? "{$types$" : "{");
+            if (!_settings.UsingGlobalTypes) Append('{');
+			else Append(!_typesWritten ? "{$types$" : "{");
 
 			_typesWritten = true;
 			_currentDepth++;
@@ -415,7 +424,13 @@ namespace SkinnyJson
                 if (!allPropertyInfo.TryGetValue(property.OriginalName, out var propInfo)) { propInfo = null; }
 
                 var valueToWrite = GetInstanceValue(obj, sourceType, property);
-                if ((valueToWrite == null || valueToWrite is DBNull) && _settings.SerializeNullValues == false) continue;
+                if (valueToWrite is null or DBNull && !_settings.SerializeNullValues) continue;
+
+                if (parent is not null && ReferenceEquals(valueToWrite, parent))
+                {
+                    // Detected back-link that would cause an infinite loop
+                    continue;
+                }
 
                 if (append) Append(',');
 
@@ -426,7 +441,7 @@ namespace SkinnyJson
                 }
                 else
                 {
-                    WritePair(property.Name, valueToWrite);
+                    WritePair(property.Name, valueToWrite, obj);
                 }
 
                 if (valueToWrite != null && _settings.UseTypeExtensions)
@@ -440,7 +455,7 @@ namespace SkinnyJson
             if (map.Count > 0 && _settings.UseTypeExtensions)
             {
                 Append(",\"$map\":");
-                WriteStringDictionary(map);
+                WriteStringDictionary(map, parent);
             }
             _currentDepth--;
             Append('}');
@@ -622,15 +637,15 @@ namespace SkinnyJson
             WriteStringFast(value);
         }
 
-        private void WritePair(string name, object? value)
+        private void WritePair(string name, object? value, object? parent)
         {
-            if ((value == null || value is DBNull) && _settings.SerializeNullValues == false) return;
+            if (value is null or DBNull && !_settings.SerializeNullValues) return;
             WriteStringFast(name);
             Append(':');
-            WriteValue(value);
+            WriteValue(value, parent);
         }
 
-        private void WriteArray(IEnumerable array)
+        private void WriteArray(IEnumerable array, object? parent)
         {
             Append('[');
 
@@ -640,14 +655,14 @@ namespace SkinnyJson
             {
                 if (pendingSeparator) Append(',');
 
-                WriteValue(obj);
+                WriteValue(obj, parent);
 
                 pendingSeparator = true;
             }
             Append(']');
         }
 
-        private void WriteStringDictionary(IDictionary dic)
+        private void WriteStringDictionary(IDictionary dic, object? parent)
         {
             Append('{');
 
@@ -659,14 +674,34 @@ namespace SkinnyJson
                 if (entryKey == null) continue;
                 if (pendingSeparator) Append(',');
 
-                WritePair(entryKey, entry.Value);
+                WritePair(entryKey, entry.Value, parent);
 
                 pendingSeparator = true;
             }
             Append('}');
         }
 
-        private void WriteDictionary(IDictionary dic)
+        private void WriteNumericDictionary(IDictionary dic, object? parent)
+        {
+            Append('{');
+
+            bool pendingSeparator = false;
+
+            foreach (DictionaryEntry entry in dic)
+            {
+                if (entry.Key is null) continue;
+                var entryKey = entry.Key.ToString();
+
+                if (pendingSeparator) Append(',');
+
+                WritePair(entryKey, entry.Value, parent);
+
+                pendingSeparator = true;
+            }
+            Append('}');
+        }
+
+        private void WriteDictionary(IDictionary dic, object? parent)
         {
             Append('[');
 
@@ -676,9 +711,9 @@ namespace SkinnyJson
             {
                 if (pendingSeparator) Append(',');
                 Append('{');
-                WritePair("k", entry.Key);
+                WritePair("k", entry.Key, parent);
                 Append(",");
-                WritePair("v", entry.Value);
+                WritePair("v", entry.Value, parent);
                 Append('}');
 
                 pendingSeparator = true;

@@ -1054,8 +1054,14 @@ namespace SkinnyJson
                 setObj = CreateStringKeyDictionary((Dictionary<string, object>)inputValue, propertyInfo.PropertyType, propertyInfo.GenericTypes, globalTypes, settings);
 
             else if (propertyInfo.isDictionary || propertyInfo.isHashtable)
-                setObj = CreateDictionary((ArrayList)inputValue, propertyInfo.PropertyType, propertyInfo.GenericTypes, globalTypes, settings);
+            {
+                if (inputValue is not IEnumerable enumerableValues)
+                {
+                    throw new Exception("Input value for a dictionary target is not enumerable");
+                }
 
+                setObj = CreateDictionary(enumerableValues, propertyInfo.PropertyType, propertyInfo.GenericTypes, globalTypes, settings);
+            }
             else if (propertyInfo.isEnum)
             {
                 if (inputValue is string valStr) setObj = CreateEnum(propertyInfo.PropertyType, valStr);
@@ -1378,7 +1384,7 @@ namespace SkinnyJson
 
         private static DateTime InterpretNumberAsDate(long value)
         {
-            var asTicks = new DateTime(value);
+            var asTicks = new DateTime(value, DateTimeKind.Utc);
             if (asTicks.Year is > 1900 and < 3000) return asTicks;
 
             var asUnixMs = new DateTime(1970,1,1,0,0,0, DateTimeKind.Utc).AddMilliseconds(value);
@@ -1522,22 +1528,58 @@ namespace SkinnyJson
                 t2 = types[1];
             }
 
-            foreach (Dictionary<string, object> values in reader)
+            if (reader is IEnumerable<Dictionary<string, object>> doubleMap)
             {
-                var key = values["k"];
-                var val = values["v"];
+                foreach (Dictionary<string, object> values in doubleMap)
+                {
+                    var key = values["k"];
+                    var val = values["v"];
 
-                if (key is Dictionary<string, object> objects)
-                    key = ParseDictionary(objects, globalTypes, t1, null, null, settings);
-                else
-                    key = ChangeType(key, t1);
+                    if (key is Dictionary<string, object> objects)
+                        key = ParseDictionary(objects, globalTypes, t1, null, null, settings);
+                    else
+                        key = ChangeType(key, t1);
 
-                if (val is Dictionary<string, object> dictionary)
-                    val = ParseDictionary(dictionary, globalTypes, t2, null, null, settings);
-                else
-                    val = ChangeType(val, t2);
+                    if (val is Dictionary<string, object> dictionary)
+                        val = ParseDictionary(dictionary, globalTypes, t2, null, null, settings);
+                    else
+                        val = ChangeType(val, t2);
 
-                if (key != null && val != null) col.Add(key, val);
+                    if (key != null && val != null) col.Add(key, val);
+                }
+            }
+            else if (reader is Dictionary<string, object> directDictionary)
+            {
+                foreach (var kvp in directDictionary)
+                {
+                    var key = ChangeType(kvp.Key, t1);
+                    var val = ChangeType(kvp.Value, t2);
+                    if (key != null && val != null) col.Add(key, val);
+                }
+            }
+            else if (reader is ArrayList keyValueList)
+            {
+                foreach (Dictionary<string, object> value in keyValueList)
+                {
+                    var key = value["k"];
+                    var val = value["v"];
+
+                    if (key is Dictionary<string, object> objects)
+                        key = ParseDictionary(objects, globalTypes, t1, null, null, settings);
+                    else
+                        key = ChangeType(key, t1);
+
+                    if (val is Dictionary<string, object> dictionary)
+                        val = ParseDictionary(dictionary, globalTypes, t2, null, null, settings);
+                    else
+                        val = ChangeType(val, t2);
+
+                    if (key != null && val != null) col.Add(key, val);
+                }
+            }
+            else
+            {
+                throw new Exception($"Could not interpret dictionary type {reader.GetType().FullName}");
             }
 
             return col;

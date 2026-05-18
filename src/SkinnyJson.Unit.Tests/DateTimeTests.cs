@@ -12,7 +12,7 @@ namespace SkinnyJson.Unit.Tests
         {
             var defrosted = Json.Defrost<IHaveLotsOfTypes>("{\"date_time\":638065330559726240}");
 
-            Assert.That(SimilarDate(defrosted.date_time, new DateTime(2022, 12, 13, 12, 57, 35)), "Date was not interpreted correctly");
+            Assert.That(SimilarDate(defrosted.date_time, new DateTime(2022, 12, 13, 12, 57, 35, DateTimeKind.Utc)), "Date was not interpreted correctly");
 
             var frozen = Json.Freeze(defrosted);
             Assert.That(frozen, Contains.Substring("2022-12-13T12:57:35"), "Date was stored in an unexpected format");

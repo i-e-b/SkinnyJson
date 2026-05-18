@@ -594,7 +594,7 @@
             Supports global types
             </summary>
         </member>
-        <member name="M:SkinnyJson.JsonSerializer.WriteValue(System.Object)">
+        <member name="M:SkinnyJson.JsonSerializer.WriteValue(System.Object,System.Object)">
             <summary>
             This is the root of the serialiser.
             </summary>

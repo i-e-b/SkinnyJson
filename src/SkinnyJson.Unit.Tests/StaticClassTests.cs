@@ -13,7 +13,7 @@ namespace SkinnyJson.Unit.Tests
             StaticClassExample.StringFieldValue = "I am field";
             StaticClassExample.Span = TimeSpan.FromSeconds(255);
             StaticClassExample.SubClass.Name = "frozen name";
-            StaticClassExample.SubClass.DateTime = new DateTime(1999, 12, 31);
+            StaticClassExample.SubClass.DateTime = new DateTime(1999, 12, 31, 0,0,0, DateTimeKind.Utc);
             
             var json = Json.Freeze(typeof(StaticClassExample));
             
@@ -31,7 +31,7 @@ namespace SkinnyJson.Unit.Tests
             Assert.That(StaticClassExample.StringFieldValue, Is.EqualTo("I am field"));
             Assert.That(StaticClassExample.Span.Ticks, Is.EqualTo(TimeSpan.FromSeconds(255).Ticks));
             Assert.That(StaticClassExample.SubClass.Name, Is.EqualTo("frozen name"));
-            Assert.That(StaticClassExample.SubClass.DateTime, Is.EqualTo(new DateTime(1999, 12, 31)));
+            Assert.That(StaticClassExample.SubClass.DateTime, Is.EqualTo(new DateTime(1999, 12, 31, 0,0,0, DateTimeKind.Utc)));
         }
         
         [Test]
