@@ -746,6 +746,13 @@ namespace SkinnyJson
             return targetType?.GetInterface("IDictionary") != null;
         }
 
+        private static bool IsStringKeyedDictionary(Type? type)
+        {
+            if (type?.GetInterface("IDictionary") is null) return false;
+            if (type.GenericTypeArguments.Length < 2) return false;
+            return type.GenericTypeArguments[0] == typeof(string);
+        }
+
         private static bool NoPropertiesMatch(SafeDictionary<string, TypePropertyInfo> props, ICollection<string> jsonValuesKeys, JsonSettings settings)
         {
             if (settings.IgnoreCaseOnDeserialize)
@@ -764,7 +771,7 @@ namespace SkinnyJson
             SafeDictionary<string, TypePropertyInfo> props, WarningSet? warnings, JsonSettings settings)
         {
             var name = objectKey;
-            if (settings.IgnoreCaseOnDeserialize) name = TypeManager.NormaliseCase(name);
+            if (settings.IgnoreCaseOnDeserialize && !IsStringKeyedDictionary(targetType)) name = TypeManager.NormaliseCase(name);
             if (name == "$map" && targetObject is not null)
             {
                 ProcessMap(targetObject, props, jsonValues[name] as Dictionary<string, object>);
@@ -797,7 +804,22 @@ namespace SkinnyJson
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to convert json {value.GetType()} to target object {propertyInfo.changeType?.ToString() ?? "<unknown>"} on property {propertyInfo.Name}", ex);
+                // If the value is a string, try to treat it as a JSON sub-string for the property
+                if (value is string subString && propertyInfo.PropertyType is not null)
+                {
+                    try
+                    {
+                        setObj = ToObject(subString, propertyInfo.PropertyType, settings);
+                    }
+                    catch (Exception ex2)
+                    {
+                        throw new Exception($"Failed to convert json sub-string to target object {propertyInfo.changeType?.ToString() ?? "<unknown>"} on property '{propertyInfo.Name}'", ex2);
+                    }
+                }
+                else
+                {
+                    throw new Exception($"Failed to convert json {value.GetType()} to target object {propertyInfo.changeType?.ToString() ?? "<unknown>"} on property '{propertyInfo.Name}'", ex);
+                }
             }
 
             try

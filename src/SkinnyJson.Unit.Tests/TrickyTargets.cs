@@ -163,6 +163,55 @@ namespace SkinnyJson.Unit.Tests
 
             Assert.That(result, Is.EqualTo("{\"SettingMap\":{\"1\":2,\"3\":4,\"5\":6,\"7\":8}}"));
         }
+
+        [Test]
+        public void json_string_values_cascade_into_subtypes()
+        {
+            const string src =
+                """
+                {
+                  "ResultId": 2,
+                  "Time": "2026-04-30T10:19:14Z",
+                  "DeviceType": "Beam",
+                  "TesterName": "Iain Ballard",
+                  "BatchId": "002",
+                  "DeviceSerial": "BEAM_V-1-5-1__5qelm_0026",
+                  "OverallResult": "pass",
+                  "Data": "{\"beam-ble\":\"pass\",\"beam-rs232\":\"pass\",\"beam-nvs\":\"pass\",\"imei\":\"869595067002518\",\"beam-modem\":\"pass\",\"beam-sim\":\"pass\",\"beam-phone-home\":\"pass\",\"beam-sdcard\":\"pass\"}"
+                }
+                """;
+
+            var result = Json.Defrost<TestResult>(src);
+
+            var frozen = Json.Freeze(result);
+            Console.WriteLine(frozen);
+
+            Assert.That(result.ResultId, Is.EqualTo(2));
+            Assert.That(result.Time.ToString("yyyy-MM-ddTHH:mm:ss"), Is.EqualTo("2026-04-30T10:19:14"));
+            Assert.That(result.DeviceType, Is.EqualTo("Beam"));
+            Assert.That(result.TesterName, Is.EqualTo("Iain Ballard"));
+            Assert.That(result.BatchId, Is.EqualTo("002"));
+            Assert.That(result.DeviceSerial, Is.EqualTo("BEAM_V-1-5-1__5qelm_0026"));
+            Assert.That(result.OverallResult, Is.EqualTo("pass"));
+
+            Assert.That(result.Data["beam-ble"], Is.EqualTo("pass"));
+            Assert.That(result.Data["beam-rs232"], Is.EqualTo("pass"));
+            Assert.That(result.Data["beam-nvs"], Is.EqualTo("pass"));
+            Assert.That(result.Data["imei"], Is.EqualTo("869595067002518"));
+        }
+    }
+
+    public class TestResult
+    {
+        public int ResultId { get; set; }
+        public DateTime Time { get; set; }
+        public string TesterName { get; set; } = "";
+        public string BatchId { get; set; } = "";
+        public string DeviceType { get; set; } = "";
+        public string DeviceSerial { get; set; } = "";
+        public string OverallResult { get; set; } = "unknown";
+
+        public Dictionary<string, string> Data { get; set; } = [];
     }
 
     public class IntKeyMapType
