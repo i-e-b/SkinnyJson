@@ -684,7 +684,7 @@ namespace SkinnyJson
                 if (type is null || !type.IsInterface) type = TypeManager.GetTypeFromCache((string)tn!, settings);
             }
 
-            var targetObject = input ?? TypeManager.FastCreateInstance(type, settings);
+            var targetObject = input ?? TypeManager.FastCreateInstance(type, settings, warnings);
 
             if (targetObject is null && type is null) return jsonValues; // can't work out what object to fill, send back the raw values
 
@@ -1053,14 +1053,14 @@ namespace SkinnyJson
             else if (propertyInfo.isByteArray)
                 setObj = ConvertBytes(inputValue);
             else if (propertyInfo.isEnumerable && propertyInfo.elementType == typeof(byte))
-                setObj = CreateGenericList(ConvertBytes(inputValue), propertyInfo.PropertyType, propertyInfo.elementType, globalTypes, settings);
+                setObj = CreateGenericList(ConvertBytes(inputValue), propertyInfo.PropertyType, propertyInfo.elementType, globalTypes, settings, warnings);
             else if (propertyInfo.changeType == typeof(Stream))
                 setObj = new MemoryStream(ConvertBytes(inputValue));
 
             else if (propertyInfo.isString || propertyInfo.PropertyType == typeof(string)) setObj = inputValue;
             else if (propertyInfo.isBool) setObj = InterpretBool(inputValue, settings);
             else if (propertyInfo.isGenericType && propertyInfo is { isValueType: false, isDictionary: false, isEnumerable: true } && inputValue is IEnumerable)
-                setObj = CreateGenericList((ArrayList)inputValue, propertyInfo.PropertyType, propertyInfo.elementType, globalTypes, settings);
+                setObj = CreateGenericList((ArrayList)inputValue, propertyInfo.PropertyType, propertyInfo.elementType, globalTypes, settings, warnings);
 
             else if (propertyInfo is { isArray: true, isValueType: false })
                 setObj = CreateArray((ArrayList)inputValue, propertyInfo.elementType, globalTypes, settings);
@@ -1073,7 +1073,7 @@ namespace SkinnyJson
                 setObj = CreateDataTable((Dictionary<string, object>)inputValue, globalTypes, settings);
 
             else if (propertyInfo.isStringDictionary)
-                setObj = CreateStringKeyDictionary((Dictionary<string, object>)inputValue, propertyInfo.PropertyType, propertyInfo.GenericTypes, globalTypes, settings);
+                setObj = CreateStringKeyDictionary((Dictionary<string, object>)inputValue, propertyInfo.PropertyType, propertyInfo.GenericTypes, globalTypes, settings, warnings);
 
             else if (propertyInfo.isDictionary || propertyInfo.isHashtable)
             {
@@ -1082,7 +1082,7 @@ namespace SkinnyJson
                     throw new Exception("Input value for a dictionary target is not enumerable");
                 }
 
-                setObj = CreateDictionary(enumerableValues, propertyInfo.PropertyType, propertyInfo.GenericTypes, globalTypes, settings);
+                setObj = CreateDictionary(enumerableValues, propertyInfo.PropertyType, propertyInfo.GenericTypes, globalTypes, settings, warnings);
             }
             else if (propertyInfo.isEnum)
             {
@@ -1226,6 +1226,19 @@ namespace SkinnyJson
                 catch
                 {
                     // Ignore
+                }
+            }
+
+            // Try to map between string and a static field value
+            if (incomingValue is string incomingStr && !targetType.IsValueType && targetType != typeof(string))
+            {
+                var match = targetType.GetField(incomingStr, BindingFlags.Static | BindingFlags.Public);
+                if (match is not null)
+                {
+                    var val = match.GetValue(null);
+                    if (targetType.IsAssignableFrom(val.GetType())) {
+                        return val;
+                    }
                 }
             }
 
@@ -1490,11 +1503,12 @@ namespace SkinnyJson
             return col.ToArray(elementType);
         }
 
-        private static object CreateGenericList(IEnumerable data, Type? pt, Type? bt, IDictionary<string, object>? globalTypes, JsonSettings settings)
+        private static object CreateGenericList(IEnumerable data, Type? pt, Type? bt, IDictionary<string, object>? globalTypes,
+            JsonSettings settings, WarningSet? warnings)
         {
             if (pt == null) throw new Exception("Invalid container type");
             if (bt == null) throw new Exception("Invalid element type");
-            if (TypeManager.FastCreateInstance(pt, settings) is not IList col) throw new Exception("Failed to create instance of " + pt);
+            if (TypeManager.FastCreateInstance(pt, settings, warnings) is not IList col) throw new Exception("Failed to create instance of " + pt);
             foreach (var ob in data)
             {
                 if (ob is IDictionary)
@@ -1507,10 +1521,11 @@ namespace SkinnyJson
             return col;
         }
 
-        private static object CreateStringKeyDictionary(Dictionary<string, object> reader, Type? pt, IList<Type>? types, IDictionary<string, object>? globalTypes, JsonSettings settings)
+        private static object CreateStringKeyDictionary(Dictionary<string, object> reader, Type? pt, IList<Type>? types, IDictionary<string, object>? globalTypes,
+            JsonSettings settings, WarningSet? warnings)
         {
             if (pt == null) throw new Exception("Target type was null");
-            if (TypeManager.FastCreateInstance(pt, settings) is not IDictionary col) throw new Exception("Failed to create instance of " + pt);
+            if (TypeManager.FastCreateInstance(pt, settings, warnings) is not IDictionary col) throw new Exception("Failed to create instance of " + pt);
             Type? t2 = null;
             if (types != null) t2 = types[1];
 
@@ -1538,10 +1553,10 @@ namespace SkinnyJson
             return col;
         }
 
-        private static object CreateDictionary(IEnumerable reader, Type? pt, IList<Type>? types, IDictionary<string, object>? globalTypes, JsonSettings settings)
+        private static object CreateDictionary(IEnumerable reader, Type? pt, IList<Type>? types, IDictionary<string, object>? globalTypes, JsonSettings settings, WarningSet? warnings)
         {
             if (pt == null) throw new Exception("Invalid container type");
-            if (TypeManager.FastCreateInstance(pt, settings) is not IDictionary col) throw new Exception("Failed to create instance of " + pt);
+            if (TypeManager.FastCreateInstance(pt, settings, warnings) is not IDictionary col) throw new Exception("Failed to create instance of " + pt);
             Type? t1 = null;
             Type? t2 = null;
             if (types != null)

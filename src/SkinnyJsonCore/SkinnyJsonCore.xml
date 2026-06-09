@@ -895,7 +895,7 @@
             Try to get or build a type for a given type-name
             </summary>
         </member>
-        <member name="M:SkinnyJson.TypeManager.FastCreateInstance(System.Type,SkinnyJson.JsonSettings)">
+        <member name="M:SkinnyJson.TypeManager.FastCreateInstance(System.Type,SkinnyJson.JsonSettings,SkinnyJson.WarningSet)">
             <summary>
             Try to make a new instance of a type.
             Will drop down to 'SlowCreateInstance' in special cases

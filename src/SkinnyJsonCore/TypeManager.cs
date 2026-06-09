@@ -36,9 +36,9 @@ namespace SkinnyJson
         private static readonly Dictionary<string, Type> _reflectedTypes = new();
 
         /// <summary> Cached configuration for System.Text.Json methods </summary>
-        private static object? _systemTextJsonSerializerOptions = null;
+        private static object? _systemTextJsonSerializerOptions;
         /// <summary> Cached configuration for System.Text.Json methods </summary>
-        private static object? _systemTextJsonWriterOptions = null;
+        private static object? _systemTextJsonWriterOptions;
 
         /// <summary>
         /// Try to find a type by name in any loaded assemblies
@@ -199,7 +199,7 @@ namespace SkinnyJson
         /// Try to make a new instance of a type.
         /// Will drop down to 'SlowCreateInstance' in special cases
         /// </summary>
-        internal static object? FastCreateInstance(Type? objType, JsonSettings settings)
+        internal static object? FastCreateInstance(Type? objType, JsonSettings settings, WarningSet? warnings)
         {
             var cache = Cache(settings);
             if (objType == null) return null;
@@ -218,7 +218,7 @@ namespace SkinnyJson
                 var constructorInfo = objType.GetConstructor(Type.EmptyTypes);
                 if (constructorInfo == null)
                 {
-                    return SlowCreateInstance(objType, settings);
+                    return SlowCreateInstance(objType, settings, warnings);
                 }
 
                 var dynMethod = new DynamicMethod("_", objType, null);
@@ -270,18 +270,21 @@ namespace SkinnyJson
             return Activator.CreateInstance(constructed)!;
         }
 
-        private static object SlowCreateInstance(Type objType, JsonSettings settings)
+        private static object SlowCreateInstance(Type objType, JsonSettings settings, WarningSet? warnings)
         {
             if (objType == typeof(string)) {
                 throw new Exception("Invalid parser state");
             }
             var allCtor = objType.GetConstructors();
-            if (allCtor.Length < 1) {
-                throw new Exception($"Failed to create instance for type '{objType.FullName}' from assembly '{objType.AssemblyQualifiedName}'. No constructors found.");
+            if (allCtor.Length < 1)
+            {
+                // This is very iffy -- mainly to work around other people's broken code.
+                warnings?.Append($"No empty constructors on {objType}");
+                return FormatterServices.GetUninitializedObject(objType);
             }
             
-            var types = allCtor[0].GetParameters().Select(p=>p.ParameterType).ToArray();
-            var instances = types.Select(t=>FastCreateInstance(t, settings)).ToArray();
+            var types           = allCtor[0].GetParameters().Select(p=>p.ParameterType).ToArray();
+            var instances       = types.Select(t=>FastCreateInstance(t, settings, warnings)).ToArray();
             var constructorInfo = objType.GetConstructor(types);
             return constructorInfo?.Invoke(instances)!;
         }
