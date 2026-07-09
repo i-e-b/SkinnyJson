@@ -105,5 +105,10 @@ namespace SkinnyJson
 
             return sb.ToString();
         }
+
+        public int GetPosition()
+        {
+            return _length;
+        }
     }
 }

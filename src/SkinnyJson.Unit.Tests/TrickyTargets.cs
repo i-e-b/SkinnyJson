@@ -228,6 +228,18 @@ public class TrickyTargets
         Assert.That(result.Id, Is.EqualTo(5));
         Assert.That(result.Purpose.DisplayName, Is.EqualTo("Household Meter"));
     }
+
+    [Test]
+    public void string_to_long_conversion()
+    {
+        const string dataString = """
+                                  {"queryDate":"2026-07-09T09:40:49.2471877Z","logDate":"2026-07-09T09:40:49.168277","processorDate":"2026-07-09T09:40:43.418961","data":{"settings":[{"name":"MiFare block address","description":"MiFare block address 1..255 that will be used","access":"Protected","autoControl":true,"value":{"desiredValue":"10","desiredValueDate":"2025-03-06T10:13:00.080917","lastKnownValue":null,"lastKnownDate":null},"settingPosition":2,"byteLength":1,"settingKey":"MiFareBlockAddress","commandCorrelationId":"279f5e02-501d-40da-9576-fa0fe83c9e1a"}],"assetId":2077,"firmwareVersion":"SECMFD_LP_EWC2_5_TAP_MT_PRELOAD V2.22 19/08/24","firmwareType":"TapOnly"},"success":true,"errorMessage":null}
+                                  """;
+        var result = Json.Defrost<ResponseWithAge<GetAssetSettingsResponse>>(dataString);
+
+        Console.WriteLine(Json.Freeze(result));
+        Assert.That(result, Is.Not.Null);
+    }
 }
 
 public class TestResult
@@ -384,4 +396,119 @@ public class AssetPurpose
         DisplayName = displayName;
         IsDispenser = isDispenser;
     }
+}
+
+
+/// <summary>
+/// Response object containing all the settings for this EWC.
+/// Includes last known, and last desired/commanded values.
+/// <p/>
+/// Note that if this EWC is not under DataWaterfall control,
+/// the last desired values will be empty.
+/// </summary>
+public class GetAssetSettingsResponse
+{
+    /// <summary>
+    /// All known settings that apply to this EWC, with values where known.
+    /// </summary>
+    public IEnumerable<EwcSettingStateResponse> Settings { get; set; } = Array.Empty<EwcSettingStateResponse>();
+
+    /// <summary>
+    /// Asset ID matching the request
+    /// </summary>
+    public int AssetId { get; set; }
+
+    /// <summary>
+    /// Last known firmware version from the EWC.
+    /// If this is null, the firmware is not known, and <see cref="FirmwareType"/> will be a guess.
+    /// </summary>
+    public string? FirmwareVersion { get; set; }
+
+    /// <summary>
+    /// Type of firmware running on the EWC.
+    /// This affects the memory map.
+    /// </summary>
+    public string FirmwareType { get; set; } = "";
+}
+
+/// <summary>
+/// Information about an EWC setting, with values where known
+/// </summary>
+public class EwcSettingStateResponse
+{
+    /// <summary>
+    /// Name of the setting
+    /// </summary>
+    public string Name { get; set; } = "";
+
+    /// <summary>
+    /// Description of setting
+    /// </summary>
+    public string Description { get; set; } = "";
+
+    /// <summary>
+    /// Protection and access for the setting
+    /// </summary>
+    public string Access { get; set; } = "";
+
+    /// <summary>
+    /// If <c>true</c>, this EWC setting is controlled automatically,
+    /// and the user should not be given controls to change it manually.
+    /// If <c>false</c>, manual changes may be allowed.
+    /// </summary>
+    public bool AutoControl { get; set; }
+
+    /// <summary>
+    /// Represents the last known and desired state of the setting
+    /// </summary>
+    public EwcMemorySetting<long?> Value { get; set; } = new ();
+
+    /// <summary>
+    /// EEPROM Memory offset of this setting.
+    /// </summary>
+    public int SettingPosition { get; set; }
+
+    /// <summary>
+    /// EEPROM Memory size of this setting
+    /// </summary>
+    public int ByteLength { get; set; }
+
+    /// <summary>
+    /// Key for this setting, used to request value changes
+    /// </summary>
+    public string SettingKey { get; set; }="";
+
+    /// <summary>
+    /// Correlation ID for the most recent command trying to send a
+    /// value for this setting to the EWC.
+    /// <c>null</c> if no such command.
+    /// </summary>
+    public Guid? CommandCorrelationId { get; set; }
+}
+
+/// <summary>
+/// Represents the last known and desired state of a setting as stored in an EWC's EEPROM memory.
+/// This setting may bridge multiple bytes of memory.
+/// </summary>
+public class EwcMemorySetting<T>
+{
+    /// <summary>
+    /// Last value that was commanded. Null if no commands issued
+    /// </summary>
+    public T? DesiredValue { get; set; }
+
+    /// <summary>
+    /// Date and time the last command was issued that affected this byte
+    /// </summary>
+    public DateTime? DesiredValueDate { get; set; }
+
+    /// <summary>
+    /// Most recent value returned by the EWC. Null if not known
+    /// </summary>
+    public T? LastKnownValue { get; set; }
+
+    /// <summary>
+    /// Last date and time the value was given by the EWC. Null if not known
+    /// </summary>
+    public DateTime? LastKnownDate { get; set; }
 }

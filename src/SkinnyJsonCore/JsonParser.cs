@@ -292,7 +292,7 @@ namespace SkinnyJson
             throw new Exception($"Unexpectedly reached end of string value; {_json.GetContext()}");
         }
 
-        private static uint ParseSingleChar(int c1, uint multiplier)
+        private static uint ParseNumericChar(int c1, uint multiplier)
         {
             uint p1 = 0;
             if (c1 is >= '0' and <= '9')
@@ -306,10 +306,10 @@ namespace SkinnyJson
 
         private static uint ParseUnicode(int c1, int c2, int c3, int c4)
         {
-            uint p1 = ParseSingleChar(c1, 0x1000);
-            uint p2 = ParseSingleChar(c2, 0x100);
-            uint p3 = ParseSingleChar(c3, 0x10);
-            uint p4 = ParseSingleChar(c4, 1);
+            uint p1 = ParseNumericChar(c1, 0x1000);
+            uint p2 = ParseNumericChar(c2, 0x100);
+            uint p3 = ParseNumericChar(c3, 0x10);
+            uint p4 = ParseNumericChar(c4, 1);
 
             return p1 + p2 + p3 + p4;
         }
@@ -323,7 +323,7 @@ namespace SkinnyJson
             do
             {
                 var next = _json.Peek();
-                if (next <= 0) throw new Exception($"Unexpected end of string whilst parsing number; {_json.GetContext()}");
+                if (next < 0) break;
                 var c = (char)next;
                 _lookAheadChar = c;
 
