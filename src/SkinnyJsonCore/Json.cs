@@ -50,10 +50,24 @@ namespace SkinnyJson
         }
 
         /// <summary> Turn an object into a JSON string encoded to a byte array </summary>
+        /// <remarks>The encoding used is from <c>settings.StreamEncoding</c>, which defaults to UTF-8.</remarks>
         public static byte[] FreezeToBytes(object? obj, JsonSettings? settings = null)
         {
             settings ??= JsonSettings.Default;
             return settings.StreamEncoding.GetBytes(Freeze(obj, settings));
+        }
+
+        /// <summary>
+        /// Turn an object into a JSON string encoded as a Base64 string.
+        /// </summary>
+        /// <remarks>
+        /// The character encoding used is from <c>settings.StreamEncoding</c>, which defaults to UTF-8.
+        /// Base64 conversion is performed by <see cref="Convert.ToBase64String(byte[])"/>
+        /// </remarks>
+        public static string FreezeToBase64(object? obj, JsonSettings? settings = null)
+        {
+            settings ??= JsonSettings.Default;
+            return Convert.ToBase64String(settings.StreamEncoding.GetBytes(Freeze(obj, settings)));
         }
 
         /// <summary> Write an object to a stream as a JSON string </summary>
@@ -129,6 +143,18 @@ namespace SkinnyJson
             return (T)ToObject(json, typeof(T), settings);
         }
 
+        /// <summary> Turn a JSON Base64 string into a specific object </summary>
+        public static T DefrostBase64
+            <[MeansImplicitUse(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature, ImplicitUseTargetFlags.WithMembers)]T>
+            (string jsonBase64, JsonSettings? settings = null)
+        {
+            settings ??= JsonSettings.Default;
+
+            var bytes = Convert.FromBase64String(jsonBase64);
+
+            return (T)ToObject(bytes, typeof(T), settings);
+        }
+
         /// <summary> Turn a JSON string into a runtime type </summary>
         public static object Defrost(string json, Type runtimeType, JsonSettings? settings = null)
         {
@@ -147,6 +173,13 @@ namespace SkinnyJson
             return ToObject(json, runtimeType, settings);
         }
 
+        /// <summary> Turn a Base64 encoded JSON string into a runtime type </summary>
+        public static object DefrostBase64(string jsonBase64, Type runtimeType, JsonSettings? settings = null)
+        {
+            var bytes = Convert.FromBase64String(jsonBase64);
+            return ToObject(bytes, runtimeType, settings);
+        }
+
         /// <summary> Turn a JSON string into an object containing properties found </summary>
         public static dynamic DefrostDynamic(string json, JsonSettings? settings = null)
         {
@@ -157,6 +190,19 @@ namespace SkinnyJson
         public static dynamic DefrostDynamic(Stream json, JsonSettings? settings = null)
         {
             return new DynamicWrapper(ToObject(json, null, settings));
+        }
+
+        /// <summary> Turn a JSON byte array into an object containing properties found </summary>
+        public static dynamic DefrostDynamic(byte[] jsonBytes, JsonSettings? settings = null)
+        {
+            return new DynamicWrapper(ToObject(jsonBytes, null, settings));
+        }
+
+        /// <summary> Turn a JSON byte array into an object containing properties found </summary>
+        public static dynamic DefrostDynamicBase64(string jsonBase64, JsonSettings? settings = null)
+        {
+            var bytes = Convert.FromBase64String(jsonBase64);
+            return new DynamicWrapper(ToObject(bytes, null, settings));
         }
 
         /// <summary>

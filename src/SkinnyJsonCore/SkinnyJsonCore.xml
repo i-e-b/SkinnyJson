@@ -342,6 +342,16 @@
         </member>
         <member name="M:SkinnyJson.Json.FreezeToBytes(System.Object,SkinnyJson.JsonSettings)">
             <summary> Turn an object into a JSON string encoded to a byte array </summary>
+            <remarks>The encoding used is from <c>settings.StreamEncoding</c>, which defaults to UTF-8.</remarks>
+        </member>
+        <member name="M:SkinnyJson.Json.FreezeToBase64(System.Object,SkinnyJson.JsonSettings)">
+            <summary>
+            Turn an object into a JSON string encoded as a Base64 string.
+            </summary>
+            <remarks>
+            The character encoding used is from <c>settings.StreamEncoding</c>, which defaults to UTF-8.
+            Base64 conversion is performed by <see cref="M:System.Convert.ToBase64String(System.Byte[])"/>
+            </remarks>
         </member>
         <member name="M:SkinnyJson.Json.Freeze(System.Object,System.IO.Stream,SkinnyJson.JsonSettings)">
             <summary> Write an object to a stream as a JSON string </summary>
@@ -367,6 +377,9 @@
         <member name="M:SkinnyJson.Json.Defrost``1(System.Byte[],SkinnyJson.JsonSettings)">
             <summary> Turn a JSON byte array into a specific object </summary>
         </member>
+        <member name="M:SkinnyJson.Json.DefrostBase64``1(System.String,SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON Base64 string into a specific object </summary>
+        </member>
         <member name="M:SkinnyJson.Json.Defrost(System.String,System.Type,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON string into a runtime type </summary>
         </member>
@@ -376,11 +389,20 @@
         <member name="M:SkinnyJson.Json.Defrost(System.IO.Stream,System.Type,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON data stream into a runtime type </summary>
         </member>
+        <member name="M:SkinnyJson.Json.DefrostBase64(System.String,System.Type,SkinnyJson.JsonSettings)">
+            <summary> Turn a Base64 encoded JSON string into a runtime type </summary>
+        </member>
         <member name="M:SkinnyJson.Json.DefrostDynamic(System.String,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON string into an object containing properties found </summary>
         </member>
         <member name="M:SkinnyJson.Json.DefrostDynamic(System.IO.Stream,SkinnyJson.JsonSettings)">
             <summary> Turn a JSON string into an object containing properties found </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.DefrostDynamic(System.Byte[],SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON byte array into an object containing properties found </summary>
+        </member>
+        <member name="M:SkinnyJson.Json.DefrostDynamicBase64(System.String,SkinnyJson.JsonSettings)">
+            <summary> Turn a JSON byte array into an object containing properties found </summary>
         </member>
         <member name="M:SkinnyJson.Json.DefrostFromPath``1(System.String,System.String,SkinnyJson.JsonSettings)">
             <summary>

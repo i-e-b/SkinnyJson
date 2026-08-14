@@ -38,6 +38,25 @@ namespace SkinnyJson.Unit.Tests {
 			Assert.That(defrosted.A, Is.EqualTo(original.A));
 			Assert.That(defrosted.B, Is.EqualTo(original.B));
 		}
+
+		[Test]
+		public void Should_be_able_to_freeze_and_unfreeze_objects_as_base64()
+		{
+			var original = ObjectWithoutAnInterface.Make();
+			var frozen   = Json.FreezeToBase64(original);
+
+			Console.WriteLine(frozen);
+			var defrosted = Json.DefrostBase64<ObjectWithoutAnInterface>(frozen);
+
+			Assert.That(defrosted.A, Is.EqualTo(original.A));
+			Assert.That(defrosted.B, Is.EqualTo(original.B));
+
+			var untyped = Json.DefrostBase64(frozen, typeof(ObjectWithoutAnInterface));
+			Assert.That(untyped, Is.Not.Null);
+
+			var dynamic = Json.DefrostDynamicBase64(frozen);
+			Assert.That(dynamic, Is.Not.Null);
+		}
         
         [Test]
         public void Should_ignore_extra_whitespace_in_json_string()
@@ -171,7 +190,8 @@ namespace SkinnyJson.Unit.Tests {
 		[Test]
 		public void Runtime_type_root_array_and_child_arrays_use_same_container()
 		{
-			var result = Json.Defrost(Quote("[{'child':[{'top':1}]},{'child':[{'top':2}]}]"));
+			var src    = Quote("[{'child':[{'top':1}]},{'child':[{'top':2}]}]");
+			var result = Json.Defrost(src);
             
 			Assert.That(result, Is.InstanceOf<IList>(), "root type");
             
@@ -183,6 +203,9 @@ namespace SkinnyJson.Unit.Tests {
             
 			var inner = child["child"];
 			Assert.That(inner, Is.InstanceOf<IList>(), "child type");
+
+			var dynamic = Json.DefrostDynamic(src);
+			Assert.That(dynamic, Is.Not.Null);
 		}
 		
 		[Test]
