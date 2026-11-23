@@ -22,6 +22,38 @@ namespace SkinnyJson.Unit.Tests
         }
 
         [Test]
+        public void can_extract_primitives_from_objects()
+        {
+            const string input =
+                """
+                {
+                    "exp":1788770263,
+                    "iat":1788769963,
+                    "jti":"trrtcc:19818733-3c15-4dc2-a8f4-b0be2fb235cb",
+                    "iss":"https://keycloak.ewater.io/realms/eWATER",
+                    "aud":"account",
+                    "sub":"3543d7cc-a44c-4188-bc30-13132f7a097f",
+                    "typ":"Bearer",
+                    "azp":"credit-controller",
+                    "acr":"1",
+                    "allowed-origins":["/*"],
+                    "realm_access":{"roles":["tech","offline_access","default-roles-ewater","uma_authorization"]},
+                    "resource_access":{"account":{"roles":["manage-account","manage-account-links","view-profile"]}},
+                    "scope":"roles email profile",
+                    "email_verified":false,
+                    "clientHost":"162.55.157.78",
+                    "preferred_username":"service-account-credit-controller",
+                    "clientAddress":"162.55.157.78",
+                    "client_id":"credit-controller"
+                }
+                """;
+
+            var result = Json.DefrostFromPath<string>("client_id", input).FirstOrDefault();
+
+            Assert.That(result, Is.EqualTo("credit-controller"));
+        }
+
+        [Test]
         public void should_be_able_to_provide_a_path_an_get_back_an_enumeration_of_matches()
         {
             var input = RepositoryType.SimpleList();

@@ -7,6 +7,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
+
 // ReSharper disable UseArrayEmptyMethod
 
 namespace SkinnyJson
@@ -32,7 +34,7 @@ namespace SkinnyJson
             if (!target.CanWrite) throw new Exception("Output stream must be writable");
 
             _output = new StreamWriter(new SyncStreamWrapper(target), encoding);
-            WriteValue(obj, null);
+            WriteValue(obj, null, obj.GetType().Name);
             _output.Flush();
         }
 
@@ -71,7 +73,7 @@ namespace SkinnyJson
         {
             var sb = new StringBuilder();
             _output = new StringWriter(sb);
-            WriteValue(obj, null);
+            WriteValue(obj, null, "Input object");
             _output.Flush();
 
             if (!_settings.UsingGlobalTypes)
@@ -116,85 +118,125 @@ namespace SkinnyJson
 		/// <summary>
 		/// This is the root of the serialiser.
 		/// </summary>
-        private void WriteValue(object? obj, object? parent)
-		{
-		    switch (obj)
-		    {
-		        case null:
-		        case DBNull _:
-		            Append("null");
-		            break;
-		        case string _:
-		        case char _:
-		            WriteString((string)obj);
-		            break;
-                case WideNumber wn:
-                    Append(wn.ToString(CultureInfo.InvariantCulture));
+        private void WriteValue(object? obj, object? parent, string source)
+        {
+            try
+            {
+                switch (obj)
+                {
+                    case Task task:
+                        WriteValue(UnpackTask(task), parent, source);
+                        break;
+                    case null:
+                    case DBNull _:
+                        Append("null");
+                        break;
+                    case string _:
+                    case char _:
+                        WriteString((string)obj);
+                        break;
+                    case WideNumber wn:
+                        Append(wn.ToString(CultureInfo.InvariantCulture));
+                        break;
+                    case Guid guid:
+                        WriteGuid(guid);
+                        break;
+                    case bool b:
+                        Append(b ? "true" : "false"); // conform to standard
+                        break;
+                    default:
+                        if (IsNumericPrimitive(obj))
+                        {
+                            Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo));
+                        }
+                        else
+                            switch (obj)
+                            {
+                                case DateTime time:
+                                    WriteDateTime(time);
+                                    break;
+                                case TimeSpan timeSpan:
+                                    WriteTimeSpan(timeSpan);
+                                    break;
+                                case IDictionary dictionary when dictionary.GetType().IsGenericType && dictionary.GetType().GetGenericArguments()[0] == typeof(string):
+                                    WriteStringDictionary(dictionary, parent, source);
+                                    break;
+                                case IDictionary dictionary when dictionary.GetType().IsGenericType && IsPrimitiveNumeric(dictionary.GetType().GetGenericArguments()[0]):
+                                    WriteNumericDictionary(dictionary, parent, source);
+                                    break;
+                                case IDictionary unknownDictionary:
+                                    WriteDictionary(unknownDictionary, parent, source);
+                                    break;
+                                case DataSet set:
+                                    WriteDataset(set, parent);
+                                    break;
+                                case DataTable table:
+                                    WriteDataTable(table, parent);
+                                    break;
+                                case byte[] bytes:
+                                    WriteBytes(bytes);
+                                    break;
+                                case IList<byte> bytes:
+                                    WriteBytes(bytes);
+                                    break;
+                                case Array _:
+                                case IList _:
+                                case ICollection _:
+                                    WriteArray((IEnumerable)obj, parent, source);
+                                    break;
+                                case IEnumerable enumerable:
+                                    WriteArray(enumerable, parent, source);
+                                    break;
+                                case Enum enumeration:
+                                    WriteEnum(enumeration);
+                                    break;
+                                case Type typeDef:
+                                    WriteString(typeDef.FullName ?? typeDef.Name);
+                                    break;
+                                case Stream stream:
+                                    WriteStream(stream);
+                                    break;
+                                default:
+                                    WriteObject(obj, parent, _settings);
+                                    break;
+                            }
+
+                        break;
+                }
+            }
+            catch (SerializerException ex)
+            {
+                throw new Exception($"Failed to encode '{source}'", ex);
+            }
+        }
+
+        private object? UnpackTask(Task task)
+        {
+            var prop = task.GetType().GetProperty("Result");
+            if (prop is null) return null;
+
+            switch (task.Status)
+            {
+                case TaskStatus.Created:
+                case TaskStatus.WaitingForActivation:
+                case TaskStatus.WaitingToRun:
+                case TaskStatus.Running:
+                case TaskStatus.WaitingForChildrenToComplete:
+                    if (!task.Wait(_settings.TaskTimeOut))
+                        throw new SerializerException("Timeout waiting for Task result");
                     break;
-		        case Guid guid:
-		            WriteGuid(guid);
-		            break;
-		        case bool b:
-		            Append(b ? "true" : "false"); // conform to standard
-		            break;
-		        default:
-                    if (IsNumericPrimitive(obj))
-                    {
-                        Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo));
-                    }
-                    else switch (obj)
-		            {
-		                case DateTime time:
-		                    WriteDateTime(time);
-		                    break;
-                        case TimeSpan timeSpan:
-                            WriteTimeSpan(timeSpan);
-                            break;
-		                case IDictionary dictionary when dictionary.GetType().IsGenericType && dictionary.GetType().GetGenericArguments()[0] == typeof(string):
-		                    WriteStringDictionary(dictionary, parent);
-		                    break;
-                        case IDictionary dictionary when dictionary.GetType().IsGenericType && IsPrimitiveNumeric(dictionary.GetType().GetGenericArguments()[0]):
-                            WriteNumericDictionary(dictionary, parent);
-                            break;
-		                case IDictionary unknownDictionary:
-		                    WriteDictionary(unknownDictionary, parent);
-		                    break;
-		                case DataSet set:
-		                    WriteDataset(set, parent);
-		                    break;
-		                case DataTable table:
-		                    WriteDataTable(table, parent);
-		                    break;
-		                case byte[] bytes:
-                            WriteBytes(bytes);
-                            break;
-                        case IList<byte> bytes:
-		                    WriteBytes(bytes);
-		                    break;
-		                case Array _:
-		                case IList _:
-		                case ICollection _:
-		                    WriteArray((IEnumerable)obj, parent);
-		                    break;
-		                case IEnumerable enumerable:
-		                    WriteArray(enumerable, parent);
-		                    break;
-		                case Enum enumeration:
-		                    WriteEnum(enumeration);
-		                    break;
-                        case Type typeDef:
-                            WriteString(typeDef.FullName ?? typeDef.Name);
-                            break;
-                        case Stream stream:
-                            WriteStream(stream);
-                            break;
-		                default:
-		                    WriteObject(obj, parent, _settings);
-		                    break;
-		            }
-		            break;
-		    }
-		}
+
+                case TaskStatus.RanToCompletion: // Ready to get result value
+                    break;
+
+                case TaskStatus.Canceled:
+                case TaskStatus.Faulted:
+                default:
+                    return null;
+            }
+
+            return prop.GetValue(task);
+        }
 
         private static bool IsPrimitiveNumeric(Type t)
         {
@@ -263,15 +305,15 @@ namespace SkinnyJson
             Append('\"');
             if (dateTime.Kind == DateTimeKind.Utc)
             {
-                Append(dateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+                Append(dateTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture));
             }
             else if (_settings.UseUtcDateTime)
             {
-                Append(dateTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"));
+                Append(dateTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture));
             }
             else
             {
-                Append(dateTime.ToString("yyyy-MM-ddTHH:mm:ss"));
+                Append(dateTime.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture));
             }
         	Append('\"');
 
@@ -330,7 +372,7 @@ namespace SkinnyJson
             Append('{');
             if ( _settings.UseTypeExtensions)
             {
-                WritePair("$schema", _settings.UseOptimizedDatasetSchema ? GetSchema(ds) : ds.GetXmlSchema(), parent);
+                WritePair("$schema", _settings.UseOptimizedDatasetSchema ? GetSchema(ds) : ds.GetXmlSchema(), parent, ds.DataSetName);
                 Append(',');
             }
             var tableSep = false;
@@ -360,7 +402,7 @@ namespace SkinnyJson
                 foreach (DataColumn column in cols)
                 {
                     if (pendingSeparator) Append(',');
-                    WriteValue(row[column], parent);
+                    WriteValue(row[column], parent, table.TableName);
                     pendingSeparator = true;
                 }
                 Append(']');
@@ -374,7 +416,7 @@ namespace SkinnyJson
             Append('{');
             if (_settings.UseTypeExtensions)
             {
-                WritePair("$schema", _settings.UseOptimizedDatasetSchema ? GetSchema(dt) : GetXmlSchema(dt), parent);
+                WritePair("$schema", _settings.UseOptimizedDatasetSchema ? GetSchema(dt) : GetXmlSchema(dt), parent, dt.TableName);
                 Append(',');
             }
 
@@ -441,7 +483,7 @@ namespace SkinnyJson
                 }
                 else
                 {
-                    WritePair(property.Name, valueToWrite, obj);
+                    WritePair(property.Name, valueToWrite, obj, property.Name);
                 }
 
                 if (valueToWrite != null && _settings.UseTypeExtensions)
@@ -455,7 +497,7 @@ namespace SkinnyJson
             if (map.Count > 0 && _settings.UseTypeExtensions)
             {
                 Append(",\"$map\":");
-                WriteStringDictionary(map, parent);
+                WriteStringDictionary(map, parent, "");
             }
             _currentDepth--;
             Append('}');
@@ -637,15 +679,15 @@ namespace SkinnyJson
             WriteStringFast(value);
         }
 
-        private void WritePair(string name, object? value, object? parent)
+        private void WritePair(string name, object? value, object? parent, string source)
         {
             if (value is null or DBNull && !_settings.SerializeNullValues) return;
             WriteStringFast(name);
             Append(':');
-            WriteValue(value, parent);
+            WriteValue(value, parent, source);
         }
 
-        private void WriteArray(IEnumerable array, object? parent)
+        private void WriteArray(IEnumerable array, object? parent, string source)
         {
             Append('[');
 
@@ -655,14 +697,14 @@ namespace SkinnyJson
             {
                 if (pendingSeparator) Append(',');
 
-                WriteValue(obj, parent);
+                WriteValue(obj, parent, source);
 
                 pendingSeparator = true;
             }
             Append(']');
         }
 
-        private void WriteStringDictionary(IDictionary dic, object? parent)
+        private void WriteStringDictionary(IDictionary dic, object? parent, string source)
         {
             Append('{');
 
@@ -674,14 +716,14 @@ namespace SkinnyJson
                 if (entryKey == null) continue;
                 if (pendingSeparator) Append(',');
 
-                WritePair(entryKey, entry.Value, parent);
+                WritePair(entryKey, entry.Value, parent, source);
 
                 pendingSeparator = true;
             }
             Append('}');
         }
 
-        private void WriteNumericDictionary(IDictionary dic, object? parent)
+        private void WriteNumericDictionary(IDictionary dic, object? parent, string source)
         {
             Append('{');
 
@@ -694,14 +736,14 @@ namespace SkinnyJson
 
                 if (pendingSeparator) Append(',');
 
-                WritePair(entryKey, entry.Value, parent);
+                WritePair(entryKey, entry.Value, parent, source);
 
                 pendingSeparator = true;
             }
             Append('}');
         }
 
-        private void WriteDictionary(IDictionary dic, object? parent)
+        private void WriteDictionary(IDictionary dic, object? parent, string source)
         {
             Append('[');
 
@@ -711,9 +753,9 @@ namespace SkinnyJson
             {
                 if (pendingSeparator) Append(',');
                 Append('{');
-                WritePair("k", entry.Key, parent);
+                WritePair("k", entry.Key, parent, source);
                 Append(",");
-                WritePair("v", entry.Value, parent);
+                WritePair("v", entry.Value, parent, source);
                 Append('}');
 
                 pendingSeparator = true;
@@ -787,6 +829,16 @@ namespace SkinnyJson
             }
 
             Append('\"');
+        }
+    }
+
+    /// <summary>
+    /// Marker for a failure in the serialisation process that should bubble up.
+    /// </summary>
+    internal class SerializerException : Exception
+    {
+        public SerializerException(string message):base(message)
+        {
         }
     }
 }

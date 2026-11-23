@@ -1,5 +1,6 @@
 ﻿// ReSharper disable InconsistentNaming
 // ReSharper disable AssignNullToNotNullAttribute
+
 namespace SkinnyJson.Unit.Tests
 {
     using System;

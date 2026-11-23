@@ -200,6 +200,11 @@ namespace SkinnyJson
         /// Maximum recursion depth during serialisation
         /// </summary>
         public int MaxDepth { get; init; } = 10;
+
+        /// <summary>
+        /// Maximum time to wait on Task&lt;> properties to complete
+        /// </summary>
+        public TimeSpan TaskTimeOut { get; init; } = TimeSpan.FromSeconds(1);
         // ReSharper restore RedundantDefaultFieldInitializer
         #endregion Settings
         
